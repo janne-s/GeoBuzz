@@ -93,13 +93,13 @@ Working examples in [examples/](examples/):
 
 | Example | Description |
 |---------|-------------|
-| [**01-minimal**](examples/01-minimal/) | Simplest implementation |
-| [**02-headless**](examples/02-headless/) | Audio-only, no map |
-| [**03-visualizer**](examples/03-visualizer/) | Canvas visualization |
-| [**04-guided-tour**](examples/04-guided-tour/) | Walking tour with waypoints |
-| [**05-aframe**](examples/05-aframe/) | A-Frame AR/VR integration |
-| [**06-multi-buzz**](examples/06-multi-buzz/) | Switch between buzzes |
-| [**07-osc-streaming**](examples/07-osc-streaming/) | Stream to Max/MSP, Pure Data |
+| [**01-minimal**](https://janne-s.github.io/GeoBuzz/examples/01-minimal/) ([Repo](examples/01-minimal/)) | Simplest implementation |
+| [**02-headless**](https://janne-s.github.io/GeoBuzz/examples/02-headless/) ([Repo](examples/02-headless/)) | Audio-only, no map |
+| [**03-visualizer**](https://janne-s.github.io/GeoBuzz/examples/03-visualizer/) ([Repo](examples/03-visualizer/)) | Canvas visualization |
+| [**04-guided-tour**](https://janne-s.github.io/GeoBuzz/examples/04-guided-tour/) ([Repo](examples/04-guided-tour/)) | Walking tour with waypoints |
+| [**05-aframe**](https://janne-s.github.io/GeoBuzz/examples/05-aframe/) ([Repo](examples/05-aframe/)) | A-Frame AR/VR integration |
+| [**06-multi-buzz**](https://janne-s.github.io/GeoBuzz/examples/06-multi-buzz/) ([Repo](examples/06-multi-buzz/)) | Switch between buzzes |
+| **07-osc-streaming** [Repo](examples/07-osc-streaming/) | Stream to Max/MSP, Pure Data |
 
 ---
 
