@@ -93,13 +93,13 @@ Working examples in [examples/](examples/):
 
 | Example | Description |
 |---------|-------------|
-| **01-minimal** | Simplest implementation |
-| **02-headless** | Audio-only, no map |
-| **03-visualizer** | Canvas visualization |
-| **04-guided-tour** | Walking tour with waypoints |
-| **05-aframe** | A-Frame AR/VR integration |
-| **06-multi-buzz** | Switch between buzzes |
-| **07-osc-streaming** | Stream to Max/MSP, Pure Data |
+| [**01-minimal**](examples/01-minimal/) | Simplest implementation |
+| [**02-headless**](examples/02-headless/) | Audio-only, no map |
+| [**03-visualizer**](examples/03-visualizer/) | Canvas visualization |
+| [**04-guided-tour**](examples/04-guided-tour/) | Walking tour with waypoints |
+| [**05-aframe**](examples/05-aframe/) | A-Frame AR/VR integration |
+| [**06-multi-buzz**](examples/06-multi-buzz/) | Switch between buzzes |
+| [**07-osc-streaming**](examples/07-osc-streaming/) | Stream to Max/MSP, Pure Data |
 
 ---
 
