@@ -1,0 +1,371 @@
+/**
+ * GeoBuzz Runtime Player Styles
+ *
+ * This is a boilerplate stylesheet for your buzz player.
+ * Customize these styles to match your design!
+ */
+
+/* Reset */
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+body {
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+	overflow: hidden;
+	background: #000;
+}
+
+/* Map Container - Full screen background */
+#map {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	z-index: 1;
+	will-change: transform;
+}
+
+/* Player UI Container */
+.player-ui {
+	position: relative;
+	z-index: 1000;
+	pointer-events: none;
+}
+
+.player-ui > * {
+	pointer-events: auto;
+}
+
+/* Info Toggle Button - Mobile only */
+.info-toggle {
+	position: fixed;
+	top: 20px;
+	right: 20px;
+	width: 48px;
+	height: 48px;
+	background: rgba(255, 255, 255, 0.95);
+	border: none;
+	border-radius: 50%;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+	cursor: pointer;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	font-size: 20px;
+	color: #1a1a1a;
+	z-index: 1001;
+	transition: transform 0.2s ease-out;
+	will-change: transform;
+}
+
+.info-toggle:hover {
+	transform: scale(1.05);
+}
+
+/* Info Panel - Right side on desktop */
+.info-panel {
+	position: fixed;
+	top: 20px;
+	right: 20px;
+	max-width: 350px;
+	padding: 24px;
+	background: rgba(255, 255, 255, 0.98);
+	border-radius: 16px;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.info-close {
+	display: none;
+	position: absolute;
+	top: 16px;
+	right: 16px;
+	width: 32px;
+	height: 32px;
+	background: rgba(0, 0, 0, 0.05);
+	border: none;
+	border-radius: 50%;
+	cursor: pointer;
+	align-items: center;
+	justify-content: center;
+	font-size: 16px;
+	color: #666;
+	transition: all 0.2s;
+}
+
+.info-close:hover {
+	background: rgba(0, 0, 0, 0.1);
+	color: #1a1a1a;
+}
+
+.info-panel h1 {
+	font-size: 28px;
+	font-weight: 700;
+	margin-bottom: 12px;
+	color: #1a1a1a;
+}
+
+.info-panel p {
+	font-size: 16px;
+	color: #666;
+	line-height: 1.6;
+	margin-bottom: 16px;
+}
+
+/* Sounds List */
+.sounds-list {
+	margin-top: 20px;
+	padding-top: 20px;
+	border-top: 1px solid #e0e0e0;
+}
+
+.sounds-list h3 {
+	font-size: 14px;
+	font-weight: 600;
+	color: #666;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-bottom: 12px;
+}
+
+#soundsContent {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+.sound-item {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 10px;
+	background: rgba(0, 0, 0, 0.03);
+	border-radius: 8px;
+	transition: all 0.2s;
+}
+
+.sound-item.playing {
+	background: rgba(102, 126, 234, 0.1);
+	border-left: 3px solid #667eea;
+}
+
+.sound-icon {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.sequencer-item .sound-icon {
+	background-color: #9b59b6;
+}
+
+.sound-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.sound-label {
+	font-size: 14px;
+	font-weight: 500;
+	color: #1a1a1a;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.sound-status {
+	font-size: 12px;
+	color: #999;
+	margin-top: 2px;
+}
+
+.sound-item.playing .sound-status {
+	color: #667eea;
+	font-weight: 500;
+}
+
+/* Player Controls - Bottom center */
+.player-controls {
+	position: fixed;
+	bottom: 40px;
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16px;
+}
+
+/* Start Button */
+.btn-start {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 18px 36px;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: white;
+	border: none;
+	border-radius: 50px;
+	font-size: 18px;
+	font-weight: 600;
+	cursor: pointer;
+	box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+	transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	will-change: transform;
+}
+
+.btn-start:hover:not(:disabled) {
+	transform: translateY(-2px);
+	box-shadow: 0 6px 32px rgba(102, 126, 234, 0.5);
+}
+
+.btn-start:active:not(:disabled) {
+	transform: translateY(0);
+}
+
+.btn-start:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.btn-start i {
+	font-size: 18px;
+}
+
+/* Follow User Button */
+.btn-follow-user {
+	width: 56px;
+	height: 56px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(0, 0, 0, 0.8);
+	color: white;
+	border: 2px solid rgba(255, 255, 255, 0.3);
+	border-radius: 50%;
+	font-size: 20px;
+	cursor: pointer;
+	transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease, border-color 0.3s ease;
+	will-change: transform;
+}
+
+.btn-follow-user:hover {
+	background: rgba(0, 0, 0, 0.8);
+	border-color: rgba(255, 255, 255, 0.5);
+	transform: scale(1.05);
+}
+
+.btn-follow-user.active {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	border-color: #667eea;
+	box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-follow-user.active:hover {
+	box-shadow: 0 6px 32px rgba(102, 126, 234, 0.5);
+}
+
+.btn-follow-user i {
+	transition: transform 0.3s ease;
+}
+
+.btn-follow-user.active i {
+	transform: rotate(0deg);
+}
+
+/* Status Text */
+.status {
+	padding: 10px 20px;
+	background: rgba(0, 0, 0, 0.75);
+	color: white;
+	border-radius: 24px;
+	font-size: 14px;
+	font-weight: 500;
+	backdrop-filter: blur(10px);
+	min-width: 150px;
+	text-align: center;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+	.info-toggle {
+		display: flex;
+	}
+
+	.info-panel {
+		top: 0;
+		right: 0;
+		bottom: 0;
+		left: 0;
+		max-width: none;
+		width: 100%;
+		height: 100vh;
+		border-radius: 0;
+		padding: 60px 20px 20px;
+		transform: translateX(100%);
+		transition: transform 0.3s ease;
+		overflow-y: auto;
+		z-index: 1002;
+	}
+
+	.info-panel.active {
+		transform: translateX(0);
+	}
+
+	.info-close {
+		display: flex;
+	}
+
+	.info-panel h1 {
+		font-size: 24px;
+	}
+
+	.info-panel p {
+		font-size: 14px;
+	}
+
+	.player-controls {
+		bottom: 30px;
+	}
+
+	.btn-start {
+		padding: 14px 28px;
+		font-size: 16px;
+	}
+
+	.btn-follow-user {
+		width: 48px;
+		height: 48px;
+		font-size: 18px;
+	}
+}
+
+/* User Marker Icon */
+.userIcon {
+	width: 30px !important;
+	height: 30px !important;
+	background: #4285f4 !important;
+	border: 3px solid white !important;
+	border-radius: 50% !important;
+	box-shadow: 0 0 10px rgba(0, 0, 0, 0.3) !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	position: relative !important;
+	z-index: 1000 !important;
+}
+
+.custom-div-icon {
+	background: transparent !important;
+	border: none !important;
+	box-shadow: none !important;
+}
+
+/* Optional: Add your custom styles below */
+/* ---------------------------------------- */

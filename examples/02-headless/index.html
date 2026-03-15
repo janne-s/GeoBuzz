@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>GeoBuzz Sound Compass</title>
+    <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <div id="app">
+        <header id="header">
+            <h1 id="sound-name">No target</h1>
+            <div id="status"></div>
+        </header>
+
+        <main id="compass-area">
+            <div id="compass">
+                <svg id="arrow" viewBox="0 0 100 100">
+                    <polygon points="50,10 35,90 50,75 65,90" />
+                </svg>
+            </div>
+            <div id="distance">--</div>
+        </main>
+
+        <aside id="controls">
+            <button id="ping-toggle" class="toggle-btn">
+                <span class="icon">◉</span>
+                <span class="label">Ping</span>
+            </button>
+        </aside>
+
+        <footer id="sound-list"></footer>
+
+        <button id="play-btn">Start</button>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+</body>
+</html>

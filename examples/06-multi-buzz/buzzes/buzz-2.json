@@ -1,0 +1,134 @@
+{
+  "version": "1.0",
+  "relativePositioning": true,
+  "mapStyle": "Dark",
+  "colorIndex": 1,
+  "meta": {
+    "title": "FM Bell",
+    "description": "Metallic FM tone in a triangular zone"
+  },
+  "audioSettings": {
+    "spatialMode": "panning",
+    "userDirection": 0,
+    "useDeviceOrientation": false,
+    "ambisonics": {
+      "order": 1,
+      "gainBoost": 1,
+      "rolloff": "linear",
+      "minDistance": 1,
+      "stereoWidth": 1,
+      "stereoSpread": 5
+    },
+    "smoothing": {
+      "smoothingAlpha": 0.05,
+      "maxGainDelta": 0.02,
+      "deadZoneRadius": 2
+    }
+  },
+  "oscSettings": {
+    "enabled": false,
+    "host": "localhost",
+    "port": 8081
+  },
+  "defaultLayerStates": {
+    "sounds": true,
+    "control": true
+  },
+  "customParameterRanges": {},
+  "userLayers": [],
+  "sounds": [
+    {
+      "persistentId": "sound_mb_buzz2_bell",
+      "type": "FMSynth",
+      "role": "sound",
+      "label": "Bell",
+      "color": "#e74c3c",
+      "shapeType": "polygon",
+      "maxDistance": 40,
+      "layers": [],
+      "frequencyMode": false,
+      "modulationSources": [],
+      "lastTouchedParam": "pitch",
+      "iconPlacementMode": "fixed",
+      "volumeOrigin": "icon",
+      "volumeModel": "distance",
+      "divisionAngle": 0,
+      "divisionPosition": 0.5,
+      "useSpatialPanning": true,
+      "controlledBySequencer": false,
+      "params": {
+        "pitch": 72,
+        "frequency": 523.25,
+        "detune": 0,
+        "portamento": 0,
+        "pulseWidth": 0.5,
+        "waveform": "sine",
+        "attack": 0.01,
+        "decay": 1.2,
+        "sustain": 0.1,
+        "release": 2.0,
+        "filterFreq": 3000,
+        "filterType": "lowpass",
+        "resonance": 1,
+        "harmonicity": 3.5,
+        "modIndex": 8,
+        "count": 3,
+        "spread": 20,
+        "speedAdvance": false,
+        "speedAdvanceThreshold": 0.2,
+        "volume": 0.6,
+        "pan": 0,
+        "curveStrength": 1,
+        "releaseMode": "stop",
+        "polyphony": 1,
+        "speedGate": 0,
+        "partialCount": 1,
+        "partialCurve": -0.5
+      },
+      "pathRoles": {
+        "movement": null,
+        "zones": [],
+        "modulation": [],
+        "soundModulation": []
+      },
+      "offsetX": -20,
+      "offsetY": 5,
+      "vertices": [
+        { "offsetX": -20, "offsetY": 25 },
+        { "offsetX": -5, "offsetY": -10 },
+        { "offsetX": -35, "offsetY": -10 }
+      ],
+      "lfo": {
+        "x": { "freq": 0, "range": 0, "maxRange": 200 },
+        "y": { "freq": 0, "range": 0, "maxRange": 200 },
+        "size": { "freq": 0, "range": 0, "maxRange": 200 },
+        "mod1": { "target": "pitch", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "mod2": { "target": "modIndex", "freq": 0.15, "range": 4, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "mod3": { "target": "volume", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "fxMod1": { "target": "none", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "fxMod2": { "target": "none", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "fxMod3": { "target": "none", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "_phaseOffsets": { "x": 0, "y": 0, "size": 0 }
+      },
+      "fx": {
+        "slot1": { "type": "none", "params": {}, "mix": 50 },
+        "slot2": { "type": "none", "params": {}, "mix": 50 },
+        "slot3": { "type": "none", "params": {}, "mix": 50 }
+      },
+      "eq": {
+        "enabled": false,
+        "low": 0,
+        "mid": 0,
+        "high": 0,
+        "lowFrequency": 400,
+        "highFrequency": 2500
+      },
+      "reflections": {
+        "enabled": false,
+        "include": []
+      }
+    }
+  ],
+  "controlPaths": [],
+  "sequencers": []
+}

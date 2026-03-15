@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>{{TITLE}} - GeoBuzz Player</title>
+
+	<!-- External Libraries (CDN) - For better performance, download locally. See README.txt -->
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+	<link rel="stylesheet" href="./player-styles.css">
+</head>
+<body>
+	<!-- Map Container -->
+	<div id="map"></div>
+
+	<!-- Player UI - Customize this section -->
+	<div class="player-ui">
+		<button id="infoToggle" class="info-toggle" aria-label="Toggle info panel">
+			<i class="fas fa-info-circle"></i>
+		</button>
+
+		<div class="info-panel" id="infoPanel">
+			<button class="info-close" id="infoClose" aria-label="Close">
+				<i class="fas fa-times"></i>
+			</button>
+			<h1 id="buzzTitle">{{TITLE}}</h1>
+			<p id="buzzDescription">A spatial composition</p>
+			<div class="sounds-list" id="soundsList">
+				<h3>Elements</h3>
+				<div id="soundsContent">No elements loaded</div>
+			</div>
+		</div>
+
+		<div class="player-controls">
+			<button id="startBtn" class="btn-start" disabled>
+				<i class="fas fa-play"></i>
+				<span>Start Buzz</span>
+			</button>
+			<button id="followUserBtn" class="btn-follow-user active" title="Follow user">
+				<i class="fas fa-location-arrow"></i>
+			</button>
+			<div id="status" class="status">Loading...</div>
+		</div>
+	</div>
+
+	<!-- External Dependencies (CDN) - For better performance, download locally. See README.txt -->
+	<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+	<script src="https://unpkg.com/tone"></script>
+	<script src="https://cdn.jsdelivr.net/npm/resonance-audio/build/resonance-audio.min.js"></script>
+
+	<!-- GeoBuzz Runtime Engine -->
+	<script type="module">
+		import { runtimeEngine } from '{{SRC_PATH}}/runtime/RuntimeEngine.js';
+
+		let buzzData = null;
+		let isPlaying = false;
+		let followUser = true;
+		let userPanTimeout = null;
+		let geolocationManager = null;
+
+		function updateSoundsList(sounds, sequencers) {
+			const soundsContent = document.getElementById('soundsContent');
+			if ((!sounds || sounds.length === 0) && (!sequencers || sequencers.length === 0)) {
+				soundsContent.innerHTML = 'No elements loaded';
+				return;
+			}
+
+			let html = '';
+
+			if (sounds && sounds.length > 0) {
+				html += sounds.map((sound, index) => `
+					<div class="sound-item" id="sound-${index}" data-sound-id="${sound.id}">
+						<div class="sound-icon" style="background-color: ${sound.color || '#3388ff'}"></div>
+						<div class="sound-info">
+							<div class="sound-label">${sound.label || 'Sound ' + (index + 1)}</div>
+							<div class="sound-status">Ready</div>
+						</div>
+					</div>
+				`).join('');
+			}
+
+			if (sequencers && sequencers.length > 0) {
+				html += sequencers.map((seq, index) => `
+					<div class="sound-item sequencer-item" id="sequencer-${index}" data-seq-id="${seq.id}">
+						<div class="sound-icon"></div>
+						<div class="sound-info">
+							<div class="sound-label">${seq.label || 'Sequencer ' + (index + 1)}</div>
+							<div class="sound-status">${seq.enabled ? 'Enabled' : 'Disabled'}</div>
+						</div>
+					</div>
+				`).join('');
+			}
+
+			soundsContent.innerHTML = html;
+		}
+
+		let lastStatusUpdate = 0;
+		const STATUS_UPDATE_INTERVAL = 100;
+
+		function updatePlaybackStatus(timestamp) {
+			if (!isPlaying) return;
+
+			if (!timestamp || timestamp - lastStatusUpdate < STATUS_UPDATE_INTERVAL) {
+				requestAnimationFrame(updatePlaybackStatus);
+				return;
+			}
+
+			lastStatusUpdate = timestamp;
+
+			const state = runtimeEngine.getState();
+			const sounds = state.sounds;
+			const sequencers = state.sequencers;
+
+			sounds.forEach((sound, index) => {
+				const soundItem = document.getElementById(`sound-${index}`);
+				if (soundItem) {
+					const statusEl = soundItem.querySelector('.sound-status');
+					const wasPlaying = soundItem.classList.contains('playing');
+
+					if (sound.isPlaying && !wasPlaying) {
+						statusEl.textContent = 'Playing';
+						soundItem.classList.add('playing');
+					} else if (!sound.isPlaying && wasPlaying) {
+						statusEl.textContent = 'Ready';
+						soundItem.classList.remove('playing');
+					}
+				}
+			});
+
+			sequencers.forEach((seq, index) => {
+				const seqItem = document.getElementById(`sequencer-${index}`);
+				if (seqItem) {
+					const statusEl = seqItem.querySelector('.sound-status');
+					const wasActive = seqItem.classList.contains('playing');
+					const isActive = seq.enabled && seq.insideArea;
+
+					if (isActive && !wasActive) {
+						statusEl.textContent = 'Active';
+						seqItem.classList.add('playing');
+					} else if (!isActive && wasActive) {
+						if (seq.enabled) {
+							statusEl.textContent = 'Enabled';
+						} else {
+							statusEl.textContent = 'Disabled';
+						}
+						seqItem.classList.remove('playing');
+					}
+				}
+			});
+
+			requestAnimationFrame(updatePlaybackStatus);
+		}
+
+		async function initPlayer() {
+			try {
+				updateStatus('Initializing engine...');
+
+				// Initialize the runtime engine
+				await runtimeEngine.initialize({
+					mapContainer: document.getElementById('map'),
+					mapConfig: {
+						center: [0, 0],
+						zoom: 2,
+						zoomControl: true,
+						preferCanvas: true,
+						renderer: L.canvas({ padding: 0.5 })
+					}
+				});
+
+
+				// Fetch buzz data
+				updateStatus('Loading buzz...');
+				const response = await fetch('buzz.json');
+				if (!response.ok) {
+					throw new Error(`Failed to load buzz.json: ${response.status}`);
+				}
+
+				buzzData = await response.json();
+
+				// Update UI with metadata
+				if (buzzData.meta) {
+					document.getElementById('buzzTitle').textContent = buzzData.meta.title || '{{TITLE}}';
+					document.getElementById('buzzDescription').textContent = buzzData.meta.description || 'A spatial composition';
+				}
+
+				// Load the buzz
+				await runtimeEngine.loadBuzz(buzzData);
+
+				// Get references
+				const state = runtimeEngine.getState();
+				const sounds = state.sounds;
+				const sequencers = state.sequencers;
+				const map = runtimeEngine.getContext().map;
+				geolocationManager = runtimeEngine.getContext().GeolocationManager;
+
+				updateSoundsList(sounds, sequencers);
+
+				// Setup map pan detection
+				let isProgrammaticMove = false;
+				const followUserBtn = document.getElementById('followUserBtn');
+
+				map.on('movestart', () => {
+					if (!isProgrammaticMove && followUser) {
+						if (userPanTimeout) {
+							clearTimeout(userPanTimeout);
+						}
+						followUser = false;
+						followUserBtn.classList.remove('active');
+					}
+				});
+
+				map.on('moveend', () => {
+					if (!followUser && !isProgrammaticMove) {
+						if (userPanTimeout) {
+							clearTimeout(userPanTimeout);
+						}
+						userPanTimeout = setTimeout(() => {
+							followUser = true;
+							followUserBtn.classList.add('active');
+							const userPos = geolocationManager.getUserPosition();
+							if (userPos) {
+								isProgrammaticMove = true;
+								map.setView(userPos, map.getZoom());
+								setTimeout(() => { isProgrammaticMove = false; }, 100);
+							}
+						}, 3000);
+					}
+					isProgrammaticMove = false;
+				});
+
+				// Track user position for following
+				const originalHandlePositionUpdate = geolocationManager.handlePositionUpdate.bind(geolocationManager);
+				geolocationManager.handlePositionUpdate = function(pos) {
+					originalHandlePositionUpdate(pos);
+					if (followUser && geolocationManager.userMarker) {
+						requestAnimationFrame(() => {
+							const userPos = geolocationManager.userMarker.getLatLng();
+							isProgrammaticMove = true;
+							map.panTo(userPos, { animate: true, duration: 0.5 });
+							requestAnimationFrame(() => {
+								isProgrammaticMove = false;
+							});
+						});
+					}
+				};
+
+				// Ready to play
+				updateStatus('Ready to play');
+				document.getElementById('startBtn').disabled = false;
+
+			} catch (error) {
+				console.error('Player initialization failed:', error);
+				updateStatus('Error: ' + error.message);
+			}
+		}
+
+		function updateStatus(message) {
+			document.getElementById('status').textContent = message;
+		}
+
+
+		// Info panel toggle for mobile
+		const infoToggle = document.getElementById('infoToggle');
+		const infoPanel = document.getElementById('infoPanel');
+		const infoClose = document.getElementById('infoClose');
+
+		infoToggle.addEventListener('click', () => {
+			infoPanel.classList.add('active');
+		});
+
+		infoClose.addEventListener('click', () => {
+			infoPanel.classList.remove('active');
+		});
+
+		// Follow user button handler
+		document.getElementById('followUserBtn').addEventListener('click', () => {
+			followUser = !followUser;
+			const btn = document.getElementById('followUserBtn');
+
+			if (followUser) {
+				btn.classList.add('active');
+				if (geolocationManager) {
+					const userPos = geolocationManager.getUserPosition();
+					if (userPos) {
+						const map = runtimeEngine.getContext().map;
+						map.setView(userPos, map.getZoom());
+					}
+				}
+				if (userPanTimeout) {
+					clearTimeout(userPanTimeout);
+					userPanTimeout = null;
+				}
+			} else {
+				btn.classList.remove('active');
+			}
+		});
+
+		// Start button handler
+		document.getElementById('startBtn').addEventListener('click', (e) => {
+			e.preventDefault();
+			const btn = document.getElementById('startBtn');
+
+			if (!isPlaying) {
+				isPlaying = true;
+				btn.disabled = true;
+				btn.innerHTML = '<i class="fas fa-pause"></i><span>Starting...</span>';
+				updateStatus('Starting...');
+
+				runtimeEngine.start().then(() => {
+					btn.disabled = false;
+					btn.innerHTML = '<i class="fas fa-pause"></i><span>Pause</span>';
+					updateStatus('Playing...');
+					updatePlaybackStatus();
+				}).catch(error => {
+					console.error('Playback error:', error);
+					isPlaying = false;
+					btn.disabled = false;
+					btn.innerHTML = '<i class="fas fa-play"></i><span>Start Buzz</span>';
+					updateStatus('Error: ' + error.message);
+				});
+			} else {
+				isPlaying = false;
+				runtimeEngine.stop();
+				btn.innerHTML = '<i class="fas fa-play"></i><span>Resume</span>';
+				updateStatus('Paused');
+			}
+		});
+
+		// Initialize when DOM is ready
+		if (document.readyState === 'loading') {
+			document.addEventListener('DOMContentLoaded', initPlayer);
+		} else {
+			initPlayer();
+		}
+	</script>
+</body>
+</html>

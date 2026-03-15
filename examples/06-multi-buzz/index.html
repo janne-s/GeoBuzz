@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Multi-Buzz Player</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loading-spinner"></div>
+        <div id="loading-status">Initializing...</div>
+    </div>
+
+    <div id="error-message"></div>
+
+    <div id="map"></div>
+
+    <div id="ui-overlay">
+        <button id="play-btn" class="btn btn-primary" disabled>Start</button>
+    </div>
+
+    <div id="selector-panel">
+        <h2>Select Buzz</h2>
+        <div id="buzz-list" class="buzz-list"></div>
+    </div>
+
+    <script type="module">
+        import { runtimeEngine } from '../../src/runtime/RuntimeEngine.js';
+
+        const BUZZES = [];
+
+        class MultiBuzzPlayer {
+            constructor() {
+                this.currentBuzzId = null;
+                this.isPlaying = false;
+                this.buzzCache = new Map();
+            }
+
+            async discoverBuzzes() {
+                for (let i = 1; ; i++) {
+                    const id = `buzz-${i}`;
+                    const url = `./buzzes/${id}.json`;
+                    const response = await fetch(url, { method: 'HEAD' });
+                    if (!response.ok) break;
+
+                    const dataResponse = await fetch(url);
+                    const data = await dataResponse.json();
+                    const color = data.sounds?.[0]?.color || '#667eea';
+
+                    const buzz = {
+                        id,
+                        url,
+                        color,
+                        title: data.meta?.title || id,
+                        description: data.meta?.description || ''
+                    };
+                    BUZZES.push(buzz);
+                    this.buzzCache.set(id, data);
+                }
+            }
+
+            async init() {
+                document.getElementById('loading-status').textContent = 'Loading buzzes...';
+
+                await this.discoverBuzzes();
+
+                if (BUZZES.length === 0) {
+                    this.showError('No buzz files found in buzzes/ folder');
+                    return;
+                }
+
+                document.getElementById('loading-status').textContent = 'Initializing audio...';
+
+                try {
+                    await runtimeEngine.initialize({
+                        mapContainer: document.getElementById('map'),
+                        mapConfig: { zoom: 17 }
+                    });
+                } catch (error) {
+                    this.showError('Failed to initialize: ' + error.message);
+                    return;
+                }
+
+                this.renderBuzzList();
+                document.getElementById('play-btn').disabled = false;
+                document.getElementById('play-btn').addEventListener('click', () => this.togglePlayback());
+                document.getElementById('loading-screen').classList.add('hidden');
+
+                await this.selectBuzz(BUZZES[0].id);
+            }
+
+            renderBuzzList() {
+                const container = document.getElementById('buzz-list');
+                container.innerHTML = BUZZES.map(buzz => `
+                    <div class="buzz-item" data-id="${buzz.id}">
+                        <div class="buzz-color" style="background: ${buzz.color}"></div>
+                        <div class="buzz-info">
+                            <div class="buzz-title">${buzz.title}</div>
+                            <div class="buzz-description">${buzz.description}</div>
+                        </div>
+                        <div class="buzz-status"></div>
+                    </div>
+                `).join('');
+
+                container.querySelectorAll('.buzz-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        if (item.dataset.id !== this.currentBuzzId) {
+                            this.selectBuzz(item.dataset.id);
+                        }
+                    });
+                });
+            }
+
+            clearSounds() {
+                const ctx = runtimeEngine.getContext();
+                if (!ctx) return;
+
+                const sounds = ctx.Selectors.getSounds();
+                const map = ctx.map;
+
+                sounds.forEach(sound => {
+                    if (sound.synth && !sound.synth.disposed) {
+                        sound.synth.dispose();
+                    }
+                    if (sound.gain) sound.gain.dispose();
+                    if (sound.envelopeGain) sound.envelopeGain.dispose();
+                    if (sound.filter) sound.filter.dispose();
+                    if (sound.panner) sound.panner.dispose();
+                    if (sound.loopFadeGain) sound.loopFadeGain.dispose();
+                    if (sound.eq) sound.eq.dispose();
+                    [sound.fx1, sound.fx2, sound.fx3].forEach(fx => {
+                        if (fx && fx.dispose) fx.dispose();
+                    });
+
+                    if (sound.leafletMarker) map.removeLayer(sound.leafletMarker);
+                    if (sound.circle) map.removeLayer(sound.circle);
+                    if (sound.polygon) map.removeLayer(sound.polygon);
+                    if (sound.labelMarker) map.removeLayer(sound.labelMarker);
+                    if (sound.handle) map.removeLayer(sound.handle);
+                    if (sound.vertexMarkers) {
+                        sound.vertexMarkers.forEach(m => map.removeLayer(m));
+                    }
+                });
+
+                ctx.AppState.data.sounds = [];
+                ctx.AppState.data.controlPaths = [];
+                ctx.AppState.data.sequencers = [];
+                ctx.AppState.rebuildIndexes();
+                runtimeEngine.audioInitialized = false;
+                runtimeEngine.pendingBuzzData = null;
+            }
+
+            async selectBuzz(buzzId) {
+                const buzzData = this.buzzCache.get(buzzId);
+                if (!buzzData) return;
+
+                const wasPlaying = this.isPlaying;
+
+                if (this.isPlaying) {
+                    runtimeEngine.stop();
+                    this.isPlaying = false;
+                }
+
+                if (this.currentBuzzId !== null) {
+                    this.clearSounds();
+                }
+
+                try {
+                    await runtimeEngine.loadBuzz(buzzData);
+                    this.currentBuzzId = buzzId;
+                    this.fitMapToSounds();
+
+                    if (wasPlaying) {
+                        await runtimeEngine.start();
+                        this.isPlaying = true;
+                    }
+                } catch (error) {
+                    console.error('Failed to load buzz:', error);
+                }
+
+                this.updateUI();
+            }
+
+            async togglePlayback() {
+                if (!this.isPlaying) {
+                    await runtimeEngine.start();
+                    this.isPlaying = true;
+                } else {
+                    runtimeEngine.stop();
+                    this.isPlaying = false;
+                }
+                this.updateUI();
+            }
+
+            updateUI() {
+                const btn = document.getElementById('play-btn');
+                btn.textContent = this.isPlaying ? 'Pause' : 'Start';
+                btn.classList.toggle('playing', this.isPlaying);
+
+                document.querySelectorAll('.buzz-item').forEach(item => {
+                    const isActive = item.dataset.id === this.currentBuzzId;
+                    item.classList.toggle('active', isActive);
+                    const status = item.querySelector('.buzz-status');
+                    status.textContent = isActive ? (this.isPlaying ? 'Playing' : 'Selected') : '';
+                });
+            }
+
+            fitMapToSounds() {
+                const ctx = runtimeEngine.getContext();
+                if (!ctx) return;
+
+                const sounds = ctx.Selectors.getSounds();
+                if (sounds.length === 0) return;
+
+                const bounds = L.latLngBounds(sounds.map(s => L.latLng(s.userLat, s.userLng)));
+                const userPos = ctx.GeolocationManager.getUserPosition();
+                if (userPos) bounds.extend(userPos);
+
+                runtimeEngine.map.fitBounds(bounds.pad(0.3), { maxZoom: 19 });
+            }
+
+            showError(message) {
+                document.getElementById('error-message').textContent = message;
+                document.getElementById('error-message').classList.add('visible');
+                document.getElementById('loading-screen').classList.add('hidden');
+            }
+        }
+
+        const player = new MultiBuzzPlayer();
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => player.init());
+        } else {
+            player.init();
+        }
+    </script>
+</body>
+</html>

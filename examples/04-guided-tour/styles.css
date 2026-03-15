@@ -1,0 +1,273 @@
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+html, body {
+	height: 100%;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	overflow: hidden;
+}
+
+#map {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 1;
+}
+
+.tour-ui {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	pointer-events: none;
+	z-index: 1000;
+	display: flex;
+	flex-direction: column;
+}
+
+.tour-header {
+	pointer-events: auto;
+	background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+	padding: 16px 20px 32px;
+	color: white;
+}
+
+.tour-title {
+	font-size: 18px;
+	font-weight: 600;
+	margin-bottom: 12px;
+}
+
+.progress-container {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.progress-bar {
+	flex: 1;
+	height: 6px;
+	background: rgba(255,255,255,0.2);
+	border-radius: 3px;
+	overflow: hidden;
+}
+
+.progress-fill {
+	height: 100%;
+	background: #4CAF50;
+	border-radius: 3px;
+	transition: width 0.5s ease;
+	width: 0%;
+}
+
+.progress-text {
+	font-size: 13px;
+	opacity: 0.9;
+	min-width: 70px;
+	text-align: right;
+}
+
+.next-stop-bar {
+	display: none;
+	align-items: center;
+	gap: 12px;
+	background: rgba(255,255,255,0.95);
+	border-radius: 12px;
+	padding: 10px 16px;
+	margin-top: 12px;
+}
+
+.next-stop-bar.visible {
+	display: flex;
+}
+
+.direction-arrow {
+	width: 36px;
+	height: 36px;
+	background: #2196F3;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	transition: transform 0.3s ease;
+}
+
+.direction-arrow i {
+	font-size: 16px;
+	color: white;
+}
+
+.next-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.next-name {
+	font-size: 15px;
+	font-weight: 600;
+	color: #333;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.next-distance {
+	font-size: 13px;
+	color: #666;
+}
+
+.tour-content {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	pointer-events: none;
+}
+
+.completion-card {
+	pointer-events: auto;
+	background: linear-gradient(135deg, #4CAF50, #2E7D32);
+	border-radius: 16px;
+	padding: 32px;
+	margin: 20px;
+	box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+	text-align: center;
+	color: white;
+	max-width: 280px;
+	display: none;
+}
+
+.completion-card.visible {
+	display: block;
+}
+
+.completion-icon {
+	font-size: 48px;
+	margin-bottom: 16px;
+}
+
+.completion-title {
+	font-size: 24px;
+	font-weight: 600;
+	margin-bottom: 8px;
+}
+
+.completion-subtitle {
+	font-size: 14px;
+	opacity: 0.9;
+}
+
+.tour-footer {
+	pointer-events: auto;
+	background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+	padding: 32px 20px 20px;
+}
+
+.waypoints-row {
+	display: flex;
+	justify-content: center;
+	gap: 8px;
+	margin-bottom: 16px;
+}
+
+.waypoint-dot {
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	background: rgba(255,255,255,0.3);
+	border: 2px solid rgba(255,255,255,0.5);
+	transition: all 0.3s ease;
+}
+
+.waypoint-dot.visited {
+	background: #4CAF50;
+	border-color: #4CAF50;
+}
+
+.waypoint-dot.current {
+	background: #2196F3;
+	border-color: #2196F3;
+	transform: scale(1.3);
+}
+
+.waypoint-dot.next {
+	border-color: white;
+	animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+	0%, 100% { transform: scale(1); opacity: 1; }
+	50% { transform: scale(1.2); opacity: 0.7; }
+}
+
+.controls-row {
+	display: flex;
+	gap: 12px;
+}
+
+.btn-start {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 14px 24px;
+	font-size: 16px;
+	font-weight: 600;
+	color: white;
+	background: #2196F3;
+	border: none;
+	border-radius: 12px;
+	cursor: pointer;
+	transition: background 0.2s;
+}
+
+.btn-start:hover {
+	background: #1976D2;
+}
+
+.btn-start:disabled {
+	background: #666;
+	cursor: not-allowed;
+}
+
+.btn-start.playing {
+	background: #F44336;
+}
+
+.btn-center {
+	width: 48px;
+	height: 48px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(255,255,255,0.2);
+	border: none;
+	border-radius: 12px;
+	color: white;
+	font-size: 18px;
+	cursor: pointer;
+	transition: background 0.2s;
+}
+
+.btn-center:hover {
+	background: rgba(255,255,255,0.3);
+}
+
+.btn-center.active {
+	background: rgba(255,255,255,0.4);
+}
+
+.status-text {
+	text-align: center;
+	color: rgba(255,255,255,0.7);
+	font-size: 12px;
+	margin-top: 12px;
+}

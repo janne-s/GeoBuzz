@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal GeoBuzz Player</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <div id="map"></div>
+    <button id="play-btn">Play</button>
+
+    <script type="module">
+        import { runtimeEngine } from '../../src/runtime/RuntimeEngine.js';
+
+        async function init() {
+            const response = await fetch('./buzz.json');
+            const buzzData = await response.json();
+
+            await runtimeEngine.initialize({
+                mapContainer: document.getElementById('map')
+            });
+
+            await runtimeEngine.loadBuzz(buzzData);
+
+            const geo = runtimeEngine.getContext().GeolocationManager;
+            const userPos = geo.getUserPosition();
+
+            if (userPos) {
+                L.circleMarker([userPos.lat, userPos.lng], {
+                    radius: 10,
+                    color: '#ff5722',
+                    fillColor: '#ff5722',
+                    fillOpacity: 0.9,
+                    weight: 3,
+                    pane: 'userMarker'
+                }).addTo(runtimeEngine.map);
+
+                runtimeEngine.map.setView([userPos.lat, userPos.lng], 18);
+            }
+
+            const btn = document.getElementById('play-btn');
+            let isPlaying = false;
+
+            btn.addEventListener('click', async () => {
+                if (isPlaying) {
+                    runtimeEngine.stop();
+                    btn.textContent = 'Play';
+                    btn.classList.remove('playing');
+                } else {
+                    await runtimeEngine.start();
+                    btn.textContent = 'Pause';
+                    btn.classList.add('playing');
+                }
+                isPlaying = !isPlaying;
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>

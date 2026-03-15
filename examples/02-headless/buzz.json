@@ -1,0 +1,68 @@
+{
+  "version": "1.0",
+  "relativePositioning": true,
+  "audioSettings": {
+    "spatialMode": "off"
+  },
+  "sounds": [
+    {
+      "persistentId": "sound_north",
+      "type": "Synth",
+      "label": "North Bell",
+      "color": "#e74c3c",
+      "shapeType": "circle",
+      "maxDistance": 30,
+      "params": {
+        "pitch": 72,
+        "waveform": "sine",
+        "attack": 0.01,
+        "decay": 0.3,
+        "sustain": 0.2,
+        "release": 0.8,
+        "volume": 0.7
+      },
+      "offsetX": 0,
+      "offsetY": 80
+    },
+    {
+      "persistentId": "sound_east",
+      "type": "Synth",
+      "label": "East Drone",
+      "color": "#3498db",
+      "shapeType": "circle",
+      "maxDistance": 25,
+      "params": {
+        "pitch": 48,
+        "waveform": "triangle",
+        "attack": 0.5,
+        "decay": 0.2,
+        "sustain": 0.8,
+        "release": 1.0,
+        "volume": 0.6
+      },
+      "offsetX": 100,
+      "offsetY": 20
+    },
+    {
+      "persistentId": "sound_southwest",
+      "type": "Synth",
+      "label": "Southwest Pulse",
+      "color": "#2ecc71",
+      "shapeType": "circle",
+      "maxDistance": 35,
+      "params": {
+        "pitch": 60,
+        "waveform": "square",
+        "attack": 0.05,
+        "decay": 0.1,
+        "sustain": 0.4,
+        "release": 0.3,
+        "volume": 0.5
+      },
+      "offsetX": -70,
+      "offsetY": -90
+    }
+  ],
+  "controlPaths": [],
+  "sequencers": []
+}

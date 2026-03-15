@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>GeoBuzz</title>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+	<link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+	<!-- Map Container -->
+	<div id="map" class="map-container"></div>
+
+	<!-- Helper Menu - File operations, workspace, settings -->
+	<button id="helperMenuToggle" class="menu-toggle helper-menu-toggle">
+		<i class="fas fa-tools"></i>
+	</button>
+
+	<div id="helperMenu" class="side-menu helper-menu">
+		<div class="menu-section">
+			<h3 class="section-title flex-center"><i class="fas fa-folder-open"></i> Settings</h3>
+			<button id="saveBtn" class="menu-btn flex-center">
+				<i class="fas fa-save"></i>
+				<span>Save to File</span>
+			</button>
+			<button id="loadBtn" class="menu-btn flex-center">
+				<i class="fas fa-upload"></i>
+				<span>Load from File</span>
+			</button>
+			<input type="file" id="loadInput" class="file-input" accept=".json">
+			<button id="clearAllBtn" class="menu-btn flex-center">
+				<i class="fas fa-trash-alt"></i>
+				<span>Clear All Elements</span>
+			</button>
+		</div>
+
+		<div class="menu-section">
+			<h3 class="section-title flex-center"><i class="fas fa-box-archive"></i> Buzz Operations</h3>
+			<button id="importBuzzZipBtn" class="menu-btn flex-center">
+				<i class="fas fa-file-import"></i>
+				<span>Import Buzz ZIP</span>
+			</button>
+			<input type="file" id="importBuzzInput" class="file-input" accept=".zip">
+			<button id="exportBuzzZipBtn" class="menu-btn flex-center">
+				<i class="fas fa-file-export"></i>
+				<span>Export Buzz ZIP</span>
+			</button>
+			<button id="exportBuzzWorkspaceBtn" class="menu-btn flex-center">
+				<i class="fas fa-folder"></i>
+				<span>Export to Workspace</span>
+			</button>
+			<p class="help-text">Import/export complete buzz packages with sounds included</p>
+		</div>
+
+		<div class="menu-section relative-positioning">
+			<h3 class="section-title flex-center"><i class="fas fa-anchor"></i>Relative Positioning</h3>
+			<input type="checkbox" id="relativePositioningToggle">
+			<label for="relativePositioningToggle">
+				Saves the layout relative to you, so it can be deployed anywhere.
+			</label>
+		</div>
+
+		<div class="menu-section">
+			<h3 class="section-title flex-center"><i class="fas fa-link"></i> Workspace</h3>
+			<div class="input-group">
+				<input type="text" id="workspaceUrl" class="workspace-url" readonly>
+				<button id="copyWorkspaceBtn" class="btn-icon">
+					<i class="fas fa-copy"></i>
+				</button>
+			</div>
+			<p class="help-text">Share this URL to collaborate</p>
+		</div>
+
+		<div class="menu-section">
+			<h3 class="section-title flex-center"><i class="fas fa-map"></i> Map Style</h3>
+			<select id="mapStyleSelect" class="map-style-select">
+			</select>
+		</div>
+
+		<div class="menu-section">
+			<h3 class="section-title flex-center"><i class="fas fa-music"></i> Sound Files</h3>
+			<button id="manageSoundsBtn" class="menu-btn flex-center">
+				<i class="fas fa-folder-open"></i>
+				<span>Manage Files and Buzzes</span>
+			</button>
+		</div>
+	</div>
+
+	<button id="elementsMenuToggle" class="menu-toggle elements-menu-toggle">
+		<i class="fas fa-layer-group"></i>
+		<span id="layerCount" class="menu-count hidden">0</span>
+	</button>
+
+	<div id="elementsMenu" class="side-menu elements-menu">
+		<div class="menu-section">
+			<h3 class="section-title flex-center"><i class="fas fa-layer-group"></i> User Layers</h3>
+			<button id="addLayerBtn" class="btn-add">
+				<i class="fas fa-plus"></i> Add Layer
+			</button>
+			<div id="userLayersList" class="user-layers-list"></div>
+		</div>
+
+		<div class="menu-section">
+			<h3 class="section-title flex-center"><i class="fas fa-eye"></i> Default Layers</h3>
+			<div class="layer-buttons">
+				<button id="layer-sounds" class="layer-btn active" data-layer="sounds">
+					<i class="fas fa-volume-up"></i>
+					<span>Sounds</span>
+				</button>
+				<button id="layer-control" class="layer-btn active" data-layer="control">
+					<i class="fas fa-route"></i>
+					<span>Control</span>
+				</button>
+			</div>
+		</div>
+	</div>
+
+	<button id="controlMenuToggle" class="menu-toggle control-menu-toggle">
+		<i class="fas fa-shapes"></i>
+		<span id="elementCount" class="menu-count hidden">0</span>
+	</button>
+
+	<div id="controlMenu" class="side-menu control-menu">
+		<div class="menu-section">
+			<h3 class="section-title flex-center"><i class="fas fa-plus"></i> Create Element</h3>
+			<div class="shape-grid">
+				<div class="shape-column sound-column">
+					<h4 class="column-header"><i class="fas fa-volume-up"></i> Sound</h4>
+					<button id="addSoundCircleBtn" class="shape-btn" title="Place center">
+						<i class="fas fa-circle-notch"></i>
+						<span class="shape-label">Circle</span>
+					</button>
+					<button id="addSoundPolygonBtn" class="shape-btn" title="Click to place">
+						<i class="fas fa-draw-polygon"></i>
+						<span class="shape-label">Polygon</span>
+					</button>
+					<button id="addSoundLineBtn" class="shape-btn" title="Click points, dbl-click to finish">
+						<i class="fas fa-bezier-curve"></i>
+						<span class="shape-label">Line</span>
+					</button>
+					<button id="addSoundOvalBtn" class="shape-btn" title="Place center">
+						<i class="fas fa-circle"></i>
+						<span class="shape-label">Oval</span>
+					</button>
+				</div>
+				<div class="shape-column path-column">
+					<h4 class="column-header"><i class="fas fa-route"></i> Path</h4>
+					<button id="addCirclePathBtn" class="shape-btn" title="Draw Circle Path">
+						<i class="fas fa-circle-notch"></i>
+						<span class="shape-label">Circle</span>
+					</button>
+					<button id="addPolygonPathBtn" class="shape-btn" title="Draw Polygon Path">
+						<i class="fas fa-draw-polygon"></i>
+						<span class="shape-label">Polygon</span>
+					</button>
+					<button id="addLinePathBtn" class="shape-btn" title="Draw Line Path">
+						<i class="fas fa-bezier-curve"></i>
+						<span class="shape-label">Line</span>
+					</button>
+					<button id="addOvalPathBtn" class="shape-btn" title="Draw Oval Path">
+						<i class="fas fa-circle"></i>
+						<span class="shape-label">Oval</span>
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<div class="menu-section">
+			<h3 class="section-title flex-center"><i class="fas fa-list"></i> Elements</h3>
+			<div id="elementsList" class="elements-list"></div>
+		</div>
+	</div>
+
+	<button id="sequencingMenuToggle" class="menu-toggle sequencing-menu-toggle">
+		<i class="fas fa-drum"></i>
+		<span id="sequencerCount" class="menu-count hidden">0</span>
+	</button>
+
+	<div id="sequencingMenu" class="side-menu sequencing-menu">
+		<div class="menu-section">
+			<h3 class="section-title flex-center"><i class="fas fa-drum"></i> Sequencing</h3>
+			<button id="addSequencerBtn" class="menu-btn flex-center">
+				<i class="fas fa-step-forward"></i>
+				<span>Distance Sequencer</span>
+			</button>
+			<div id="sequencersList" class="sequencers-list"></div>
+		</div>
+	</div>
+
+	<button id="interfaceMenuToggle" class="menu-toggle interface-menu-toggle">
+		<i class="fas fa-plug"></i>
+	</button>
+
+	<div id="interfaceMenu" class="side-menu interface-menu">
+		<div class="menu-section">
+			<h3 class="section-title flex-center"><i class="fas fa-plug"></i> OSC Streaming</h3>
+			
+			<div class="parameter-control">
+				<label>
+					<input type="checkbox" id="oscEnableToggle"> Enable OSC Output
+				</label>
+			</div>
+
+			<div class="parameter-control">
+				<label>Host</label>
+				<input type="text" id="oscHost" value="localhost">
+			</div>
+
+			<div class="parameter-control">
+				<label>Bridge Port</label>
+				<input type="number" id="oscPort" value="8081">
+			</div>
+
+			<div id="oscStatus" class="status-indicator"></div>
+
+			<button id="oscTestBtn" class="menu-btn flex-center">
+				<i class="fas fa-paper-plane"></i> Send Test Message
+			</button>
+		</div>
+
+		<div class="menu-section">
+			<h3 class="section-title flex-center">Address Format</h3>
+			<div class="osc-message">
+				/geobuzz<br><br>
+				/user/lat, /user/lng, /user/direction<br><br>
+				/{layerName} (if on a layer)
+				&nbsp;&nbsp;/{soundName}/x<br>
+				&nbsp;&nbsp;/{soundName}/y<br>
+				&nbsp;&nbsp;/{soundName}/distance<br>
+				&nbsp;&nbsp;/{soundName}/gain<br>
+				&nbsp;&nbsp;/{soundName}/lat<br>
+				&nbsp;&nbsp;/{soundName}/lng<br><br>
+				&nbsp;&nbsp;/{soundName}/echo_{echoName}/x<br>
+				&nbsp;&nbsp;/{soundName}/echo_{echoName}/y<br>
+				&nbsp;&nbsp;/{soundName}/echo_{echoName}/distance<br>
+				&nbsp;&nbsp;/{soundName}/echo_{echoName}/gain<br>
+			</div>
+		</div>
+	</div>
+
+	<button id="selectionMenuToggle" class="menu-toggle selection-menu-toggle">
+		<i class="fas fa-mouse-pointer"></i>
+	</button>
+
+	<div id="selectionMenu" class="side-menu selection-menu">
+		<div class="menu-section">
+			<h3 class="section-title flex-center"><i class="fas fa-mouse-pointer"></i> Selection</h3>
+			<button id="selectClickBtn" class="menu-btn flex-center">
+				<i class="fas fa-hand-pointer"></i>
+				<span>Select</span>
+			</button>
+			<button id="selectDragBtn" class="menu-btn flex-center">
+				<i class="fas fa-vector-square"></i>
+				<span>Drag Select</span>
+			</button>
+			<div class="selection-quick-actions">
+				<button id="selectAllBtn" class="menu-btn flex-center">
+					<i class="fas fa-check-double"></i>
+					<span>All</span>
+				</button>
+				<button id="selectNoneBtn" class="menu-btn flex-center">
+					<i class="fas fa-times"></i>
+					<span>None</span>
+				</button>
+			</div>
+		</div>
+
+		<div class="menu-section">
+			<h3 class="section-title flex-center"><i class="fas fa-layer-group"></i> Select by Layer</h3>
+			<div id="selectionLayersList" class="selection-layers-list"></div>
+		</div>
+	</div>
+
+	<!-- Selection actions bar -->
+	<div id="selectionActionsBar" class="selection-actions-container">
+		<div class="selection-info">
+			<i class="fas fa-check-square"></i>
+			<span id="selectionStatusText">0 selected</span>
+		</div>
+		<div class="selection-actions">
+			<button id="selectionSaveBtn" class="selection-action-btn">
+				<i class="fas fa-save"></i> Save
+			</button>
+			<button id="selectionDuplicateBtn" class="selection-action-btn">
+				<i class="fas fa-clone"></i> Duplicate
+			</button>
+			<button id="selectionDeleteBtn" class="selection-action-btn selection-action-danger">
+				<i class="fas fa-trash"></i> Delete
+			</button>
+			<button id="selectionMoveBtn" class="selection-action-btn">
+				<i class="fas fa-arrows-alt"></i> Move
+			</button>
+			<button id="selectionClearBtn" class="selection-action-btn">
+				<i class="fas fa-times"></i> Clear
+			</button>
+		</div>
+	</div>
+
+	<!-- Simulation controls -->
+
+	<div id="simulationControls" class="simulation-controls-container">
+		<div class="simulation-info">
+			<i class="fas fa-map-signs"></i>
+			<span id="simulationStatusText">Place a target.</span>
+		</div>
+		<div class="simulation-speed">
+			<label for="speedSelect">Speed:</label>
+			<select id="speedSelect">
+				<option value="5" selected>Walking (5 km/h)</option>
+				<option value="12">Running (12 km/h)</option>
+				<option value="20">Cycling (20 km/h)</option>
+				<option value="35">Bus (35 km/h)</option>
+			</select>
+		</div>
+		<button id="calculateRouteBtn" class="simulation-go-btn">Go</button>
+		<button id="cancelSimulationBtn" class="simulation-cancel-btn">Cancel</button>
+	</div>
+
+	<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+	<script src="https://unpkg.com/tone"></script>
+	<script src="https://cdn.jsdelivr.net/npm/resonance-audio/build/resonance-audio.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+	<script type="module" src="src/main.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<title>Guided Tour - GeoBuzz</title>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+	<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+	<div id="map"></div>
+
+	<div class="tour-ui">
+		<div class="tour-header">
+			<div class="tour-title" id="tourTitle">Loading...</div>
+			<div class="progress-container">
+				<div class="progress-bar">
+					<div class="progress-fill" id="progressFill"></div>
+				</div>
+				<div class="progress-text" id="progressText">0 / 0</div>
+			</div>
+			<div class="next-stop-bar" id="nextStopCard">
+				<div class="direction-arrow" id="directionArrow">
+					<i class="fas fa-location-arrow"></i>
+				</div>
+				<div class="next-info">
+					<div class="next-name" id="nextName">-</div>
+					<div class="next-distance" id="nextDistance">-</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="tour-content">
+			<div class="completion-card" id="completionCard">
+				<div class="completion-icon">🎉</div>
+				<div class="completion-title">Tour Complete!</div>
+				<div class="completion-subtitle">You've visited all stops</div>
+			</div>
+		</div>
+
+		<div class="tour-footer">
+			<div class="waypoints-row" id="waypointsRow"></div>
+			<div class="controls-row">
+				<button id="startBtn" class="btn-start" disabled>
+					<i class="fas fa-play"></i>
+					<span>Start Tour</span>
+				</button>
+				<button id="centerBtn" class="btn-center active">
+					<i class="fas fa-crosshairs"></i>
+				</button>
+			</div>
+			<div class="status-text" id="statusText">Initializing...</div>
+		</div>
+	</div>
+
+	<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+	<script src="https://unpkg.com/tone"></script>
+	<script src="https://cdn.jsdelivr.net/npm/resonance-audio/build/resonance-audio.min.js"></script>
+
+	<script type="module">
+		import { runtimeEngine } from '../../src/runtime/RuntimeEngine.js';
+
+		const state = {
+			isPlaying: false,
+			followUser: true,
+			waypoints: [],
+			visited: new Set(),
+			currentHeading: 0,
+			arrowRotation: 0
+		};
+
+		function calculateDistance(lat1, lng1, lat2, lng2) {
+			const R = 6371000;
+			const dLat = (lat2 - lat1) * Math.PI / 180;
+			const dLng = (lng2 - lng1) * Math.PI / 180;
+			const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+				Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+				Math.sin(dLng/2) * Math.sin(dLng/2);
+			return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+		}
+
+		function calculateBearing(lat1, lng1, lat2, lng2) {
+			const dLng = (lng2 - lng1) * Math.PI / 180;
+			const lat1Rad = lat1 * Math.PI / 180;
+			const lat2Rad = lat2 * Math.PI / 180;
+			const y = Math.sin(dLng) * Math.cos(lat2Rad);
+			const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) -
+				Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLng);
+			return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+		}
+
+		function formatDistance(meters) {
+			if (meters < 1000) {
+				return Math.round(meters) + ' m';
+			}
+			return (meters / 1000).toFixed(1) + ' km';
+		}
+
+		function renderWaypointDots() {
+			const container = document.getElementById('waypointsRow');
+			container.innerHTML = state.waypoints.map((wp, i) => {
+				const classes = ['waypoint-dot'];
+				if (state.visited.has(wp.persistentId)) classes.push('visited');
+				if (wp.isPlaying) classes.push('current');
+				const nextWp = getNextWaypoint();
+				if (nextWp && nextWp.persistentId === wp.persistentId) classes.push('next');
+				return `<div class="${classes.join(' ')}" title="${wp.label}"></div>`;
+			}).join('');
+		}
+
+		function updateProgress() {
+			const total = state.waypoints.length;
+			const visited = state.visited.size;
+			const percent = total > 0 ? (visited / total) * 100 : 0;
+
+			document.getElementById('progressFill').style.width = percent + '%';
+			document.getElementById('progressText').textContent = `${visited} / ${total}`;
+
+			renderWaypointDots();
+
+			const isComplete = visited === total && total > 0;
+			document.getElementById('nextStopCard').classList.toggle('visible', !isComplete && state.isPlaying);
+			document.getElementById('completionCard').classList.toggle('visible', isComplete);
+		}
+
+		function getNextWaypoint() {
+			for (const wp of state.waypoints) {
+				if (!state.visited.has(wp.persistentId)) {
+					return wp;
+				}
+			}
+			return null;
+		}
+
+		function updateNextStop(userPos) {
+			const next = getNextWaypoint();
+			if (!next || !userPos) {
+				document.getElementById('nextStopCard').classList.remove('visible');
+				return;
+			}
+
+			const wpPos = next.marker.getLatLng();
+			const distance = calculateDistance(userPos.lat, userPos.lng, wpPos.lat, wpPos.lng);
+			const bearing = calculateBearing(userPos.lat, userPos.lng, wpPos.lat, wpPos.lng);
+			const relativeBearing = (bearing - state.currentHeading + 360) % 360;
+
+			let delta = relativeBearing - state.arrowRotation;
+			if (delta > 180) delta -= 360;
+			if (delta < -180) delta += 360;
+			state.arrowRotation += delta;
+
+			document.getElementById('nextName').textContent = next.label;
+			document.getElementById('nextDistance').textContent = formatDistance(distance);
+			document.getElementById('directionArrow').style.transform = `rotate(${state.arrowRotation}deg)`;
+
+			if (state.isPlaying && state.visited.size < state.waypoints.length) {
+				document.getElementById('nextStopCard').classList.add('visible');
+			}
+		}
+
+		function checkVisited() {
+			let changed = false;
+			for (const wp of state.waypoints) {
+				if (wp.isPlaying && !state.visited.has(wp.persistentId)) {
+					state.visited.add(wp.persistentId);
+					changed = true;
+				}
+			}
+			if (changed) {
+				updateProgress();
+			}
+		}
+
+		function updateLoop() {
+			if (!state.isPlaying) return;
+
+			const ctx = runtimeEngine.getContext();
+			const userPos = ctx.GeolocationManager.getUserPosition();
+
+			checkVisited();
+			updateNextStop(userPos);
+
+			requestAnimationFrame(updateLoop);
+		}
+
+		function handleOrientation(event) {
+			if (event.webkitCompassHeading !== undefined) {
+				state.currentHeading = event.webkitCompassHeading;
+			} else if (event.alpha !== null) {
+				state.currentHeading = 360 - event.alpha;
+			}
+		}
+
+		async function init() {
+			try {
+				document.getElementById('statusText').textContent = 'Initializing...';
+
+				await runtimeEngine.initialize({
+					mapContainer: document.getElementById('map'),
+					mapConfig: {
+						center: [0, 0],
+						zoom: 16,
+						zoomControl: false
+					}
+				});
+
+				const response = await fetch('buzz.json');
+				const buzzData = await response.json();
+
+				document.getElementById('tourTitle').textContent = buzzData.meta?.title || 'Guided Tour';
+
+				await runtimeEngine.loadBuzz(buzzData);
+
+				const appState = runtimeEngine.getState();
+				state.waypoints = appState.sounds;
+
+				updateProgress();
+
+				const ctx = runtimeEngine.getContext();
+				const map = ctx.map;
+
+				if (state.waypoints.length > 0) {
+					const points = state.waypoints.map(wp => wp.marker.getLatLng());
+					const bounds = L.latLngBounds(points);
+					map.fitBounds(bounds, { padding: [60, 60], maxZoom: 19 });
+				}
+
+				map.on('dragstart', () => {
+					state.followUser = false;
+					document.getElementById('centerBtn').classList.remove('active');
+				});
+
+				document.getElementById('centerBtn').addEventListener('click', () => {
+					state.followUser = true;
+					document.getElementById('centerBtn').classList.add('active');
+					const userPos = ctx.GeolocationManager.getUserPosition();
+					if (userPos) {
+						map.setView(userPos, map.getZoom());
+					}
+				});
+
+				ctx.GeolocationManager.onPositionUpdate = (pos) => {
+					if (state.followUser) {
+						map.panTo(pos, { animate: true, duration: 0.3 });
+					}
+				};
+
+				if (window.DeviceOrientationEvent) {
+					if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+						document.getElementById('startBtn').addEventListener('click', async () => {
+							try {
+								const permission = await DeviceOrientationEvent.requestPermission();
+								if (permission === 'granted') {
+									window.addEventListener('deviceorientation', handleOrientation);
+								}
+							} catch (e) {}
+						}, { once: true });
+					} else {
+						window.addEventListener('deviceorientation', handleOrientation);
+					}
+				}
+
+				document.getElementById('statusText').textContent = 'Ready';
+				document.getElementById('startBtn').disabled = false;
+
+			} catch (error) {
+				console.error('Init failed:', error);
+				document.getElementById('statusText').textContent = 'Error: ' + error.message;
+			}
+		}
+
+		document.getElementById('startBtn').addEventListener('click', async () => {
+			const btn = document.getElementById('startBtn');
+
+			if (!state.isPlaying) {
+				btn.disabled = true;
+				document.getElementById('statusText').textContent = 'Starting...';
+
+				try {
+					await runtimeEngine.start();
+					state.isPlaying = true;
+					btn.classList.add('playing');
+					btn.innerHTML = '<i class="fas fa-pause"></i><span>Pause</span>';
+					document.getElementById('statusText').textContent = 'Tour in progress';
+					updateProgress();
+					updateLoop();
+				} catch (error) {
+					console.error('Start failed:', error);
+					document.getElementById('statusText').textContent = 'Error: ' + error.message;
+				}
+
+				btn.disabled = false;
+			} else {
+				state.isPlaying = false;
+				runtimeEngine.stop();
+				btn.classList.remove('playing');
+				btn.innerHTML = '<i class="fas fa-play"></i><span>Resume</span>';
+				document.getElementById('statusText').textContent = 'Paused';
+				document.getElementById('nextStopCard').classList.remove('visible');
+			}
+		});
+
+		init();
+	</script>
+</body>
+</html>

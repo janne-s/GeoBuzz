@@ -1,0 +1,36 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+}
+
+#play-btn {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 16px 48px;
+    font-size: 18px;
+    font-weight: 600;
+    color: white;
+    background: #4facfe;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    z-index: 1000;
+    transition: background 0.2s;
+}
+
+#play-btn:active {
+    transform: translateX(-50%) scale(0.96);
+}
+
+#play-btn.playing {
+    background: #f5576c;
+}

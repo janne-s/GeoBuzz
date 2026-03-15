@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>GeoBuzz Visualizer</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
+    <script src="https://unpkg.com/delaunator@5.0.0/delaunator.min.js"></script>
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loading-spinner"></div>
+        <div id="loading-status">Loading experience...</div>
+    </div>
+
+    <div id="error-message"></div>
+
+    <div id="map"></div>
+    <canvas id="canvas"></canvas>
+
+    <div id="ui-overlay">
+        <div class="control-group">
+            <button id="play-btn" class="btn btn-primary" disabled>Play</button>
+        </div>
+        <div class="control-group">
+            <button id="mode-btn" class="btn btn-secondary">Triangles</button>
+        </div>
+    </div>
+
+    <div id="info-panel">
+        <h2 id="title">Loading...</h2>
+        <div id="sounds-list"></div>
+    </div>
+
+    <script type="module">
+        import { runtimeEngine } from '../../src/runtime/RuntimeEngine.js';
+
+        const COLORS = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b', '#fa709a'];
+        const METERS_PER_DEG_LAT = 111000;
+        const PARTICLE_COUNT = 150;
+        const VISUALIZATION_MODES = ['triangles', 'particles', 'voronoi', 'network'];
+
+        class Visualizer {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.isPlaying = false;
+                this.buzzData = null;
+                this.soundNodes = [];
+                this.particles = [];
+                this.modeIndex = 0;
+                this.animationFrameId = null;
+                this.bounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+                this.time = 0;
+                this.userX = 0;
+                this.userY = 0;
+                this.userScreenX = 0;
+                this.userScreenY = 0;
+                this.scale = 1;
+                this.anchorLat = null;
+                this.anchorLng = null;
+                this.map = null;
+            }
+
+            async init() {
+                this.updateLoadingStatus('Loading buzz data...');
+                this.setupCanvas();
+
+                try {
+                    const response = await fetch('./buzz.json');
+                    if (!response.ok) throw new Error('buzz.json not found');
+                    this.buzzData = await response.json();
+                } catch (error) {
+                    this.showError('Failed to load buzz.json');
+                    return;
+                }
+
+                this.updateLoadingStatus('Initializing audio engine...');
+
+                try {
+                    const mapContainer = document.getElementById('map');
+                    await runtimeEngine.initialize({
+                        mapContainer,
+                        mapConfig: {
+                            zoomControl: true,
+                            attributionControl: false,
+                            dragging: false,
+                            touchZoom: true,
+                            scrollWheelZoom: true,
+                            doubleClickZoom: true,
+                            boxZoom: false,
+                            keyboard: false
+                        }
+                    });
+                    await runtimeEngine.loadBuzz(this.buzzData);
+                    this.setupBackgroundMap();
+                } catch (error) {
+                    this.showError('Failed to initialize audio engine: ' + error.message);
+                    return;
+                }
+
+                this.extractSoundPositions();
+                this.initParticles();
+                this.setupUI();
+                this.hideLoading();
+                this.startAnimationLoop();
+            }
+
+            setupBackgroundMap() {
+                const ctx = runtimeEngine.getContext();
+                this.map = ctx.map;
+
+                this.map.eachLayer(layer => {
+                    if (layer instanceof L.TileLayer) {
+                        this.map.removeLayer(layer);
+                    }
+                });
+
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+                    maxZoom: 20
+                }).addTo(this.map);
+
+                const soundAreaPane = this.map.getPane('soundArea');
+                const soundElementPane = this.map.getPane('soundElement');
+                if (soundAreaPane) soundAreaPane.style.display = 'none';
+                if (soundElementPane) soundElementPane.style.display = 'none';
+
+                const center = this.map.getCenter();
+                this.anchorLat = center.lat;
+                this.anchorLng = center.lng;
+            }
+
+            setupCanvas() {
+                const resize = () => {
+                    this.canvas.width = window.innerWidth * window.devicePixelRatio;
+                    this.canvas.height = window.innerHeight * window.devicePixelRatio;
+                    this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+                };
+                resize();
+                window.addEventListener('resize', resize);
+            }
+
+            extractSoundPositions() {
+                const sounds = this.buzzData.sounds || [];
+                if (sounds.length === 0) return;
+
+                sounds.forEach((sound, index) => {
+                    const x = sound.offsetX ?? 0;
+                    const y = sound.offsetY ?? 0;
+                    const maxDist = sound.maxDistance || 50;
+
+                    this.soundNodes.push({
+                        index,
+                        x,
+                        y,
+                        label: sound.label || `Sound ${index + 1}`,
+                        color: sound.color || COLORS[index % COLORS.length],
+                        maxDistance: maxDist,
+                        screenX: 0,
+                        screenY: 0,
+                        screenRadius: 0,
+                        activity: 0.5,
+                        targetActivity: 0.5
+                    });
+
+                    this.bounds.minX = Math.min(this.bounds.minX, x - maxDist);
+                    this.bounds.maxX = Math.max(this.bounds.maxX, x + maxDist);
+                    this.bounds.minY = Math.min(this.bounds.minY, y - maxDist);
+                    this.bounds.maxY = Math.max(this.bounds.maxY, y + maxDist);
+                });
+
+                const padding = Math.max(
+                    (this.bounds.maxX - this.bounds.minX) * 0.15,
+                    (this.bounds.maxY - this.bounds.minY) * 0.15,
+                    50
+                );
+                this.bounds.minX -= padding;
+                this.bounds.maxX += padding;
+                this.bounds.minY -= padding;
+                this.bounds.maxY += padding;
+
+                this.fitMapToBounds();
+            }
+
+            fitMapToBounds() {
+                if (!this.map || this.anchorLat === null) return;
+
+                const metersPerDegLng = METERS_PER_DEG_LAT * Math.cos(this.anchorLat * Math.PI / 180);
+
+                const sw = L.latLng(
+                    this.anchorLat + this.bounds.minY / METERS_PER_DEG_LAT,
+                    this.anchorLng + this.bounds.minX / metersPerDegLng
+                );
+                const ne = L.latLng(
+                    this.anchorLat + this.bounds.maxY / METERS_PER_DEG_LAT,
+                    this.anchorLng + this.bounds.maxX / metersPerDegLng
+                );
+
+                this.map.fitBounds(L.latLngBounds(sw, ne), { padding: [50, 50] });
+            }
+
+            initParticles() {
+                for (let i = 0; i < PARTICLE_COUNT; i++) {
+                    this.particles.push(this.createParticle());
+                }
+            }
+
+            createParticle() {
+                const sourceIndex = Math.floor(Math.random() * this.soundNodes.length);
+                const targetIndex = Math.floor(Math.random() * this.soundNodes.length);
+                return {
+                    sourceIndex,
+                    targetIndex,
+                    progress: Math.random(),
+                    speed: 0.002 + Math.random() * 0.003,
+                    offset: (Math.random() - 0.5) * 30,
+                    size: 1 + Math.random() * 2
+                };
+            }
+
+            geoToScreen(x, y) {
+                if (!this.map || this.anchorLat === null) {
+                    return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+                }
+
+                const metersPerDegLng = METERS_PER_DEG_LAT * Math.cos(this.anchorLat * Math.PI / 180);
+                const lat = this.anchorLat + y / METERS_PER_DEG_LAT;
+                const lng = this.anchorLng + x / metersPerDegLng;
+
+                const point = this.map.latLngToContainerPoint([lat, lng]);
+                return { x: point.x, y: point.y };
+            }
+
+            metersToPixels(meters) {
+                if (!this.map || this.anchorLat === null) {
+                    return meters;
+                }
+
+                const center = this.map.getCenter();
+                const zoom = this.map.getZoom();
+                const metersPerPixel = 40075016.686 * Math.cos(center.lat * Math.PI / 180) / Math.pow(2, zoom + 8);
+                return meters / metersPerPixel;
+            }
+
+            setupUI() {
+                document.getElementById('title').textContent = this.buzzData.meta?.title || 'Spatial Visualization';
+                this.renderSoundsList();
+
+                document.getElementById('play-btn').disabled = false;
+                document.getElementById('play-btn').addEventListener('click', () => this.togglePlayback());
+                document.getElementById('mode-btn').addEventListener('click', () => this.cycleMode());
+            }
+
+            renderSoundsList() {
+                const container = document.getElementById('sounds-list');
+                container.innerHTML = this.soundNodes.map((node, index) => {
+                    return `<div class="sound-chip" id="chip-${index}">
+                        <span class="sound-indicator" style="background: ${node.color}"></span>
+                        <span>${node.label}</span>
+                    </div>`;
+                }).join('');
+            }
+
+            async togglePlayback() {
+                const btn = document.getElementById('play-btn');
+
+                if (!this.isPlaying) {
+                    await runtimeEngine.start();
+                    this.isPlaying = true;
+                    btn.textContent = 'Mute';
+                } else {
+                    runtimeEngine.stop();
+                    this.isPlaying = false;
+                    btn.textContent = 'Play';
+                }
+            }
+
+            cycleMode() {
+                this.modeIndex = (this.modeIndex + 1) % VISUALIZATION_MODES.length;
+                const btn = document.getElementById('mode-btn');
+                btn.textContent = VISUALIZATION_MODES[this.modeIndex].charAt(0).toUpperCase() +
+                    VISUALIZATION_MODES[this.modeIndex].slice(1);
+            }
+
+            startAnimationLoop() {
+                const animate = () => {
+                    this.time += 0.016;
+                    this.updateSoundStates();
+                    this.updateScreenPositions();
+                    this.render();
+                    this.animationFrameId = requestAnimationFrame(animate);
+                };
+                requestAnimationFrame(animate);
+            }
+
+            updateSoundStates() {
+                const state = runtimeEngine.getState();
+                const sounds = state.sounds || [];
+                const ctx = runtimeEngine.getContext();
+
+                if (ctx && ctx.GeolocationManager) {
+                    const userPos = ctx.GeolocationManager.getUserPosition();
+                    if (userPos) {
+                        if (this.anchorLat === null) {
+                            this.anchorLat = userPos.lat;
+                            this.anchorLng = userPos.lng;
+                        }
+                        const metersPerDegLng = METERS_PER_DEG_LAT * Math.cos(this.anchorLat * Math.PI / 180);
+                        this.userX = (userPos.lng - this.anchorLng) * metersPerDegLng;
+                        this.userY = (userPos.lat - this.anchorLat) * METERS_PER_DEG_LAT;
+
+                        if (this.map) {
+                            this.map.setView([userPos.lat, userPos.lng], this.map.getZoom(), { animate: false });
+                        }
+                    }
+                }
+
+                sounds.forEach((sound, index) => {
+                    const node = this.soundNodes[index];
+                    if (!node) return;
+
+                    const chip = document.getElementById(`chip-${index}`);
+                    if (chip) {
+                        chip.classList.toggle('playing', sound.isPlaying);
+                    }
+
+                    node.targetActivity = sound.isPlaying ? 1 : 0.5;
+                    node.activity += (node.targetActivity - node.activity) * 0.08;
+
+                    if (sound.maxDistance !== undefined) {
+                        node.maxDistance = sound.maxDistance;
+                    }
+
+                    if (sound.marker && this.anchorLat !== null) {
+                        const pos = sound.marker.getLatLng();
+                        const metersPerDegLng = METERS_PER_DEG_LAT * Math.cos(this.anchorLat * Math.PI / 180);
+                        node.x = (pos.lng - this.anchorLng) * metersPerDegLng;
+                        node.y = (pos.lat - this.anchorLat) * METERS_PER_DEG_LAT;
+                    }
+                });
+            }
+
+            updateScreenPositions() {
+                const userScreen = this.geoToScreen(this.userX, this.userY);
+                this.userScreenX = userScreen.x;
+                this.userScreenY = userScreen.y;
+
+                this.soundNodes.forEach(node => {
+                    const pos = this.geoToScreen(node.x, node.y);
+                    node.screenX = pos.x;
+                    node.screenY = pos.y;
+                    node.screenRadius = this.metersToPixels(node.maxDistance);
+                });
+            }
+
+            render() {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+
+                this.ctx.clearRect(0, 0, width, height);
+                this.ctx.fillStyle = 'rgba(10, 10, 18, 0.4)';
+                this.ctx.fillRect(0, 0, width, height);
+
+                this.renderSoundAreas();
+
+                const mode = VISUALIZATION_MODES[this.modeIndex];
+
+                switch (mode) {
+                    case 'triangles':
+                        this.renderTriangles();
+                        break;
+                    case 'particles':
+                        this.renderParticles();
+                        break;
+                    case 'voronoi':
+                        this.renderVoronoi();
+                        break;
+                    case 'network':
+                        this.renderNetwork();
+                        break;
+                }
+
+                this.renderSoundNodes();
+                this.renderUserPosition();
+            }
+
+            renderSoundAreas() {
+                this.soundNodes.forEach(node => {
+                    if (!node.screenRadius || node.screenRadius < 1) return;
+
+                    const color = this.hexToRgb(node.color);
+                    const alpha = 0.03 + node.activity * 0.05;
+
+                    this.ctx.beginPath();
+                    this.ctx.arc(node.screenX, node.screenY, node.screenRadius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`;
+                    this.ctx.fill();
+
+                    this.ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${0.1 + node.activity * 0.15})`;
+                    this.ctx.lineWidth = 1;
+                    this.ctx.stroke();
+                });
+            }
+
+            renderUserPosition() {
+                const pulse = Math.sin(this.time * 3) * 0.3 + 0.7;
+                const radius = 8;
+
+                const gradient = this.ctx.createRadialGradient(
+                    this.userScreenX, this.userScreenY, 0,
+                    this.userScreenX, this.userScreenY, radius * 3
+                );
+                gradient.addColorStop(0, `rgba(255, 255, 255, ${0.4 * pulse})`);
+                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+                this.ctx.beginPath();
+                this.ctx.arc(this.userScreenX, this.userScreenY, radius * 3, 0, Math.PI * 2);
+                this.ctx.fillStyle = gradient;
+                this.ctx.fill();
+
+                this.ctx.beginPath();
+                this.ctx.arc(this.userScreenX, this.userScreenY, radius, 0, Math.PI * 2);
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fill();
+
+                this.ctx.beginPath();
+                this.ctx.arc(this.userScreenX, this.userScreenY, radius - 2, 0, Math.PI * 2);
+                this.ctx.fillStyle = '#667eea';
+                this.ctx.fill();
+            }
+
+            renderTriangles() {
+                if (this.soundNodes.length < 3) return;
+
+                const points = this.soundNodes.flatMap(n => [n.screenX, n.screenY]);
+                const delaunay = new Delaunator(points);
+                const triangles = delaunay.triangles;
+
+                for (let i = 0; i < triangles.length; i += 3) {
+                    const i0 = triangles[i];
+                    const i1 = triangles[i + 1];
+                    const i2 = triangles[i + 2];
+
+                    const n0 = this.soundNodes[i0];
+                    const n1 = this.soundNodes[i1];
+                    const n2 = this.soundNodes[i2];
+
+                    const avgActivity = (n0.activity + n1.activity + n2.activity) / 3;
+                    const pulse = Math.sin(this.time * 2 + i * 0.1) * 0.3 + 0.7;
+
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(n0.screenX, n0.screenY);
+                    this.ctx.lineTo(n1.screenX, n1.screenY);
+                    this.ctx.lineTo(n2.screenX, n2.screenY);
+                    this.ctx.closePath();
+
+                    const alpha = 0.03 + avgActivity * 0.12 * pulse;
+                    this.ctx.fillStyle = `rgba(102, 126, 234, ${alpha})`;
+                    this.ctx.fill();
+
+                    this.ctx.strokeStyle = `rgba(102, 126, 234, ${0.1 + avgActivity * 0.4})`;
+                    this.ctx.lineWidth = 1;
+                    this.ctx.stroke();
+                }
+            }
+
+            renderParticles() {
+                this.particles.forEach(particle => {
+                    const source = this.soundNodes[particle.sourceIndex];
+                    const target = this.soundNodes[particle.targetIndex];
+                    if (!source || !target) return;
+
+                    const activity = Math.max(source.activity, target.activity);
+                    const speed = particle.speed * (1 + activity * 2);
+                    particle.progress += speed;
+
+                    if (particle.progress >= 1) {
+                        particle.progress = 0;
+                        particle.sourceIndex = particle.targetIndex;
+                        particle.targetIndex = Math.floor(Math.random() * this.soundNodes.length);
+                    }
+
+                    const t = particle.progress;
+                    const ease = t * t * (3 - 2 * t);
+
+                    const midX = (source.screenX + target.screenX) / 2;
+                    const midY = (source.screenY + target.screenY) / 2;
+                    const perpX = -(target.screenY - source.screenY);
+                    const perpY = target.screenX - source.screenX;
+                    const len = Math.sqrt(perpX * perpX + perpY * perpY) || 1;
+
+                    const ctrlX = midX + (perpX / len) * particle.offset;
+                    const ctrlY = midY + (perpY / len) * particle.offset;
+
+                    const x = (1 - ease) * (1 - ease) * source.screenX +
+                              2 * (1 - ease) * ease * ctrlX +
+                              ease * ease * target.screenX;
+                    const y = (1 - ease) * (1 - ease) * source.screenY +
+                              2 * (1 - ease) * ease * ctrlY +
+                              ease * ease * target.screenY;
+
+                    const alpha = 0.2 + activity * 0.6;
+                    const size = particle.size * (1 + activity);
+
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, size, 0, Math.PI * 2);
+                    this.ctx.fillStyle = `rgba(102, 126, 234, ${alpha})`;
+                    this.ctx.fill();
+                });
+            }
+
+            renderVoronoi() {
+                if (this.soundNodes.length < 3) return;
+
+                const points = this.soundNodes.flatMap(n => [n.screenX, n.screenY]);
+                const delaunay = new Delaunator(points);
+
+                this.soundNodes.forEach((node, i) => {
+                    const pulse = Math.sin(this.time * 3 + i) * 0.5 + 0.5;
+                    const radius = 30 + node.activity * 50 + pulse * 20 * node.activity;
+
+                    const gradient = this.ctx.createRadialGradient(
+                        node.screenX, node.screenY, 0,
+                        node.screenX, node.screenY, radius
+                    );
+
+                    const color = this.hexToRgb(node.color);
+                    gradient.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, ${0.3 + node.activity * 0.4})`);
+                    gradient.addColorStop(0.5, `rgba(${color.r}, ${color.g}, ${color.b}, ${0.1 + node.activity * 0.2})`);
+                    gradient.addColorStop(1, `rgba(${color.r}, ${color.g}, ${color.b}, 0)`);
+
+                    this.ctx.beginPath();
+                    this.ctx.arc(node.screenX, node.screenY, radius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = gradient;
+                    this.ctx.fill();
+                });
+
+                const triangles = delaunay.triangles;
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                this.ctx.lineWidth = 1;
+
+                for (let i = 0; i < triangles.length; i += 3) {
+                    const n0 = this.soundNodes[triangles[i]];
+                    const n1 = this.soundNodes[triangles[i + 1]];
+                    const n2 = this.soundNodes[triangles[i + 2]];
+
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(n0.screenX, n0.screenY);
+                    this.ctx.lineTo(n1.screenX, n1.screenY);
+                    this.ctx.lineTo(n2.screenX, n2.screenY);
+                    this.ctx.closePath();
+                    this.ctx.stroke();
+                }
+            }
+
+            renderNetwork() {
+                this.soundNodes.forEach((node1, i) => {
+                    this.soundNodes.forEach((node2, j) => {
+                        if (i >= j) return;
+
+                        const dx = node2.screenX - node1.screenX;
+                        const dy = node2.screenY - node1.screenY;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        const maxDist = 200;
+
+                        if (dist < maxDist) {
+                            const strength = 1 - dist / maxDist;
+                            const activity = Math.max(node1.activity, node2.activity);
+                            const alpha = strength * (0.3 + activity * 0.5);
+
+                            const pulse = Math.sin(this.time * 4 - dist * 0.01) * 0.5 + 0.5;
+                            const lineWidth = 1 + activity * 2 * pulse;
+
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(node1.screenX, node1.screenY);
+                            this.ctx.lineTo(node2.screenX, node2.screenY);
+                            this.ctx.strokeStyle = `rgba(102, 126, 234, ${alpha})`;
+                            this.ctx.lineWidth = lineWidth;
+                            this.ctx.stroke();
+                        }
+                    });
+                });
+            }
+
+            renderSoundNodes() {
+                this.soundNodes.forEach(node => {
+                    const isActive = node.activity > 0.7;
+                    const baseRadius = isActive ? 6 : 5;
+                    const pulseAmount = isActive ? 0.2 : 0.05;
+                    const pulse = Math.sin(this.time * 4) * pulseAmount + (1 - pulseAmount);
+                    const activityRadius = isActive ? (node.activity - 0.5) * 16 : 0;
+                    const radius = baseRadius + activityRadius * pulse;
+
+                    if (isActive) {
+                        const glowRadius = radius * 3;
+                        const gradient = this.ctx.createRadialGradient(
+                            node.screenX, node.screenY, radius,
+                            node.screenX, node.screenY, glowRadius
+                        );
+                        const color = this.hexToRgb(node.color);
+                        gradient.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, ${node.activity * 0.5})`);
+                        gradient.addColorStop(1, `rgba(${color.r}, ${color.g}, ${color.b}, 0)`);
+
+                        this.ctx.beginPath();
+                        this.ctx.arc(node.screenX, node.screenY, glowRadius, 0, Math.PI * 2);
+                        this.ctx.fillStyle = gradient;
+                        this.ctx.fill();
+                    }
+
+                    this.ctx.beginPath();
+                    this.ctx.arc(node.screenX, node.screenY, radius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = node.color;
+                    this.ctx.fill();
+
+                    this.ctx.fillStyle = `rgba(255, 255, 255, ${0.6 + node.activity * 0.4})`;
+                    this.ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(node.label, node.screenX, node.screenY - radius - 8);
+                });
+            }
+
+            hexToRgb(hex) {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : { r: 102, g: 126, b: 234 };
+            }
+
+            updateLoadingStatus(message) {
+                document.getElementById('loading-status').textContent = message;
+            }
+
+            hideLoading() {
+                document.getElementById('loading-screen').classList.add('hidden');
+            }
+
+            showError(message) {
+                const errorEl = document.getElementById('error-message');
+                errorEl.textContent = message;
+                errorEl.classList.add('visible');
+                document.getElementById('loading-screen').classList.add('hidden');
+            }
+        }
+
+        const visualizer = new Visualizer();
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => visualizer.init());
+        } else {
+            visualizer.init();
+        }
+    </script>
+</body>
+</html>

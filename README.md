@@ -1,0 +1,181 @@
+# GeoBuzz
+
+**Spatial Audio Composition Tool**
+
+Create location-based audio experiences that respond to your position on a map. Compose walkable musical pieces where arrangement happens in geographic space.
+
+---
+
+## Two-Part System
+
+```
+┌─────────────────────────┐
+│   GeoBuzz Editor        │  ← Create and edit buzzes
+│   (Full UI + Tools)     │
+└────────────┬────────────┘
+             │ Export Package
+             ▼
+┌─────────────────────────┐
+│   RuntimeEngine         │  ← Lightweight player
+│   (Audio + Spatial)     │     Custom UI ready
+└─────────────────────────┘
+```
+
+---
+
+## Quick Start
+
+### Running the Editor
+
+Serve the project via any web server and open in browser. ES modules require HTTP(S) — opening `index.html` directly via `file://` will not work. Mobile devices require HTTPS for location/orientation.
+
+Data is stored locally in the browser using IndexedDB. Each workspace gets a unique URL you can bookmark to return later. A server-based version is available as a drop-in kit (see `server-kit/`).
+
+### Creating a Buzz
+
+1. Use the element menu or double click on the map to place sounds
+2. Configure sound type and parameters
+3. Add effects, draw paths (optional)
+4. Test with GPS or simulation mode
+5. Export as standalone package
+
+### Sound Types
+
+**Synthesizers:** Synth, FMSynth, AMSynth, FatOscillator, NoiseSynth
+
+**Samplers:** SoundFile, Sampler, StreamPlayer
+
+### Paths
+
+- **Movement Paths** - Sound follows user along path
+- **Control Zones** - Trigger sounds or modulate parameters
+- **Modulation Paths** - LFO-based parameter automation
+
+### Distance Sequencers
+
+Step sequencers that advance based on walking distance rather than time. Create rhythmic patterns that play as you move through space.
+
+---
+
+## Exporting & Deploying
+
+Click "Export Package" in the editor. The ZIP contains:
+
+```
+my-buzz.zip
+├── buzz.json           # Buzz data
+├── index.html          # Player (customize this)
+├── player-styles.css   # Styles (customize this)
+└── src/                # Runtime engine
+```
+
+Deploy: Extract, upload to any HTTPS web server, open in browser.
+
+---
+
+## RuntimeEngine API
+
+```
+import { runtimeEngine } from './src/runtime/RuntimeEngine.js';
+
+await runtimeEngine.initialize({ mapContainer: document.getElementById('map') });
+await runtimeEngine.loadBuzz(buzzData);
+await runtimeEngine.start();
+runtimeEngine.stop();
+runtimeEngine.dispose();
+```
+
+---
+
+## Examples
+
+Working examples in [examples/](examples/):
+
+| Example | Description |
+|---------|-------------|
+| **01-minimal** | Simplest implementation |
+| **02-headless** | Audio-only, no map |
+| **03-visualizer** | Canvas visualization |
+| **04-guided-tour** | Walking tour with waypoints |
+| **05-aframe** | A-Frame AR/VR integration |
+| **06-multi-buzz** | Switch between buzzes |
+| **07-osc-streaming** | Stream to Max/MSP, Pure Data |
+
+---
+
+## Project Structure
+
+```
+src/
+├── core/                    # Shared core modules
+│   ├── audio/               # Audio processing
+│   ├── state/               # State management
+│   ├── geospatial/          # Spatial calculations
+│   └── utils/               # Utilities
+│
+├── runtime/                 # RuntimeEngine
+│
+├── ui/                      # Editor UI
+├── interactions/            # Editing tools
+├── events/                  # Event handling
+├── selection/               # Selection management
+├── layers/                  # Layer management
+├── paths/                   # Path processing
+├── shapes/                  # Shape handling
+├── map/                     # Map management
+├── simulation/              # Route simulation
+├── config/                  # Configuration
+├── persistence/             # Save/load/export
+├── api/                     # LocalBackend (IndexedDB storage)
+└── debug/                   # Debug tools
+```
+
+---
+
+## Audio Best Practices
+
+- Limit simultaneous sounds (<10 recommended)
+- Simplify FX chains
+- Optimize path complexity
+
+---
+
+## Troubleshooting
+
+**No audio:** User must interact with page first (browser requirement).
+
+**GPS not working:** Use HTTPS. Grant location permissions.
+
+**Map not showing:** Ensure map container has height in CSS.
+
+**CORS errors:** Must use web server, not `file://` protocol.
+
+**Private/incognito mode:** IndexedDB data is discarded when the browser window closes. Workspace URLs from private sessions cannot be opened in normal mode.
+
+**Data persistence:** On Safari, IndexedDB may be evicted after 7 days if the user hasn't visited the origin. Chrome and Firefox support `navigator.storage.persist()` to prevent eviction.
+
+---
+
+## Technology
+
+- Vanilla JavaScript (ES6 modules)
+- Leaflet (mapping)
+- Tone.js (audio synthesis)
+- Resonance Audio (spatial audio)
+
+---
+
+## Requirements
+
+- Modern browser (Chrome, Firefox, Safari, Edge)
+- HTTPS for geolocation features
+- Web server for ES6 modules
+
+---
+
+## Resources
+
+- [Tone.js](https://tonejs.github.io/)
+- [Resonance Audio](https://resonance-audio.github.io/resonance-audio/)
+- [Leaflet](https://leafletjs.com/)
+- [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)

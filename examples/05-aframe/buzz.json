@@ -1,0 +1,302 @@
+{
+  "version": "1.0",
+  "relativePositioning": true,
+  "mapStyle": "Dark",
+  "colorIndex": 0,
+  "audioSettings": {
+    "spatialMode": "panning",
+    "userDirection": 0,
+    "useDeviceOrientation": false,
+    "ambisonics": {
+      "order": 1,
+      "gainBoost": 1,
+      "rolloff": "linear",
+      "minDistance": 1,
+      "stereoWidth": 1,
+      "stereoSpread": 5
+    },
+    "smoothing": {
+      "smoothingAlpha": 0.05,
+      "maxGainDelta": 0.03,
+      "deadZoneRadius": 2
+    }
+  },
+  "oscSettings": {
+    "enabled": false,
+    "host": "localhost",
+    "port": 8081
+  },
+  "defaultLayerStates": {
+    "sounds": true,
+    "control": true
+  },
+  "customParameterRanges": {},
+  "userLayers": [],
+  "sounds": [
+    {
+      "persistentId": "sound_1",
+      "type": "Synth",
+      "role": "sound",
+      "label": "Bass",
+      "color": "#667eea",
+      "shapeType": "circle",
+      "maxDistance": 10,
+      "layers": [],
+      "frequencyMode": false,
+      "modulationSources": [],
+      "lastTouchedParam": "pitch",
+      "iconPlacementMode": "fixed",
+      "volumeOrigin": "icon",
+      "volumeModel": "distance",
+      "divisionAngle": 0,
+      "divisionPosition": 0.5,
+      "useSpatialPanning": true,
+      "controlledBySequencer": false,
+      "offsetX": 0,
+      "offsetY": 20,
+      "radius": 10,
+      "originalSize": 10,
+      "params": {
+        "pitch": 36,
+        "frequency": 65.41,
+        "detune": 0,
+        "portamento": 0,
+        "pulseWidth": 0.5,
+        "waveform": "sawtooth",
+        "attack": 0.5,
+        "decay": 0.3,
+        "sustain": 0.6,
+        "release": 1.0,
+        "filterFreq": 400,
+        "filterType": "lowpass",
+        "resonance": 2,
+        "count": 3,
+        "spread": 10,
+        "speedAdvance": false,
+        "speedAdvanceThreshold": 0.2,
+        "volume": 0.7,
+        "pan": 0,
+        "curveStrength": 1,
+        "releaseMode": "stop",
+        "polyphony": 1,
+        "speedGate": 0,
+        "partialCount": 1,
+        "partialCurve": -0.5
+      },
+      "pathRoles": {
+        "movement": null,
+        "zones": [],
+        "modulation": [],
+        "soundModulation": []
+      },
+      "lfo": {
+        "x": { "freq": 0, "range": 0, "maxRange": 200 },
+        "y": { "freq": 0, "range": 0, "maxRange": 200 },
+        "size": { "freq": 0.08, "range": 2, "maxRange": 200 },
+        "mod1": { "target": "filterFreq", "freq": 0.2, "range": 200, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "mod2": { "target": "filterFreq", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "mod3": { "target": "volume", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "fxMod1": { "target": "none", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "fxMod2": { "target": "none", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "fxMod3": { "target": "none", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "_phaseOffsets": { "x": 0, "y": 0, "size": 0 }
+      },
+      "fx": {
+        "slot1": { "type": "none", "params": {}, "mix": 50 },
+        "slot2": { "type": "none", "params": {}, "mix": 50 },
+        "slot3": { "type": "none", "params": {}, "mix": 50 }
+      },
+      "eq": {
+        "enabled": false,
+        "low": 0,
+        "mid": 0,
+        "high": 0,
+        "lowFrequency": 400,
+        "highFrequency": 2500
+      },
+      "reflections": {
+        "enabled": false,
+        "include": []
+      }
+    },
+    {
+      "persistentId": "sound_2",
+      "type": "Synth",
+      "role": "sound",
+      "label": "Pad",
+      "color": "#f093fb",
+      "shapeType": "circle",
+      "maxDistance": 10,
+      "layers": [],
+      "frequencyMode": false,
+      "modulationSources": [],
+      "lastTouchedParam": "pitch",
+      "iconPlacementMode": "fixed",
+      "volumeOrigin": "icon",
+      "volumeModel": "distance",
+      "divisionAngle": 0,
+      "divisionPosition": 0.5,
+      "useSpatialPanning": true,
+      "controlledBySequencer": false,
+      "offsetX": 17.32,
+      "offsetY": -10,
+      "radius": 10,
+      "originalSize": 10,
+      "params": {
+        "pitch": 60,
+        "frequency": 261.63,
+        "detune": 5,
+        "portamento": 0,
+        "pulseWidth": 0.5,
+        "waveform": "triangle",
+        "attack": 1.0,
+        "decay": 0.5,
+        "sustain": 0.7,
+        "release": 2.0,
+        "filterFreq": 2000,
+        "filterType": "lowpass",
+        "resonance": 1,
+        "count": 4,
+        "spread": 30,
+        "speedAdvance": false,
+        "speedAdvanceThreshold": 0.2,
+        "volume": 0.5,
+        "pan": 0,
+        "curveStrength": 1,
+        "releaseMode": "stop",
+        "polyphony": 1,
+        "speedGate": 0,
+        "partialCount": 1,
+        "partialCurve": -0.5
+      },
+      "pathRoles": {
+        "movement": null,
+        "zones": [],
+        "modulation": [],
+        "soundModulation": []
+      },
+      "lfo": {
+        "x": { "freq": 0, "range": 0, "maxRange": 200 },
+        "y": { "freq": 0, "range": 0, "maxRange": 200 },
+        "size": { "freq": 0.05, "range": 1.5, "maxRange": 200 },
+        "mod1": { "target": "pitch", "freq": 0.15, "range": 1, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "mod2": { "target": "filterFreq", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "mod3": { "target": "volume", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "fxMod1": { "target": "none", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "fxMod2": { "target": "none", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "fxMod3": { "target": "none", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "_phaseOffsets": { "x": 0, "y": 0, "size": 0 }
+      },
+      "fx": {
+        "slot1": { "type": "none", "params": {}, "mix": 50 },
+        "slot2": { "type": "none", "params": {}, "mix": 50 },
+        "slot3": { "type": "none", "params": {}, "mix": 50 }
+      },
+      "eq": {
+        "enabled": false,
+        "low": 0,
+        "mid": 0,
+        "high": 0,
+        "lowFrequency": 400,
+        "highFrequency": 2500
+      },
+      "reflections": {
+        "enabled": false,
+        "include": []
+      }
+    },
+    {
+      "persistentId": "sound_3",
+      "type": "Synth",
+      "role": "sound",
+      "label": "Shimmer",
+      "color": "#43e97b",
+      "shapeType": "circle",
+      "maxDistance": 10,
+      "layers": [],
+      "frequencyMode": false,
+      "modulationSources": [],
+      "lastTouchedParam": "pitch",
+      "iconPlacementMode": "fixed",
+      "volumeOrigin": "icon",
+      "volumeModel": "distance",
+      "divisionAngle": 0,
+      "divisionPosition": 0.5,
+      "useSpatialPanning": true,
+      "controlledBySequencer": false,
+      "offsetX": -17.32,
+      "offsetY": -10,
+      "radius": 10,
+      "originalSize": 10,
+      "params": {
+        "pitch": 72,
+        "frequency": 523.25,
+        "detune": 0,
+        "portamento": 0,
+        "pulseWidth": 0.5,
+        "waveform": "sine",
+        "attack": 0.01,
+        "decay": 0.3,
+        "sustain": 0.2,
+        "release": 0.8,
+        "filterFreq": 4000,
+        "filterType": "lowpass",
+        "resonance": 1,
+        "count": 2,
+        "spread": 15,
+        "speedAdvance": false,
+        "speedAdvanceThreshold": 0.2,
+        "volume": 0.4,
+        "pan": 0,
+        "curveStrength": 1,
+        "releaseMode": "stop",
+        "polyphony": 1,
+        "speedGate": 0,
+        "partialCount": 1,
+        "partialCurve": -0.5
+      },
+      "pathRoles": {
+        "movement": null,
+        "zones": [],
+        "modulation": [],
+        "soundModulation": []
+      },
+      "lfo": {
+        "x": { "freq": 0, "range": 0, "maxRange": 200 },
+        "y": { "freq": 0, "range": 0, "maxRange": 200 },
+        "size": { "freq": 0.12, "range": 3, "maxRange": 200 },
+        "mod1": { "target": "volume", "freq": 0.3, "range": 0.2, "source": "lfo", "waveform": "triangle", "referenceSpeed": 1.4, "state": {} },
+        "mod2": { "target": "filterFreq", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "mod3": { "target": "volume", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "fxMod1": { "target": "none", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "fxMod2": { "target": "none", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "fxMod3": { "target": "none", "freq": 0, "range": 0, "source": "lfo", "waveform": "sine", "referenceSpeed": 1.4, "state": {} },
+        "_phaseOffsets": { "x": 0, "y": 0, "size": 0 }
+      },
+      "fx": {
+        "slot1": { "type": "none", "params": {}, "mix": 50 },
+        "slot2": { "type": "none", "params": {}, "mix": 50 },
+        "slot3": { "type": "none", "params": {}, "mix": 50 }
+      },
+      "eq": {
+        "enabled": false,
+        "low": 0,
+        "mid": 0,
+        "high": 0,
+        "lowFrequency": 400,
+        "highFrequency": 2500
+      },
+      "reflections": {
+        "enabled": false,
+        "include": []
+      }
+    }
+  ],
+  "controlPaths": [],
+  "sequencers": [],
+  "meta": {
+    "title": "AR Sound Zones",
+    "author": "GeoBuzz",
+    "description": "Three circular sound zones surrounding the user"
+  }
+}

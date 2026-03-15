@@ -1,0 +1,11 @@
+# Sensitive keys
+*.pem
+
+# Environment files
+.env
+.env.local
+.env.*
+
+# OS
+.DS_Store
+.claude

@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>GeoBuzz AR Experience</title>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loading-spinner"></div>
+        <div id="loading-status">Loading experience...</div>
+    </div>
+
+    <div id="error-message"></div>
+
+    <div id="ui-overlay">
+        <div class="control-group">
+            <button id="play-btn" class="btn btn-primary" disabled>Start</button>
+        </div>
+        <div class="control-group">
+            <button id="compass-btn" class="btn btn-secondary">Enable Compass</button>
+            <button id="camera-btn" class="btn btn-secondary">Camera View</button>
+        </div>
+    </div>
+
+    <div id="info-panel">
+        <h2 id="title">Loading...</h2>
+        <div id="sounds-list"></div>
+    </div>
+
+    <a-scene id="scene" embedded vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+        <a-assets>
+            <a-mixin id="sound-center"
+                geometry="primitive: sphere; radius: 0.8; segmentsWidth: 24; segmentsHeight: 16"
+                material="shader: flat; transparent: true; opacity: 0.9">
+            </a-mixin>
+            <a-mixin id="sound-boundary"
+                geometry="primitive: torus; radius: 1; radiusTubular: 0.08; segmentsTubular: 64; segmentsRadial: 12"
+                rotation="90 0 0"
+                material="shader: flat; transparent: true; opacity: 0.3">
+            </a-mixin>
+        </a-assets>
+
+        <a-entity id="camera-rig" position="0 2 0">
+            <a-camera id="camera" fov="50" look-controls="enabled: true; magicWindowTrackingEnabled: true; touchEnabled: false"></a-camera>
+        </a-entity>
+
+        <a-sky id="sky" color="#1a1a2e"></a-sky>
+        <a-plane id="ground" position="0 0 0" rotation="-90 0 0" width="100" height="100"
+            material="color: #16213e; transparent: true; opacity: 0.8"></a-plane>
+
+        <a-entity id="sounds-container"></a-entity>
+
+        <a-entity id="cardinal-directions">
+            <a-text value="N" position="0 3 -50" align="center" scale="8 8 8" color="#4facfe"></a-text>
+            <a-text value="S" position="0 3 50" rotation="0 180 0" align="center" scale="8 8 8" color="#f5576c"></a-text>
+            <a-text value="E" position="50 3 0" rotation="0 -90 0" align="center" scale="8 8 8" color="#43e97b"></a-text>
+            <a-text value="W" position="-50 3 0" rotation="0 90 0" align="center" scale="8 8 8" color="#fa709a"></a-text>
+        </a-entity>
+    </a-scene>
+
+    <script type="module">
+        import { runtimeEngine } from '../../src/runtime/RuntimeEngine.js';
+
+        const COLORS = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b', '#fa709a'];
+        const ANIMATION_DURATION = 250;
+        const METERS_PER_DEG_LAT = 111000;
+
+        class Animator {
+            constructor() {
+                this.animations = new Map();
+            }
+
+            animate(id, startValue, endValue, onUpdate) {
+                this.animations.set(id, {
+                    startValue,
+                    endValue,
+                    startTime: performance.now(),
+                    onUpdate
+                });
+            }
+
+            update(currentTime) {
+                for (const [id, anim] of this.animations) {
+                    const elapsed = currentTime - anim.startTime;
+                    const progress = Math.min(elapsed / ANIMATION_DURATION, 1);
+                    const eased = 1 - Math.pow(1 - progress, 3);
+
+                    if (typeof anim.startValue === 'object') {
+                        const current = {};
+                        for (const key in anim.startValue) {
+                            current[key] = anim.startValue[key] + eased * (anim.endValue[key] - anim.startValue[key]);
+                        }
+                        anim.onUpdate(current);
+                    } else {
+                        const current = anim.startValue + eased * (anim.endValue - anim.startValue);
+                        anim.onUpdate(current);
+                    }
+
+                    if (progress >= 1) {
+                        this.animations.delete(id);
+                    }
+                }
+            }
+
+            hasAnimation(id) {
+                return this.animations.has(id);
+            }
+        }
+
+        class AFrameExperience {
+            constructor() {
+                this.isPlaying = false;
+                this.cameraMode = false;
+                this.mediaStream = null;
+                this.buzzData = null;
+                this.soundEntities = new Map();
+                this.animationFrameId = null;
+                this.soundsContainer = document.getElementById('sounds-container');
+                this.anchorLat = 0;
+                this.anchorLng = 0;
+                this.geolocationManager = null;
+                this.compassEnabled = false;
+                this.animator = new Animator();
+                this.lastGPSTarget = null;
+                this.lastSoundTargets = new Map();
+                this.lastRadiusTargets = new Map();
+            }
+
+            async init() {
+                this.updateLoadingStatus('Loading buzz data...');
+
+                try {
+                    const response = await fetch('./buzz.json');
+                    if (!response.ok) throw new Error('buzz.json not found');
+                    this.buzzData = await response.json();
+                } catch (error) {
+                    this.showError('Failed to load buzz.json');
+                    return;
+                }
+
+                this.updateLoadingStatus('Initializing audio engine...');
+
+                try {
+                    await runtimeEngine.initialize({
+                        mapContainer: this.createHiddenMapContainer()
+                    });
+                    await runtimeEngine.loadBuzz(this.buzzData);
+                } catch (error) {
+                    this.showError('Failed to initialize audio engine: ' + error.message);
+                    return;
+                }
+
+                this.geolocationManager = runtimeEngine.getContext().GeolocationManager;
+
+                this.updateLoadingStatus('Getting your location...');
+                const userPos = await this.waitForValidLocation(15000);
+
+                if (!userPos) {
+                    this.showError('Location access required. Please enable location services and reload.');
+                    return;
+                }
+
+                this.anchorLat = userPos.lat;
+                this.anchorLng = userPos.lng;
+
+                this.createSoundEntities();
+                this.setupUI();
+                this.hideLoading();
+                this.startAnimationLoop();
+            }
+
+            createHiddenMapContainer() {
+                const container = document.createElement('div');
+                container.className = 'hidden-map';
+                document.body.appendChild(container);
+                return container;
+            }
+
+            async waitForValidLocation(timeout) {
+                const startTime = Date.now();
+                while (Date.now() - startTime < timeout) {
+                    const pos = this.geolocationManager.getUserPosition();
+                    if (pos && (pos.lat !== 0 || pos.lng !== 0)) {
+                        return pos;
+                    }
+                    await new Promise(resolve => requestAnimationFrame(resolve));
+                }
+                return null;
+            }
+
+            offsetToPosition(offsetX, offsetY, elevation = 1.5) {
+                return { x: offsetX, y: elevation, z: -offsetY };
+            }
+
+            getMetersPerDegLng() {
+                return METERS_PER_DEG_LAT * Math.cos(this.anchorLat * Math.PI / 180);
+            }
+
+            createSoundEntities() {
+                const sounds = this.buzzData.sounds;
+                if (!sounds) return;
+
+                sounds.forEach((sound, index) => {
+                    const color = sound.color || COLORS[index % COLORS.length];
+                    const pos = this.offsetToPosition(sound.offsetX || 0, sound.offsetY || 0);
+                    const radius = sound.maxDistance || 10;
+
+                    const entity = document.createElement('a-entity');
+                    entity.setAttribute('id', `sound-entity-${index}`);
+                    entity.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+
+                    const center = document.createElement('a-entity');
+                    center.setAttribute('mixin', 'sound-center');
+                    center.setAttribute('material', `color: ${color}`);
+                    center.setAttribute('class', 'sound-center');
+                    entity.appendChild(center);
+
+                    const boundary = document.createElement('a-entity');
+                    boundary.setAttribute('mixin', 'sound-boundary');
+                    boundary.setAttribute('geometry', `radius: ${radius}`);
+                    boundary.setAttribute('material', `color: ${color}`);
+                    boundary.setAttribute('class', 'sound-boundary');
+                    entity.appendChild(boundary);
+
+                    if (sound.label) {
+                        const label = document.createElement('a-text');
+                        label.setAttribute('value', sound.label);
+                        label.setAttribute('align', 'center');
+                        label.setAttribute('position', '0 1.5 0');
+                        label.setAttribute('scale', '3 3 3');
+                        label.setAttribute('color', '#ffffff');
+                        label.setAttribute('class', 'sound-label');
+                        entity.appendChild(label);
+                    }
+
+                    const distanceLabel = document.createElement('a-text');
+                    distanceLabel.setAttribute('value', '-- m');
+                    distanceLabel.setAttribute('align', 'center');
+                    distanceLabel.setAttribute('position', '0 2.8 0');
+                    distanceLabel.setAttribute('scale', '2.5 2.5 2.5');
+                    distanceLabel.setAttribute('color', '#aaaaaa');
+                    distanceLabel.setAttribute('class', 'distance-label');
+                    entity.appendChild(distanceLabel);
+
+                    this.soundsContainer.appendChild(entity);
+
+                    this.soundEntities.set(index, {
+                        element: entity,
+                        center,
+                        boundary,
+                        distanceLabel,
+                        originalPos: { ...pos },
+                        color
+                    });
+                });
+            }
+
+            setupUI() {
+                document.getElementById('title').textContent = this.buzzData.meta?.title || 'AR Experience';
+                this.renderSoundsList();
+
+                document.getElementById('play-btn').disabled = false;
+                document.getElementById('play-btn').addEventListener('click', () => this.togglePlayback());
+                document.getElementById('compass-btn').addEventListener('click', () => this.enableCompass());
+                document.getElementById('camera-btn').addEventListener('click', () => this.toggleCameraMode());
+
+                this.setupCompassButton();
+
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible' && this.compassEnabled) {
+                        this.alignToCompass();
+                    }
+                });
+            }
+
+            setupCompassButton() {
+                const btn = document.getElementById('compass-btn');
+                const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+                if (!isMobile || !window.DeviceOrientationEvent) {
+                    btn.style.display = 'none';
+                    return;
+                }
+
+                if (typeof DeviceOrientationEvent.requestPermission !== 'function') {
+                    this.compassEnabled = true;
+                    this.alignToCompass();
+                    btn.textContent = 'Compass On';
+                    btn.classList.add('active');
+                    btn.disabled = true;
+                }
+            }
+
+            async enableCompass() {
+                const btn = document.getElementById('compass-btn');
+
+                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    try {
+                        const permission = await DeviceOrientationEvent.requestPermission();
+                        if (permission === 'granted') {
+                            this.compassEnabled = true;
+                            this.alignToCompass();
+                            btn.textContent = 'Compass On';
+                            btn.classList.add('active');
+                            btn.disabled = true;
+                        }
+                    } catch (error) {
+                        console.warn('Compass permission denied');
+                    }
+                } else {
+                    this.compassEnabled = true;
+                    this.alignToCompass();
+                }
+            }
+
+            alignToCompass() {
+                const readings = [];
+                let readingCount = 0;
+
+                const collectReading = (event) => {
+                    let heading = event.webkitCompassHeading ?? (event.alpha !== null ? (360 - event.alpha) % 360 : null);
+
+                    if (heading !== null) {
+                        readings.push(heading);
+                        readingCount++;
+                    }
+
+                    if (readingCount >= 5) {
+                        window.removeEventListener('deviceorientationabsolute', collectReading);
+                        window.removeEventListener('deviceorientation', collectReading);
+
+                        const avgHeading = this.averageAngles(readings);
+                        document.getElementById('camera-rig').setAttribute('rotation', `0 ${-avgHeading} 0`);
+                    }
+                };
+
+                if ('ondeviceorientationabsolute' in window) {
+                    window.addEventListener('deviceorientationabsolute', collectReading);
+                } else {
+                    window.addEventListener('deviceorientation', collectReading);
+                }
+            }
+
+            averageAngles(angles) {
+                let sinSum = 0, cosSum = 0;
+                angles.forEach(angle => {
+                    const rad = angle * Math.PI / 180;
+                    sinSum += Math.sin(rad);
+                    cosSum += Math.cos(rad);
+                });
+                let avg = Math.atan2(sinSum, cosSum) * 180 / Math.PI;
+                return avg < 0 ? avg + 360 : avg;
+            }
+
+            renderSoundsList() {
+                const container = document.getElementById('sounds-list');
+                const sounds = this.buzzData.sounds || [];
+
+                container.innerHTML = sounds.map((sound, index) => {
+                    const color = sound.color || COLORS[index % COLORS.length];
+                    return `<div class="sound-chip" id="chip-${index}">
+                        <span class="sound-indicator" style="background: ${color}"></span>
+                        <span>${sound.label || 'Sound ' + (index + 1)}</span>
+                    </div>`;
+                }).join('');
+            }
+
+            async togglePlayback() {
+                const btn = document.getElementById('play-btn');
+
+                if (!this.isPlaying) {
+                    await runtimeEngine.start();
+                    this.isPlaying = true;
+                    btn.textContent = 'Pause';
+                } else {
+                    runtimeEngine.stop();
+                    this.isPlaying = false;
+                    btn.textContent = 'Resume';
+                }
+            }
+
+            async toggleCameraMode() {
+                const btn = document.getElementById('camera-btn');
+                const sky = document.getElementById('sky');
+                const ground = document.getElementById('ground');
+                const scene = document.getElementById('scene');
+
+                if (!this.cameraMode) {
+                    try {
+                        this.mediaStream = await navigator.mediaDevices.getUserMedia({
+                            video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+                        });
+
+                        const video = document.createElement('video');
+                        video.setAttribute('id', 'camera-video');
+                        video.setAttribute('autoplay', '');
+                        video.setAttribute('playsinline', '');
+                        video.setAttribute('muted', '');
+                        video.srcObject = this.mediaStream;
+                        await video.play();
+
+                        document.body.insertBefore(video, document.body.firstChild);
+
+                        sky.setAttribute('visible', 'false');
+                        ground.setAttribute('visible', 'false');
+                        scene.style.background = 'transparent';
+
+                        this.cameraMode = true;
+                        btn.classList.add('active');
+                        btn.textContent = 'Scene View';
+                    } catch (error) {
+                        console.warn('Camera access denied');
+                    }
+                } else {
+                    if (this.mediaStream) {
+                        this.mediaStream.getTracks().forEach(track => track.stop());
+                        this.mediaStream = null;
+                    }
+
+                    const video = document.getElementById('camera-video');
+                    if (video) video.remove();
+
+                    sky.setAttribute('visible', 'true');
+                    ground.setAttribute('visible', 'true');
+                    scene.style.background = '';
+
+                    this.cameraMode = false;
+                    btn.classList.remove('active');
+                    btn.textContent = 'Camera View';
+                }
+            }
+
+            startAnimationLoop() {
+                const update = (currentTime) => {
+                    this.updateCameraFromGPS();
+                    this.syncCameraToGeolocation();
+                    this.updateSoundVisuals(currentTime);
+                    this.animator.update(currentTime);
+                    this.animationFrameId = requestAnimationFrame(update);
+                };
+                requestAnimationFrame(update);
+            }
+
+            updateCameraFromGPS() {
+                if (!this.geolocationManager) return;
+
+                const currentPos = this.geolocationManager.getUserPosition();
+                if (!currentPos || (currentPos.lat === 0 && currentPos.lng === 0)) return;
+
+                const metersPerDegLng = this.getMetersPerDegLng();
+                const targetX = (currentPos.lng - this.anchorLng) * metersPerDegLng;
+                const targetZ = -(currentPos.lat - this.anchorLat) * METERS_PER_DEG_LAT;
+
+                const cameraRig = document.getElementById('camera-rig');
+                const currentCameraPos = cameraRig.getAttribute('position');
+
+                if (!this.lastGPSTarget) {
+                    this.lastGPSTarget = { x: targetX, z: targetZ };
+                    cameraRig.setAttribute('position', `${targetX} ${currentCameraPos.y || 2} ${targetZ}`);
+                    return;
+                }
+
+                const gpsChanged = Math.abs(targetX - this.lastGPSTarget.x) > 0.01 ||
+                                   Math.abs(targetZ - this.lastGPSTarget.z) > 0.01;
+
+                if (gpsChanged) {
+                    this.animator.animate('camera',
+                        { x: currentCameraPos.x, z: currentCameraPos.z },
+                        { x: targetX, z: targetZ },
+                        (pos) => cameraRig.setAttribute('position', `${pos.x} ${currentCameraPos.y || 2} ${pos.z}`)
+                    );
+                    this.lastGPSTarget = { x: targetX, z: targetZ };
+                }
+            }
+
+            syncCameraToGeolocation() {
+                const cameraRig = document.getElementById('camera-rig');
+                const cameraPos = cameraRig.getAttribute('position');
+                const metersPerDegLng = this.getMetersPerDegLng();
+
+                const newLat = this.anchorLat + (-cameraPos.z / METERS_PER_DEG_LAT);
+                const newLng = this.anchorLng + (cameraPos.x / metersPerDegLng);
+
+                if (this.geolocationManager?.userMarker) {
+                    this.geolocationManager.userMarker.setLatLng({ lat: newLat, lng: newLng });
+                }
+            }
+
+            updateSoundVisuals(currentTime) {
+                const state = runtimeEngine.getState();
+                const sounds = state.sounds || [];
+
+                sounds.forEach((sound, index) => {
+                    const entityData = this.soundEntities.get(index);
+                    if (!entityData) return;
+
+                    const chip = document.getElementById(`chip-${index}`);
+                    if (chip) {
+                        chip.classList.toggle('playing', sound.isPlaying);
+                    }
+
+                    if (sound.isPlaying) {
+                        entityData.center.setAttribute('material', 'opacity', 1.0);
+                        entityData.boundary.setAttribute('material', 'opacity', 0.5);
+                        const pulseScale = 1 + Math.sin(currentTime / 200) * 0.1;
+                        entityData.center.setAttribute('scale', `${pulseScale} ${pulseScale} ${pulseScale}`);
+                    } else {
+                        entityData.center.setAttribute('material', 'opacity', 0.5);
+                        entityData.boundary.setAttribute('material', 'opacity', 0.2);
+                        entityData.center.setAttribute('scale', '1 1 1');
+                    }
+
+                    this.updateSoundPosition(sound, index, entityData, currentTime);
+                    this.updateSoundRadius(sound, index, entityData);
+                });
+
+                this.updateLabelOrientation();
+            }
+
+            updateSoundPosition(sound, index, entityData, currentTime) {
+                const origLat = sound.originalLat;
+                const origLng = sound.originalLng;
+                const currentLat = sound.userLat;
+                const currentLng = sound.userLng;
+
+                if (origLat === undefined || currentLat === undefined) return;
+
+                const metersPerDegLng = METERS_PER_DEG_LAT * Math.cos(origLat * Math.PI / 180);
+                const deltaX = (currentLng - origLng) * metersPerDegLng;
+                const deltaZ = -(currentLat - origLat) * METERS_PER_DEG_LAT;
+
+                const targetX = entityData.originalPos.x + deltaX;
+                const targetY = entityData.originalPos.y;
+                const targetZ = entityData.originalPos.z + deltaZ;
+
+                const lastTarget = this.lastSoundTargets.get(index);
+                const animKey = `sound-${index}`;
+
+                if (!lastTarget) {
+                    this.lastSoundTargets.set(index, { x: targetX, y: targetY, z: targetZ });
+                    entityData.element.setAttribute('position', `${targetX} ${targetY} ${targetZ}`);
+                    return;
+                }
+
+                const posChanged = Math.abs(targetX - lastTarget.x) > 0.01 ||
+                                   Math.abs(targetZ - lastTarget.z) > 0.01;
+
+                if (posChanged && !this.animator.hasAnimation(animKey)) {
+                    const currentPos = entityData.element.getAttribute('position');
+                    this.animator.animate(animKey,
+                        { x: currentPos.x, y: currentPos.y, z: currentPos.z },
+                        { x: targetX, y: targetY, z: targetZ },
+                        (pos) => entityData.element.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`)
+                    );
+                    this.lastSoundTargets.set(index, { x: targetX, y: targetY, z: targetZ });
+                }
+            }
+
+            updateSoundRadius(sound, index, entityData) {
+                const targetRadius = sound.maxDistance;
+                if (targetRadius === undefined) return;
+
+                const lastRadius = this.lastRadiusTargets.get(index);
+                const animKey = `radius-${index}`;
+
+                if (lastRadius === undefined) {
+                    this.lastRadiusTargets.set(index, targetRadius);
+                    entityData.boundary.setAttribute('geometry', 'radius', targetRadius);
+                    return;
+                }
+
+                if (Math.abs(targetRadius - lastRadius) > 0.01 && !this.animator.hasAnimation(animKey)) {
+                    const currentRadius = parseFloat(entityData.boundary.getAttribute('geometry').radius) || lastRadius;
+                    this.animator.animate(animKey, currentRadius, targetRadius,
+                        (r) => entityData.boundary.setAttribute('geometry', 'radius', r)
+                    );
+                    this.lastRadiusTargets.set(index, targetRadius);
+                }
+            }
+
+            updateLabelOrientation() {
+                const camera = document.getElementById('camera');
+                const cameraPos = camera.object3D.getWorldPosition(new THREE.Vector3());
+
+                this.soundEntities.forEach(entityData => {
+                    const labels = entityData.element.querySelectorAll('.sound-label, .distance-label');
+                    labels.forEach(label => {
+                        if (label.object3D) {
+                            label.object3D.lookAt(cameraPos);
+                        }
+                    });
+
+                    const entityPos = entityData.element.object3D.getWorldPosition(new THREE.Vector3());
+                    const distance = cameraPos.distanceTo(entityPos);
+                    const distanceText = distance < 1000 ? `${Math.round(distance)} m` : `${(distance / 1000).toFixed(1)} km`;
+                    entityData.distanceLabel.setAttribute('value', distanceText);
+                });
+            }
+
+            updateLoadingStatus(message) {
+                document.getElementById('loading-status').textContent = message;
+            }
+
+            hideLoading() {
+                document.getElementById('loading-screen').classList.add('hidden');
+            }
+
+            showError(message) {
+                const errorEl = document.getElementById('error-message');
+                errorEl.textContent = message;
+                errorEl.classList.add('visible');
+                document.getElementById('loading-screen').classList.add('hidden');
+            }
+        }
+
+        const experience = new AFrameExperience();
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initScene);
+        } else {
+            initScene();
+        }
+
+        function initScene() {
+            const scene = document.querySelector('a-scene');
+            if (scene.hasLoaded) {
+                experience.init();
+            } else {
+                scene.addEventListener('loaded', () => experience.init());
+            }
+        }
+    </script>
+</body>
+</html>

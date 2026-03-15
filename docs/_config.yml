@@ -1,0 +1,13 @@
+title: GeoBuzz Documentation
+description: Spatial audio composition system for location-based experiences
+theme: jekyll-theme-minimal
+
+# Navigation
+header_pages:
+  - index.md
+  - features.md
+  - getting-started.md
+
+# Build settings
+markdown: kramdown
+highlighter: rouge

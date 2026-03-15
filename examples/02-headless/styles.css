@@ -1,0 +1,281 @@
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    color: #e8e8e8;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+#header {
+    padding: 20px 20px 10px;
+    text-align: center;
+}
+
+#sound-name {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #4facfe;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#status {
+    font-size: 0.85rem;
+    color: #888;
+    min-height: 1.2em;
+}
+
+#compass-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+#compass {
+    width: min(70vw, 280px);
+    height: min(70vw, 280px);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(79, 172, 254, 0.1) 0%, transparent 70%);
+    border: 2px solid rgba(79, 172, 254, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+#compass::before {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #4facfe;
+    border-radius: 50%;
+}
+
+#arrow {
+    width: 60%;
+    height: 60%;
+    transition: transform 0.15s ease-out;
+}
+
+#arrow polygon {
+    fill: #4facfe;
+}
+
+#distance {
+    margin-top: 24px;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+#distance::after {
+    content: ' m';
+    font-size: 1.2rem;
+    font-weight: 400;
+    color: #888;
+}
+
+#distance.no-unit::after {
+    content: '';
+}
+
+#controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+.toggle-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: #888;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.toggle-btn .icon {
+    font-size: 1.5rem;
+}
+
+.toggle-btn.active {
+    background: rgba(79, 172, 254, 0.2);
+    border-color: rgba(79, 172, 254, 0.5);
+    color: #4facfe;
+}
+
+#play-btn {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    padding: 12px 24px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    z-index: 100;
+    box-shadow: 0 4px 20px rgba(79, 172, 254, 0.4);
+    transition: all 0.2s;
+}
+
+#play-btn:active {
+    transform: scale(0.96);
+}
+
+#play-btn.playing {
+    background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+    box-shadow: 0 4px 20px rgba(245, 87, 108, 0.4);
+}
+
+#sound-list {
+    padding: 12px;
+    max-height: 35vh;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sound-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sound-item:last-child {
+    margin-bottom: 0;
+}
+
+.sound-item:active {
+    transform: scale(0.98);
+}
+
+.sound-item.selected {
+    background: rgba(79, 172, 254, 0.2);
+    border: 1px solid rgba(79, 172, 254, 0.4);
+}
+
+.sound-item .indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #555;
+    flex-shrink: 0;
+}
+
+.sound-item.selected .indicator {
+    background: #4facfe;
+    box-shadow: 0 0 8px rgba(79, 172, 254, 0.6);
+}
+
+.sound-item .info {
+    flex: 1;
+    min-width: 0;
+}
+
+.sound-item .name {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sound-item .dist {
+    font-size: 0.85rem;
+    color: #888;
+}
+
+.sound-item .direction {
+    font-size: 1.2rem;
+    color: #666;
+    width: 24px;
+    text-align: center;
+}
+
+@media (min-height: 700px) {
+    #sound-list {
+        max-height: 40vh;
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    html, body {
+        background: linear-gradient(135deg, #e8f4f8 0%, #d4e8f2 50%, #c0dcea 100%);
+        color: #1a1a2e;
+    }
+
+    #sound-name { color: #0066cc; }
+    #distance { color: #1a1a2e; }
+
+    #compass {
+        background: radial-gradient(circle, rgba(0, 102, 204, 0.08) 0%, transparent 70%);
+        border-color: rgba(0, 102, 204, 0.25);
+    }
+
+    #compass::before { background: #0066cc; }
+    #arrow polygon { fill: #0066cc; }
+
+    .toggle-btn {
+        background: rgba(0, 0, 0, 0.05);
+        border-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .toggle-btn.active {
+        background: rgba(0, 102, 204, 0.15);
+        border-color: rgba(0, 102, 204, 0.4);
+        color: #0066cc;
+    }
+
+    #sound-list {
+        background: rgba(255, 255, 255, 0.5);
+        border-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .sound-item { background: rgba(255, 255, 255, 0.7); }
+
+    .sound-item.selected {
+        background: rgba(0, 102, 204, 0.15);
+        border-color: rgba(0, 102, 204, 0.3);
+    }
+
+    .sound-item.selected .indicator {
+        background: #0066cc;
+        box-shadow: 0 0 8px rgba(0, 102, 204, 0.4);
+    }
+}
