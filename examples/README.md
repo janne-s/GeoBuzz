@@ -9,7 +9,7 @@ Inspiring starting points for custom buzz players. Not production-ready — spri
 | Example | Description |
 |---------|-------------|
 | **01-minimal** | Simplest implementation (~50 lines). Map + play button. |
-| **02-headless** | Audio-only, no map. Great for audio walks. |
+| **02-headless** | Audio-only, no map. |
 | **03-visualizer** | Canvas visualization with Delaunay, particles, networks. |
 | **04-guided-tour** | Walking tour with progress bar, waypoints, direction arrow. |
 | **05-aframe** | A-Frame AR/VR integration with 3D sound visualization. |
@@ -67,7 +67,3 @@ your-deployment/
 - **Won't load**: Needs HTTPS server, not `file://`
 - **No audio**: Click play button first (browser requirement)
 - **No location**: Check HTTPS and browser permissions
-
----
-
-For RuntimeEngine API details, see [IMPLEMENTATION_GUIDE.md](../docs/IMPLEMENTATION_GUIDE.md).

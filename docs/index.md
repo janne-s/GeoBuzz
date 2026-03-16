@@ -21,6 +21,7 @@ The system consists of two parts:
 
 ## Documentation
 
+- [RuntimeEngine API](runtime-api.md) - API reference for the runtime player module
 - [Features Reference](features.md) - Comprehensive parameter reference for all menus
 - [Getting Started](getting-started.md) - Quick guide to main workflows
 

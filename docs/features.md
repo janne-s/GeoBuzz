@@ -2,7 +2,7 @@
 
 Comprehensive parameter reference for all GeoBuzz menus and settings.
 
-Numerical parameters can be manually adjusted by clicking on the parameter values next to their respective sliders.
+Numerical parameters can be freely set to any value by clicking on the parameter values next to their respective sliders.
 
 ---
 
