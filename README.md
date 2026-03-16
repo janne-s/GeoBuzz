@@ -31,7 +31,13 @@ Open the [**GeoBuzz Editor**](https://janne-s.github.io/GeoBuzz/) or at your mac
 
 Serve the project via any web server and open in browser. ES modules require HTTP(S) — opening `index.html` directly via `file://` will not work. Mobile devices require HTTPS for location/orientation.
 
-Data is stored locally in the browser using IndexedDB. Each workspace gets a unique URL you can bookmark to return later. A server-based version is available as a drop-in kit (see `server-kit/`).
+Data is stored locally in the browser using IndexedDB. Each workspace gets a unique URL you can bookmark to return later. 
+
+**Private/incognito mode:** IndexedDB data is discarded when the browser window closes. Workspace URLs from private sessions cannot be opened in normal mode.
+
+**Data persistence:** On Safari, IndexedDB may be evicted after 7 days if the user hasn't visited the origin.
+
+A server-based multi user workspace version is available as a drop-in kit (see `server-kit/`). The limitations don't concern the server version.
 
 ### Creating a Buzz
 
@@ -134,43 +140,10 @@ src/
 
 ---
 
-## Audio Best Practices
-
-- Limit simultaneous sounds (<10 recommended)
-- Simplify FX chains
-- Optimize path complexity
-
----
-
-## Troubleshooting
-
-**No audio:** User must interact with page first (browser requirement).
-
-**GPS not working:** Use HTTPS. Grant location permissions.
-
-**Map not showing:** Ensure map container has height in CSS.
-
-**CORS errors:** Must use web server, not `file://` protocol.
-
-**Private/incognito mode:** IndexedDB data is discarded when the browser window closes. Workspace URLs from private sessions cannot be opened in normal mode.
-
-**Data persistence:** On Safari, IndexedDB may be evicted after 7 days if the user hasn't visited the origin. Chrome and Firefox support `navigator.storage.persist()` to prevent eviction.
-
----
-
-## Technology
-
-- Vanilla JavaScript (ES6 modules)
-- Leaflet (mapping)
-- Tone.js (audio synthesis)
-- Resonance Audio (spatial audio)
-
----
-
 ## Requirements
 
 - Modern browser (Chrome, Firefox, Safari, Edge)
-- HTTPS for geolocation features
+- HTTPS for geolocation and orientation features
 - Web server for ES6 modules
 
 ---
