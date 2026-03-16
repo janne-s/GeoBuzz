@@ -157,3 +157,19 @@ src/
 - [Tone.js](https://tonejs.github.io/)
 - [Resonance Audio](https://resonance-audio.github.io/resonance-audio/)
 - [Leaflet](https://leafletjs.com/)
+
+---
+
+## Support GeoBuzz
+
+If you enjoy using GeoBuzz, you can support its development:
+
+- **GitHub Sponsors** – fund the open-source code and improvements directly.  
+  [Become a GitHub Sponsor](https://github.com/sponsors/janne-s)
+
+- **Ko-fi** – give a one-off tip or small donation to support the project.  
+  [Support on Ko-fi](https://ko-fi.com/jannesarkela)
+
+Thank you for helping keep GeoBuzz alive and growing!
+
+See [**Sanara Creations**](https://www.sanaracreations.fi/) for my multidisciplinary work, both solo and in collaboration with others.
