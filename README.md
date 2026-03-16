@@ -25,11 +25,11 @@ Create location-based audio experiences that respond to your position on a map. 
 
 ## Quick Start
 
-[**Live version**](https://janne-s.github.io/GeoBuzz/).
+Open the [**GeoBuzz Editor**](https://janne-s.github.io/GeoBuzz/) or at your machine.
 
 ### Running the Editor
 
-Serve the project via any web server locally or remotely and open in browser. ES modules require HTTP(S) — opening `index.html` directly via `file://` will not work. Mobile devices require HTTPS for location/orientation.
+Serve the project via any web server and open in browser. ES modules require HTTP(S) — opening `index.html` directly via `file://` will not work. Mobile devices require HTTPS for location/orientation.
 
 Data is stored locally in the browser using IndexedDB. Each workspace gets a unique URL you can bookmark to return later. A server-based version is available as a drop-in kit (see `server-kit/`).
 
