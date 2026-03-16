@@ -39,7 +39,7 @@ Data is stored locally in the browser using IndexedDB. Each workspace gets a uni
 
 It's best to regularly save Buzz zip 
 
-A server-based shareable workspace version is available as a drop-in kit (see `server-kit/`). The limitations don't concern the server version. It also enables easier mobile testing.
+The limitations don't concern the server version. A server-based shared workspace version is available as a drop-in kit (see `server-kit/`). It also enables easier mobile testing and publishing to the workspace.
 
 ### Creating a Buzz
 
@@ -95,7 +95,7 @@ runtimeEngine.stop();
 runtimeEngine.dispose();
 ```
 
-Check the examples for the usage.
+Study the examples to know more.
 
 ---
 
@@ -111,7 +111,7 @@ Working examples in [examples/](examples/):
 | [**04-guided-tour**](https://janne-s.github.io/GeoBuzz/examples/04-guided-tour/) ([Repo](examples/04-guided-tour/)) | Walking tour with waypoints |
 | [**05-aframe**](https://janne-s.github.io/GeoBuzz/examples/05-aframe/) ([Repo](examples/05-aframe/)) | A-Frame AR/VR integration |
 | [**06-multi-buzz**](https://janne-s.github.io/GeoBuzz/examples/06-multi-buzz/) ([Repo](examples/06-multi-buzz/)) | Switch between buzzes |
-| **07-osc-streaming** [Repo](examples/07-osc-streaming/) | Stream to Max/MSP, Pure Data |
+| **07-osc-streaming** ([Repo](examples/07-osc-streaming/)) | Stream to DAW, Max/MSP, Pure Data |
 
 ---
 
