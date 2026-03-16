@@ -1,6 +1,6 @@
 # GeoBuzz Documentation
 
-GeoBuzz is a spatial audio composition and playback system for creating location-based audio experiences. Compose interactive soundscapes that respond dynamically to user position and movement on a map.
+GeoBuzz is a spatial music and audio composition and playback system for creating location-based audio experiences. Compose interactive soundscapes that respond dynamically to user position and movement on a map.
 
 ## Overview
 
@@ -17,7 +17,7 @@ The system consists of two parts:
 | **Paths** | Geographic shapes that control sound behavior and movement |
 | **Sequencers** | Step sequencers driven by walking distance instead of time |
 | **Layers** | Organizational groups for managing multiple elements |
-| **Spatial Audio** | 3D positioning using Ambisonics for immersive playback |
+| **Spatial Audio** | 3D positioning for immersive playback |
 
 ## Documentation
 
@@ -29,14 +29,13 @@ The system consists of two parts:
 Built with vanilla JavaScript using:
 - Leaflet.js for mapping
 - Tone.js for audio synthesis
-- Resonance Audio for spatial 3D audio
-- Web Audio API for processing
 
 ## Use Cases
 
-- Walking tours and city guides
+- Spatial music compositions
 - Location-based art installations
 - Interactive educational trails
 - Audio games and stories
 - VR/AR spatial audio experiences
+- Walking tours and city guides
 - Live performances with real-time mixing

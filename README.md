@@ -25,7 +25,7 @@ Create location-based audio experiences that respond to your position on a map. 
 
 ## Quick Start
 
-Open the [**GeoBuzz Editor**](https://janne-s.github.io/GeoBuzz/) or at your machine.
+Open the [**GeoBuzz Editor**](https://janne-s.github.io/GeoBuzz/) or launch it at your machine.
 
 ### Running the Editor
 
@@ -37,7 +37,7 @@ Data is stored locally in the browser using IndexedDB. Each workspace gets a uni
 
 **Data persistence:** On Safari, IndexedDB may be evicted after 7 days if the user hasn't visited the origin.
 
-A server-based multi user workspace version is available as a drop-in kit (see `server-kit/`). The limitations don't concern the server version.
+A server-based shareable workspace version is available as a drop-in kit (see `server-kit/`). The limitations don't concern the server version. It also enables easier mobile testing.
 
 ### Creating a Buzz
 
