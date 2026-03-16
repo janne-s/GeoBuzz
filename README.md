@@ -37,6 +37,8 @@ Data is stored locally in the browser using IndexedDB. Each workspace gets a uni
 
 **Data persistence:** On Safari, IndexedDB may be evicted after 7 days if the user hasn't visited the origin.
 
+It's best to regularly save Buzz zip 
+
 A server-based shareable workspace version is available as a drop-in kit (see `server-kit/`). The limitations don't concern the server version. It also enables easier mobile testing.
 
 ### Creating a Buzz
@@ -92,6 +94,8 @@ await runtimeEngine.start();
 runtimeEngine.stop();
 runtimeEngine.dispose();
 ```
+
+Check the examples for the usage.
 
 ---
 
@@ -153,4 +157,3 @@ src/
 - [Tone.js](https://tonejs.github.io/)
 - [Resonance Audio](https://resonance-audio.github.io/resonance-audio/)
 - [Leaflet](https://leafletjs.com/)
-- [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
