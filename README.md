@@ -41,9 +41,9 @@ Data is stored locally in the browser using IndexedDB. Each workspace gets a uni
 
 It's best to regularly save Buzz zip 
 
-### Shared Workspaxce Version ###
+### Shared Workspaces Version ###
 
-The limitations don't concern the server version. A server-based shared workspace version is available as a drop-in kit (see `server-kit/`). Besides collaborations it enables easier mobile testing and publishing to the workspace.
+The limitations don't concern the server version. A server-based shared workspaces version is available as a drop-in kit (see `server-kit/`). Besides collaborations it enables easier mobile testing and publishing to the workspace.
 
 See it live at [**GeoBuzz.app**](https://www.geobuzz.app)
 
