@@ -4,7 +4,7 @@
 
 ![GeoBuzz screenshot](docs/screenshot.jpg)
 
-Compose walkable musical pieces where arrangement happens in geographic space. Create location-based audio experiences that respond to your position on a map. 
+Compose walkable musical pieces where arrangement happens in geographic space. Create location-based audio experiences that respond to listener's position and speed. Export the compositions and the engine as standalone web application and create your own user interface.
 
 ---
 
@@ -41,7 +41,15 @@ Data is stored locally in the browser using IndexedDB. Each workspace gets a uni
 
 It's best to regularly save Buzz zip 
 
-The limitations don't concern the server version. A server-based shared workspace version is available as a drop-in kit (see `server-kit/`). It also enables easier mobile testing and publishing to the workspace.
+### Shared Workspaxce Version ###
+
+The limitations don't concern the server version. A server-based shared workspace version is available as a drop-in kit (see `server-kit/`). Besides collaborations it enables easier mobile testing and publishing to the workspace.
+
+See it live at [**GeoBuzz.app**](https://www.geobuzz.app)
+
+Note that workspaces that have been unused for more than 7 days are automatically deleted on that site.
+
+For a permanent hosted setup, run the app on your own server. Sponsoring the project helps me maintain and improve the app, and eventually provide a stable hosted solution.
 
 ### Creating a Buzz
 
@@ -163,6 +171,12 @@ src/
 ---
 
 The main body of work took approximately five months of daily AI-assisted development. I primarily used Claude, with occasional support from ChatGPT, for prototyping and process design.
+
+---
+
+## Vision
+
+GeoBuzz aims to pioneer spatial music composition as a new creative genre — where geography, movement, and sound merge into location-aware musical experiences. We hope to grow a community of composers, developers, and sound artists exploring this space together.
 
 ---
 
