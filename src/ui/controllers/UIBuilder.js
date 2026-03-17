@@ -795,7 +795,8 @@ export function addSideMenuCloseButtons() {
 		{ menuId: 'controlMenu', toggleId: 'controlMenuToggle' },
 		{ menuId: 'sequencingMenu', toggleId: 'sequencingMenuToggle' },
 		{ menuId: 'interfaceMenu', toggleId: 'interfaceMenuToggle' },
-		{ menuId: 'selectionMenu', toggleId: 'selectionMenuToggle' }
+		{ menuId: 'selectionMenu', toggleId: 'selectionMenuToggle' },
+		{ menuId: 'aboutMenu', toggleId: 'aboutMenuToggle' }
 	];
 
 	sideMenus.forEach(({ menuId, toggleId }) => {

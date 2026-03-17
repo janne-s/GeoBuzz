@@ -2030,7 +2030,8 @@ const Menus = {
 	control: { toggle: document.getElementById('controlMenuToggle'), menu: controlMenu },
 	sequencing: { toggle: document.getElementById('sequencingMenuToggle'), menu: document.getElementById('sequencingMenu') },
 	interface: { toggle: document.getElementById('interfaceMenuToggle'), menu: document.getElementById('interfaceMenu') },
-	selection: { toggle: document.getElementById('selectionMenuToggle'), menu: document.getElementById('selectionMenu') }
+	selection: { toggle: document.getElementById('selectionMenuToggle'), menu: document.getElementById('selectionMenu') },
+	about: { toggle: document.getElementById('aboutMenuToggle'), menu: document.getElementById('aboutMenu') }
 };
 
 Object.entries(Menus).forEach(([name, { toggle, menu }]) => {

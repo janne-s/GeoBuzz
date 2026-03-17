@@ -291,14 +291,36 @@ button {
 	top: 260px;
 }
 
+.about-menu-toggle {
+	top: 310px;
+}
+
 .helper-menu,
 .elements-menu,
 .control-menu,
 .sequencing-menu,
 .interface-menu,
-.selection-menu {
+.selection-menu,
+.about-menu {
 	right: calc(var(--menu-offset-x) + var(--menu-toggle-width) + 5px);
 	left: auto;
+}
+
+.about-menu {
+	overflow-wrap: break-word;
+}
+
+.about-text {
+	font-size: var(--font-base);
+	color: var(--color-text-secondary);
+	margin-bottom: var(--spacing-md);
+	line-height: 1.5;
+}
+
+.about-menu a.menu-btn {
+	width: auto;
+	text-decoration: none;
+	color: inherit;
 }
 
 /* ========================================
@@ -3807,6 +3829,7 @@ input:checked+.slider:before {
 	.sequencing-menu,
 	.interface-menu,
 	.selection-menu,
+	.about-menu,
 	#soundDialog,
 	.parameter-customizer-modal {
 		position: fixed;
@@ -3831,6 +3854,7 @@ input:checked+.slider:before {
 	.sequencing-menu h3,
 	.interface-menu h3,
 	.selection-menu h3,
+	.about-menu h3,
 	.parameter-customizer-header h2 {
 		cursor: default;
 	}
@@ -3852,6 +3876,7 @@ input:checked+.slider:before {
 	.sequencing-menu,
 	.interface-menu,
 	.selection-menu,
+	.about-menu,
 	.parameter-customizer-content {
 		max-height: none;
 	}
