@@ -4,7 +4,7 @@
 
 ![GeoBuzz screenshot](docs/screenshot.jpg)
 
-Create location-based audio experiences that respond to your position on a map. Compose walkable musical pieces where arrangement happens in geographic space.
+Compose walkable musical pieces where arrangement happens in geographic space. Create location-based audio experiences that respond to your position on a map. 
 
 ---
 
