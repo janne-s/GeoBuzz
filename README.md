@@ -45,7 +45,7 @@ It's best to regularly save Buzz zip
 
 The limitations don't concern the server version. A server-based shared workspaces version is available as a drop-in kit (see `server-kit/`). Besides collaborations it enables easier mobile testing and publishing to the workspace.
 
-See it live at [**GeoBuzz.app**](https://www.geobuzz.app)
+See it live at [**GeoBuzz.app**](https://geobuzz.app)
 
 Note that workspaces that have been unused for more than 7 days are automatically deleted on that site.
 
