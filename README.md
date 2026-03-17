@@ -1,6 +1,6 @@
 # GeoBuzz
 
-**Spatial Audio Composition Tool**
+**Spatial Music and Audio Composition Tool**
 
 ![GeoBuzz screenshot](docs/screenshot.jpg)
 
