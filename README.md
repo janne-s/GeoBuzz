@@ -2,6 +2,8 @@
 
 **Spatial Audio Composition Tool**
 
+![GeoBuzz screenshot](docs/screenshot.jpg)
+
 Create location-based audio experiences that respond to your position on a map. Compose walkable musical pieces where arrangement happens in geographic space.
 
 ---
@@ -157,6 +159,10 @@ src/
 - [Tone.js](https://tonejs.github.io/)
 - [Resonance Audio](https://resonance-audio.github.io/resonance-audio/)
 - [Leaflet](https://leafletjs.com/)
+
+---
+
+The main body of work took approximately five months of daily AI-assisted development. I primarily used Claude, with occasional support from ChatGPT, for prototyping and process design.
 
 ---
 
