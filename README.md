@@ -27,7 +27,7 @@ Compose walkable musical pieces where arrangement happens in geographic space. C
 
 ## Quick Start
 
-Open the [**GeoBuzz Editor**](https://janne-s.github.io/GeoBuzz/) or launch it at your machine.
+Open the [**GeoBuzz Editor**](https://janne-s.github.io/GeoBuzz/) or download the files and launch it on your machine.
 
 ### Creating a Buzz
 
@@ -195,7 +195,7 @@ If you enjoy using GeoBuzz, you can support its development:
 
 - **Ko-fi** – give a one-off tip or small donation to support the project.  
   [Support on Ko-fi](https://ko-fi.com/jannesarkela)
-  
+
   [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Z8Z21VZ78L)
 
 Thank you for helping keep GeoBuzz alive and growing!
