@@ -169,7 +169,7 @@ When using the browser in private/incognito mode, IndexedDB data is discarded wh
 
 Browsers may also clear IndexedDB under storage pressure or after prolonged inactivity (Safari may evict data after 7 days for unvisited origins). To back up your buzz including all sound files, use **Export Buzz ZIP** — this creates a self-contained package that can be re-imported later.
 
-## Shared Workspaces Version
+### Shared Workspaces Version
 
 Data persistence and related limits don't apply to the (self-hosted) server version. It is also the most practical platform for cross-device development. 
 
