@@ -150,7 +150,7 @@ If your workspace already has elements, choose how to handle them:
 
 ## Saving Your Work
 
-All data is stored locally in the browser using IndexedDB. Each workspace has a unique URL (visible in the Helper menu) that you can bookmark to return later.
+All data is stored locally in the browser using IndexedDB. It happens automatically after every action. Each workspace has a unique URL (visible in the Helper menu) that you can bookmark to return later.
 
 ### To File
 
@@ -168,6 +168,10 @@ All data is stored locally in the browser using IndexedDB. Each workspace has a 
 When using the browser in private/incognito mode, IndexedDB data is discarded when the window closes. Workspace URLs created in private mode will not work in normal browsing mode and vice versa. Use **Save to File** to keep a permanent copy of your work.
 
 Browsers may also clear IndexedDB under storage pressure or after prolonged inactivity (Safari may evict data after 7 days for unvisited origins). To back up your buzz including all sound files, use **Export Buzz ZIP** — this creates a self-contained package that can be re-imported later.
+
+## Shared Workspaces Version
+
+Data persistence and related limits don't apply to the (self-hosted) server version. It is also the most practical platform for cross-device development. 
 
 ---
 
