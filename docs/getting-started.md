@@ -193,7 +193,7 @@ Use bulk operations to work with multiple elements at once.
 |----------|--------|
 | **Enter** | Finish drawing a line or polygon (path or sound) |
 | **Escape** | Cancel current drawing operation |
-| **Shift + Click** on sound | Delete sound (with confirmation) |
+| **Shift + Click** on sound marker or label | Delete sound (with confirmation) |
 | **Shift + Click** on path marker or label | Delete path (with confirmation) |
 | **Shift + Click** on vertex | Delete vertex (if path has 2+ points) |
 | **Double-click** slider | Reset slider to default value |
