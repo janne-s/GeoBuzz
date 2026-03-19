@@ -195,6 +195,7 @@ If you enjoy using GeoBuzz, you can support its development:
 
 - **Ko-fi** – give a one-off tip or small donation to support the project.  
   [Support on Ko-fi](https://ko-fi.com/jannesarkela)
+  
   [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Z8Z21VZ78L)
 
 Thank you for helping keep GeoBuzz alive and growing!
