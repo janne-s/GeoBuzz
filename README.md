@@ -29,28 +29,6 @@ Compose walkable musical pieces where arrangement happens in geographic space. C
 
 Open the [**GeoBuzz Editor**](https://janne-s.github.io/GeoBuzz/) or launch it at your machine.
 
-### Running the Editor
-
-Serve the project via any web server and open in browser. ES modules require HTTP(S) — opening `index.html` directly via `file://` will not work. Mobile devices require HTTPS for location/orientation.
-
-Data is stored locally in the browser using IndexedDB. Each workspace gets a unique URL you can bookmark to return later. 
-
-**Private/incognito mode:** IndexedDB data is discarded when the browser window closes. Workspace URLs from private sessions cannot be opened in normal mode.
-
-**Data persistence:** On Safari, IndexedDB may be evicted after 7 days if the user hasn't visited the origin.
-
-It's best to regularly save Buzz zip 
-
-### Shared Workspaces Version ###
-
-The limitations don't concern the server version. A server-based shared workspaces version is available as a drop-in kit (see `server-kit/`). Besides collaborations it enables easier mobile testing and publishing to the workspace.
-
-See it live at [**GeoBuzz.app**](https://geobuzz.app)
-
-Note that workspaces that have been unused for more than 7 days are automatically deleted on that site.
-
-For a permanent hosted setup, run the app on your own server. Sponsoring the project helps me maintain and improve the app, and eventually provide a stable hosted solution.
-
 ### Creating a Buzz
 
 1. Use the element menu or double click on the map to place sounds
@@ -58,6 +36,34 @@ For a permanent hosted setup, run the app on your own server. Sponsoring the pro
 3. Add effects, draw paths (optional)
 4. Test with GPS or simulation mode
 5. Export as standalone package
+
+See the [**Docs**](docs/) for more.
+
+---
+
+### Running the Editor
+
+Serve the project via any web server and open in browser. ES modules require HTTP(S) — opening `index.html` directly via `file://` will not work. Mobile devices require HTTPS for location/orientation.
+
+Data is stored locally in the browser using IndexedDB. Each workspace gets a unique URL you can bookmark to return later. All actions are automatically saved.
+
+**Private/incognito mode:** IndexedDB data is discarded when the browser window closes. Workspace URLs from private sessions cannot be opened in normal mode.
+
+**Data persistence:** On Safari, IndexedDB may be evicted after 7 days if the user hasn't visited the origin.
+
+It's best to regularly save Buzz zip to be sure.
+
+### Shared Workspaces Version ###
+
+The limitations don't concern the server version. A server-based shared workspaces version is available as a drop-in kit (see `server-kit/`). Besides collaborations and data persistence, it enables easier mobile testing and publishing to the workspace.
+
+See it live at [**GeoBuzz.app**](https://geobuzz.app)
+
+Note that workspaces that have been unused for more than 7 days are automatically deleted on that site.
+
+For a permanent hosted setup, run the app on your own server locally or remotely. 
+
+Sponsoring the project helps me maintain and improve the app, and eventually provide a stable hosted solution.
 
 ### Sound Types
 
