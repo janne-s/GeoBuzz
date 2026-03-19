@@ -191,7 +191,7 @@ Use bulk operations to work with multiple elements at once.
 
 | Shortcut | Action |
 |----------|--------|
-| **Enter** | Finish drawing a line or polygon (path or sound) |
+| **Enter** | Finish drawing a line (path or sound) |
 | **Escape** | Cancel current drawing operation |
 | **Shift + Click** on sound marker or label | Delete sound (with confirmation) |
 | **Shift + Click** on path marker or label | Delete path (with confirmation) |
