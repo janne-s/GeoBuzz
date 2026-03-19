@@ -1,8 +1,6 @@
 # GeoBuzz
 
-**Spatial Music and Audio Composition Tool**
-
-**The listener is the playhead.**
+**Spatial Music and Audio Composition Tool, where the listener is the playhead.**
 
 ![GeoBuzz screenshot](docs/screenshot.jpg)
 
