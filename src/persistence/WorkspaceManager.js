@@ -35,8 +35,6 @@ export class WorkspaceManager {
 				console.error('Error validating workspace:', error);
 				await this.createNewWorkspace();
 			}
-		} else {
-			await this.createNewWorkspace();
 		}
 
 		if (this.context.AppState.workspace.id) {
@@ -48,12 +46,19 @@ export class WorkspaceManager {
 		this.context.AppState.workspace.isInitializing = false;
 	}
 
+	static async ensureWorkspace() {
+		if (this.context.AppState.workspace.id) return true;
+		await this.createNewWorkspace();
+		return !!this.context.AppState.workspace.id;
+	}
+
 	static updateWorkspaceUI() {
 		const workspaceUrlInput = document.getElementById('workspaceUrl');
-		if (workspaceUrlInput && this.context.Selectors.getWorkspaceId()) {
+		if (!workspaceUrlInput) return;
+		if (this.context.Selectors.getWorkspaceId()) {
 			const fullUrl = `${window.location.origin}${window.location.pathname}?workspace=${this.context.Selectors.getWorkspaceId()}`;
 			workspaceUrlInput.value = fullUrl;
-		} else {
+		} else if (this.context.AppState.workspace.isInitializing) {
 			requestAnimationFrame(this.updateWorkspaceUI.bind(this));
 		}
 	}
@@ -93,6 +98,7 @@ export class WorkspaceManager {
 				const newUrl = new URL(window.location);
 				newUrl.searchParams.set('workspace', this.context.Selectors.getWorkspaceId());
 				window.history.replaceState({}, '', newUrl);
+				this.updateWorkspaceUI();
 			}
 		} catch (error) {
 			console.error('Error creating workspace:', error);
@@ -154,6 +160,8 @@ export class WorkspaceManager {
 	}
 
 	static async saveWorkspaceSettings() {
+		await this.ensureWorkspace();
+		if (!this.context.Selectors.getWorkspaceId()) return;
 		const settings = SettingsManager.buildSettings();
 		await StorageAdapter.saveToWorkspace(this.context.Selectors.getWorkspaceId(), settings);
 	}
