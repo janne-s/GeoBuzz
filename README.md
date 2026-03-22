@@ -176,7 +176,7 @@ src/
 
 ---
 
-The main body of work took approximately five months of daily AI-assisted development. I primarily used Claude, with occasional support from ChatGPT, for prototyping and process design.
+The main body of work took approximately 3-4 months of daily AI-assisted development. I primarily used Claude, with occasional support from ChatGPT for prototyping and process design. I have run code cleanlines, performance and security reviews, and best practice checks at different stages of the development process. I have tried to produce the application to the best of my abilities, and welcome all suggestions for improvement.
 
 ---
 
