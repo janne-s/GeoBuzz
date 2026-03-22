@@ -8,12 +8,12 @@ Inspiring starting points for custom buzz players. Not production-ready — spri
 
 | Example | Description |
 |---------|-------------|
-| **01-minimal** | Simplest implementation (~50 lines). Map + play button. |
-| **02-headless** | Audio-only, no map. |
-| **03-visualizer** | Canvas visualization with Delaunay, particles, networks. |
-| **04-guided-tour** | Walking tour with progress bar, waypoints, direction arrow. |
-| **05-aframe** | A-Frame AR/VR integration with 3D sound visualization. |
-| **06-multi-buzz** | Switch between multiple buzz compositions. |
+| [**01-minimal**](https://janne-s.github.io/GeoBuzz/examples/01-minimal/) ([Repo](01-minimal/)) | Simplest implementation (~50 lines). Map + play button. |
+| [**02-headless**](https://janne-s.github.io/GeoBuzz/examples/02-headless/) ([Repo](02-headless/)) | Audio-only, no map. |
+| [**03-visualizer**](https://janne-s.github.io/GeoBuzz/examples/03-visualizer/) ([Repo](03-visualizer/)) | Canvas visualization with Delaunay, particles, networks. |
+| [**04-guided-tour**](https://janne-s.github.io/GeoBuzz/examples/04-guided-tour/) ([Repo](04-guided-tour/)) | Walking tour with progress bar, waypoints, direction arrow. |
+| [**05-aframe**](https://janne-s.github.io/GeoBuzz/examples/05-aframe/) ([Repo](05-aframe/)) | A-Frame AR/VR integration with 3D sound visualization. |
+| [**06-multi-buzz**](https://janne-s.github.io/GeoBuzz/examples/06-multi-buzz/) ([Repo](06-multi-buzz/)) | Switch between multiple buzz compositions. |
 | **07-osc-streaming** | Stream data to Max/MSP, Pure Data, TouchDesigner. |
 
 ---
