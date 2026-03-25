@@ -1,12 +1,20 @@
 export const ModalSystem = {
+	_isTopModal(modal) {
+		const myZ = parseInt(getComputedStyle(modal).zIndex) || 0;
+		for (const d of document.querySelectorAll('.modal-dialog')) {
+			if (d !== modal && (parseInt(getComputedStyle(d).zIndex) || 0) > myZ) return false;
+		}
+		return true;
+	},
+
 	async show(options) {
-		const { title = '', message = '', buttons = [], input = false, defaultValue = '' } = options;
+		const { title = '', message = '', buttons = [], input = false, defaultValue = '', priority = false } = options;
 
 		const overlay = document.createElement('div');
-		overlay.className = 'modal-overlay';
+		overlay.className = priority ? 'modal-overlay modal-priority' : 'modal-overlay';
 
 		const modal = document.createElement('div');
-		modal.className = 'modal-dialog';
+		modal.className = priority ? 'modal-dialog modal-priority' : 'modal-dialog';
 
 		modal.innerHTML = `
 			<div class="modal-header">
@@ -37,7 +45,7 @@ export const ModalSystem = {
 
 		return new Promise((resolve) => {
 			const handleClick = (e) => {
-				if (e.target.classList.contains('modal-btn')) {
+				if (modal.contains(e.target) && e.target.classList.contains('modal-btn')) {
 					const result = e.target.dataset.result;
 					const inputValue = inputEl ? inputEl.value : null;
 					cleanup();
@@ -53,13 +61,16 @@ export const ModalSystem = {
 			};
 
 			const handleKeydown = (e) => {
+				if (!this._isTopModal(modal)) return;
 				if (e.key === 'Enter' && inputEl) {
 					const confirmBtn = modal.querySelector('.modal-btn[data-result="ok"]');
 					if (confirmBtn) {
+						e.stopImmediatePropagation();
 						cleanup();
 						resolve(inputEl.value);
 					}
 				} else if (e.key === 'Escape') {
+					e.stopImmediatePropagation();
 					cleanup();
 					resolve(input ? 'cancel' : null);
 				}
@@ -89,10 +100,11 @@ export const ModalSystem = {
 		return result === 'true';
 	},
 
-	async alert(message, title = 'Information') {
+	async alert(message, title = 'Information', { priority = false } = {}) {
 		await this.show({
 			title,
 			message,
+			priority,
 			buttons: [{ text: 'OK', result: true, primary: true }]
 		});
 	},
@@ -213,7 +225,7 @@ export const ModalSystem = {
 
 		return new Promise((resolve) => {
 			const handleClick = (e) => {
-				if (e.target.classList.contains('modal-btn')) {
+				if (modal.contains(e.target) && e.target.classList.contains('modal-btn')) {
 					const result = e.target.dataset.result;
 					cleanup();
 
@@ -237,7 +249,9 @@ export const ModalSystem = {
 			};
 
 			const handleKeydown = (e) => {
+				if (!this._isTopModal(modal)) return;
 				if (e.key === 'Escape') {
+					e.stopImmediatePropagation();
 					cleanup();
 					resolve(null);
 				}

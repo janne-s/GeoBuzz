@@ -2,6 +2,7 @@ import { LocalBackend } from '../api/LocalBackend.js';
 import { SettingsManager } from './SettingsManager.js';
 import { StorageAdapter } from './StorageAdapter.js';
 import { ModalSystem } from '../ui/ModalSystem.js';
+import { checkSplashMessage } from '../ui/SplashMessage.js';
 
 export class WorkspaceManager {
 	static context = null;
@@ -13,6 +14,8 @@ export class WorkspaceManager {
 	static async initWorkspace() {
 		this.context.AppState.workspace.id = null;
 		this.context.AppState.workspace.isInitializing = true;
+
+		checkSplashMessage();
 
 		this.context.AppState.setSaveCallback(this.saveWorkspaceSettings.bind(this));
 

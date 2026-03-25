@@ -89,6 +89,8 @@
 	--z-file-manager: 13000;
 	--z-modal-overlay: 20000;
 	--z-modal-dialog: 20001;
+	--z-modal-priority-overlay: 20010;
+	--z-modal-priority-dialog: 20011;
 }
 
 /* ========================================
@@ -2089,6 +2091,14 @@ label.layer-item span {
 	z-index: var(--z-modal-dialog);
 	min-width: 300px;
 	max-width: 90vw;
+}
+
+.modal-overlay.modal-priority {
+	z-index: var(--z-modal-priority-overlay);
+}
+
+.modal-dialog.modal-priority {
+	z-index: var(--z-modal-priority-dialog);
 }
 
 .modal-header h3 {
