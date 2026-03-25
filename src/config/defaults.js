@@ -5,12 +5,12 @@ export const DEFAULT_LFO_STRUCTURE = {
 	x: { freq: 0, range: 0, maxRange: 200 },
 	y: { freq: 0, range: 0, maxRange: 200 },
 	size: { freq: 0, range: 0, maxRange: 200 },
-	mod1: { target: "pitch", freq: 0, range: 0, source: "lfo", waveform: "sine", referenceSpeed: 1.4, state: {} },
-	mod2: { target: "filterFreq", freq: 0, range: 0, source: "lfo", waveform: "sine", referenceSpeed: 1.4, state: {} },
-	mod3: { target: "volume", freq: 0, range: 0, source: "lfo", waveform: "sine", referenceSpeed: 1.4, state: {} },
-	fxMod1: { target: "none", freq: 0, range: 0, source: "lfo", waveform: "sine", referenceSpeed: 1.4, state: {} },
-	fxMod2: { target: "none", freq: 0, range: 0, source: "lfo", waveform: "sine", referenceSpeed: 1.4, state: {} },
-	fxMod3: { target: "none", freq: 0, range: 0, source: "lfo", waveform: "sine", referenceSpeed: 1.4, state: {} }
+	mod1: { target: "pitch", freq: 0, range: 0, source: "lfo", waveform: "sine", referenceSpeed: 1.4, instabilityReactivity: 0.5, state: {} },
+	mod2: { target: "filterFreq", freq: 0, range: 0, source: "lfo", waveform: "sine", referenceSpeed: 1.4, instabilityReactivity: 0.5, state: {} },
+	mod3: { target: "volume", freq: 0, range: 0, source: "lfo", waveform: "sine", referenceSpeed: 1.4, instabilityReactivity: 0.5, state: {} },
+	fxMod1: { target: "none", freq: 0, range: 0, source: "lfo", waveform: "sine", referenceSpeed: 1.4, instabilityReactivity: 0.5, state: {} },
+	fxMod2: { target: "none", freq: 0, range: 0, source: "lfo", waveform: "sine", referenceSpeed: 1.4, instabilityReactivity: 0.5, state: {} },
+	fxMod3: { target: "none", freq: 0, range: 0, source: "lfo", waveform: "sine", referenceSpeed: 1.4, instabilityReactivity: 0.5, state: {} }
 };
 
 export const DEFAULT_FX_STRUCTURE = {

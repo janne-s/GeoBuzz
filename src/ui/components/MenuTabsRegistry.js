@@ -783,12 +783,14 @@ export const MenuTabs = {
 				{ value: 'lfo', label: 'LFO' },
 				{ value: 'walkableLFO', label: 'Walkable LFO' },
 				{ value: 'speed', label: 'Speed' },
+				{ value: 'gpsInstability', label: 'GPS Instability' },
 				{ value: 'stepPosition', label: 'Step Position' },
 				{ value: 'randomStep', label: 'Random' }
 			] : [
 				{ value: 'lfo', label: 'LFO' },
 				{ value: 'walkableLFO', label: 'Walkable LFO' },
 				{ value: 'speed', label: 'Speed' },
+				{ value: 'gpsInstability', label: 'GPS Instability' },
 				{ value: 'distance', label: 'Distance' },
 				{ value: 'x', label: 'X position' },
 				{ value: 'y', label: 'Y position' }
@@ -850,6 +852,9 @@ export const MenuTabs = {
 			const speedThresholdControl = context.createParameterControl(context.PARAMETER_REGISTRY[`lfo_${mod}_speedThreshold`], `lfo_${mod}_speedThreshold`, obj, onUpdate, { small: true });
 			group.appendChild(speedThresholdControl);
 
+			const instabilityReactivityControl = context.createParameterControl(context.PARAMETER_REGISTRY[`lfo_${mod}_instabilityReactivity`], `lfo_${mod}_instabilityReactivity`, obj, onUpdate, { small: true });
+			group.appendChild(instabilityReactivityControl);
+
 			const updateFreqDisplay = () => {
 				const source = obj.params.lfo[mod].source;
 				const val = obj.params.lfo[mod].freq;
@@ -874,10 +879,13 @@ export const MenuTabs = {
 				const isSpeed = source === 'speed';
 				const isStepPosition = source === 'stepPosition';
 				const isRandomStep = source === 'randomStep';
+				const isGpsInstability = source === 'gpsInstability';
 
 				waveformSelect.style.display = (isLFO || isWalkableLFO) ? '' : 'none';
 				referenceSpeedControl.style.display = isSpeed ? '' : 'none';
 				speedThresholdControl.style.display = isWalkableLFO ? '' : 'none';
+				instabilityReactivityControl.style.display = isGpsInstability ? '' : 'none';
+				freqControl.style.display = isGpsInstability ? 'none' : '';
 
 				if (isSpeed) {
 					freqLabel.textContent = 'Lock to User Speed';
@@ -934,12 +942,14 @@ export const MenuTabs = {
 				{ value: 'lfo', label: 'LFO' },
 				{ value: 'walkableLFO', label: 'Walkable LFO' },
 				{ value: 'speed', label: 'Speed' },
+				{ value: 'gpsInstability', label: 'GPS Instability' },
 				{ value: 'stepPosition', label: 'Step Position' },
 				{ value: 'randomStep', label: 'Random' }
 			] : [
 				{ value: 'lfo', label: 'LFO' },
 				{ value: 'walkableLFO', label: 'Walkable LFO' },
 				{ value: 'speed', label: 'Speed' },
+				{ value: 'gpsInstability', label: 'GPS Instability' },
 				{ value: 'distance', label: 'Distance' },
 				{ value: 'x', label: 'X position' },
 				{ value: 'y', label: 'Y position' }
@@ -1000,6 +1010,9 @@ export const MenuTabs = {
 			const speedThresholdControl = context.createParameterControl(context.PARAMETER_REGISTRY[`lfo_${mod}_speedThreshold`], `lfo_${mod}_speedThreshold`, obj, onUpdate, { small: true });
 			group.appendChild(speedThresholdControl);
 
+			const instabilityReactivityControl = context.createParameterControl(context.PARAMETER_REGISTRY[`lfo_${mod}_instabilityReactivity`], `lfo_${mod}_instabilityReactivity`, obj, onUpdate, { small: true });
+			group.appendChild(instabilityReactivityControl);
+
 			const updateFreqDisplay = () => {
 				const source = obj.params.lfo[mod].source;
 				const val = obj.params.lfo[mod].freq;
@@ -1024,10 +1037,13 @@ export const MenuTabs = {
 				const isSpeed = source === 'speed';
 				const isStepPosition = source === 'stepPosition';
 				const isRandomStep = source === 'randomStep';
+				const isGpsInstability = source === 'gpsInstability';
 
 				waveformSelect.style.display = (isLFO || isWalkableLFO) ? '' : 'none';
 				referenceSpeedControl.style.display = isSpeed ? '' : 'none';
 				speedThresholdControl.style.display = isWalkableLFO ? '' : 'none';
+				instabilityReactivityControl.style.display = isGpsInstability ? '' : 'none';
+				freqControl.style.display = isGpsInstability ? 'none' : '';
 
 				if (isSpeed) {
 					freqLabel.textContent = 'Lock to User Speed';

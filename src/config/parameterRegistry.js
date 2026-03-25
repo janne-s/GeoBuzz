@@ -125,6 +125,18 @@ function generateModParams(mod, category) {
 			category,
 			serialize: true,
 			ui: true
+		},
+		[`lfo_${mod}_instabilityReactivity`]: {
+			label: 'Reactivity',
+			type: 'range',
+			min: 0,
+			max: 1,
+			step: 0.01,
+			defaultValue: CONSTANTS.GPS_INSTABILITY_REACTIVITY_DEFAULT,
+			unit: '',
+			category,
+			serialize: true,
+			ui: true
 		}
 	};
 }

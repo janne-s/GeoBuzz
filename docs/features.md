@@ -235,13 +235,14 @@ Motion controls (link playback to user movement):
 
 | Parameter | Description |
 |-----------|-------------|
-| **Source** | Modulation source: LFO, Walkable LFO, Speed, Distance, X position, Y position |
+| **Source** | Modulation source: LFO, Walkable LFO, Speed, GPS Instability, Distance, X position, Y position |
 | **Target** | Sound parameter to modulate |
 | **Waveform** | Modulation shape: Sine, Triangle, Saw Up, Saw Down, Square, S&H, S&H Hard |
 | **Range** | Modulation depth |
 | **Frequency** | Rate (Hz for LFO, cycles/m for Walkable) |
 | **Reference Speed** | Speed for 100% modulation (Speed source only) |
 | **Speed Threshold** | Minimum speed to activate (Walkable LFO only) |
+| **Reactivity** | GPS instability response scaling (GPS Instability source only) |
 
 #### Effects Modulation (3 slots: FX Mod 1, FX Mod 2, FX Mod 3)
 

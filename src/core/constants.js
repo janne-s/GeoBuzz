@@ -58,6 +58,13 @@ export const CONSTANTS = {
 	},
 	ORIENTATION_DEFAULT_ACCURACY: 15,
 
+	GPS_INSTABILITY_CONFIG: {
+		baselineTimeConstant: 60,
+		instabilityTimeConstant: 2.0,
+		shapeExponent: 1.3
+	},
+	GPS_INSTABILITY_REACTIVITY_DEFAULT: 0.5,
+
 	MIDI_MIN: 36,
 	MIDI_MAX: 84,
 

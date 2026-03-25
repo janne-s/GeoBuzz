@@ -1,5 +1,6 @@
 import { CONSTANTS } from '../constants.js';
 import { KalmanFilter } from './KalmanFilter.js';
+import { GpsInstabilityTracker } from './GpsInstabilityTracker.js';
 
 class GeolocationManagerClass {
 	constructor() {
@@ -308,6 +309,7 @@ class GeolocationManagerClass {
 
 		this._lastRawPosition = rawPosition;
 		this._lastFilteredPosition = filtered;
+		GpsInstabilityTracker.update(filtered.accuracy, timestamp);
 		this.updateAccuracyDisplay(rawPosition, filtered);
 
 		const filteredLatLng = L.latLng(filtered.lat, filtered.lon);

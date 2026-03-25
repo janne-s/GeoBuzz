@@ -7,6 +7,7 @@ import { setSequencerControl } from './SoundCreation.js';
 import { DEFAULT_LFO_STRUCTURE } from '../../config/defaults.js';
 import { deepClone } from '../utils/math.js';
 import { generateLFOWaveform } from '../../config/parameterRegistry.js';
+import { GpsInstabilityTracker } from '../geospatial/GpsInstabilityTracker.js';
 
 let context = null;
 let stateSubscriptionInitialized = false;
@@ -498,6 +499,11 @@ export class DistanceSequencer {
 
 				lfoValue = generateLFOWaveform(modState.walkablePhase * CONSTANTS.TWO_PI, waveform, modState);
 			}
+
+		} else if (source === 'gpsInstability') {
+			const reactivity = soundObj.params.lfo[mod].instabilityReactivity ?? CONSTANTS.GPS_INSTABILITY_REACTIVITY_DEFAULT;
+			GpsInstabilityTracker.setReactivity(reactivity);
+			lfoValue = GpsInstabilityTracker.getSignedValue();
 
 		} else if (source === 'distance' || source === 'x' || source === 'y') {
 			lfoValue = 0;

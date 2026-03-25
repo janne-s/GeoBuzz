@@ -3,6 +3,7 @@ import { isCircularPath } from '../utils/math.js';
 import { isLinearPath } from '../utils/typeChecks.js';
 import { generateLFOWaveform, PARAMETER_REGISTRY } from '../../config/parameterRegistry.js';
 import { getSmoothedPosition, getSmoothedModulationValue } from './AudioSmoother.js';
+import { GpsInstabilityTracker } from '../geospatial/GpsInstabilityTracker.js';
 
 let GeolocationManager = null;
 let updateSynthParam = null;
@@ -548,6 +549,11 @@ function processInternalModulation(s, mod, target, freq, range, source, t, userP
 		const latDiff = (userPos.lat - soundPos.lat) * CONSTANTS.METERS_PER_LAT;
 		const rawValue = Math.max(-1, Math.min(1, latDiff / maxRange));
 		lfoValue = getSmoothedModulationValue(rawValue, s.id, `${mod}_y`);
+
+	} else if (source === 'gpsInstability') {
+		const reactivity = s.params.lfo[mod].instabilityReactivity ?? CONSTANTS.GPS_INSTABILITY_REACTIVITY_DEFAULT;
+		GpsInstabilityTracker.setReactivity(reactivity);
+		lfoValue = GpsInstabilityTracker.getSignedValue();
 
 	} else if (!source || source === "lfo") {
 		const phase = t * freq * CONSTANTS.TWO_PI;
