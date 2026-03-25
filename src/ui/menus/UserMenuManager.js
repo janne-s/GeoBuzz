@@ -422,6 +422,14 @@ export function showUserMenu(point) {
 	);
 	menu.appendChild(audioSmoothingSection);
 
+	const gpsSmoothingSection = createCollapsibleSection(
+		'GPS Accuracy',
+		'fa-satellite',
+		() => createGpsSmoothingControls(),
+		false
+	);
+	menu.appendChild(gpsSmoothingSection);
+
 	const directionContainer = document.createElement("div");
 	directionContainer.className = "user-direction-container";
 
@@ -648,6 +656,57 @@ function createAudioSmoothingControls() {
 	hintText.className = 'audio-smoothing-hint';
 	hintText.innerHTML = '<small>Lower values = more smoothing/lag. Higher values = more responsive. Set to 1 to disable smoothing entirely.</small>';
 	container.appendChild(hintText);
+
+	return container;
+}
+
+function createGpsSmoothingControls() {
+	const container = document.createElement('div');
+	container.className = 'audio-smoothing-controls';
+
+	const currentValue = GeolocationManager?.getGpsSmoothing() ?? CONSTANTS.GPS_SMOOTHING_DEFAULT;
+
+	const sliderControl = document.createElement('div');
+	sliderControl.className = 'parameter-control';
+
+	const label = document.createElement('label');
+	label.textContent = 'GPS Responsiveness';
+	sliderControl.appendChild(label);
+
+	const wrapper = document.createElement('div');
+	wrapper.className = 'control-wrapper';
+
+	const slider = document.createElement('input');
+	slider.type = 'range';
+	slider.min = '0';
+	slider.max = '1';
+	slider.step = '0.01';
+	slider.value = currentValue;
+	slider.className = 'parameter-slider';
+
+	const display = document.createElement('span');
+	display.className = 'value-display';
+	display.textContent = currentValue.toFixed(2);
+
+	slider.oninput = () => {
+		const value = parseFloat(slider.value);
+		display.textContent = value.toFixed(2);
+		GeolocationManager?.setGpsSmoothing(value);
+	};
+
+	slider.onchange = () => {
+		AppState.dispatch({ type: 'AUDIO_SMOOTHING_CHANGED' });
+	};
+
+	wrapper.appendChild(slider);
+	wrapper.appendChild(display);
+	sliderControl.appendChild(wrapper);
+	container.appendChild(sliderControl);
+
+	const hint = document.createElement('div');
+	hint.className = 'audio-smoothing-hint';
+	hint.innerHTML = '<small>Lower values = heavily filtered, smooth but latent movement. Higher values = raw sensor data, more responsive but noisy — useful for organic, unpredictable spatial behaviour.</small>';
+	container.appendChild(hint);
 
 	return container;
 }

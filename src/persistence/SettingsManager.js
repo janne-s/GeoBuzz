@@ -37,7 +37,8 @@ export class SettingsManager {
 					stereoWidth: this.context.CONSTANTS.AMBISONIC_STEREO_WIDTH,
 					stereoSpread: this.context.CONSTANTS.AMBISONIC_STEREO_SPREAD
 				},
-				smoothing: getAudioSmootherSettings()
+				smoothing: getAudioSmootherSettings(),
+				gpsSmoothing: this.context.GeolocationManager?.getGpsSmoothing() ?? CONSTANTS.GPS_SMOOTHING_DEFAULT
 			},
 
 			oscSettings: {
@@ -274,6 +275,10 @@ export class SettingsManager {
 
 		if (settings.audioSettings?.smoothing) {
 			applyAudioSmootherSettings(settings.audioSettings.smoothing);
+		}
+
+		if (settings.audioSettings?.gpsSmoothing !== undefined) {
+			this.context.GeolocationManager?.setGpsSmoothing(settings.audioSettings.gpsSmoothing);
 		}
 
 		if (settings.oscSettings) {

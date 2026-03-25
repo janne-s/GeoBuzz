@@ -26,6 +26,7 @@ class GeolocationManagerClass {
 	}
 
 	init() {
+		this._gpsSmoothingValue = CONSTANTS.GPS_SMOOTHING_DEFAULT;
 		this.geoFilter = new KalmanFilter();
 		this.createStatusElement();
 		this.createAccuracyDisplayElement();
@@ -42,6 +43,18 @@ class GeolocationManagerClass {
 
 			this.watchId = null;
 		}
+	}
+
+	setGpsSmoothing(t) {
+		this._gpsSmoothingValue = t;
+		this.geoFilter.updateOptions({
+			sigmaAcc: Math.pow(10, 2 * t - 1),
+			windowSize: Math.round(5 - 4 * t)
+		});
+	}
+
+	getGpsSmoothing() {
+		return this._gpsSmoothingValue;
 	}
 
 	createStatusElement() {

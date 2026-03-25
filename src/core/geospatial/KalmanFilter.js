@@ -22,6 +22,10 @@ export class KalmanFilter {
 		];
 	}
 
+	updateOptions(options) {
+		Object.assign(this.options, options);
+	}
+
 	_latLonToXY(lat, lon) {
 		const R = CONSTANTS.EARTH_RADIUS_M;
 		const x = R * (lon - this.origin.lon) * Math.PI / 180 * Math.cos(this.origin.lat * Math.PI / 180);

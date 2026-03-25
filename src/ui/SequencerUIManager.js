@@ -17,6 +17,10 @@ import { hasKeyboard } from '../core/utils/typeChecks.js';
 export class SequencerUIManager {
 	constructor(appContext) {
 		this.appContext = appContext;
+		this._sustainDrag = null;
+		this._isPointerDown = false;
+		document.addEventListener('mousedown', () => { this._isPointerDown = true; });
+		document.addEventListener('mouseup', () => { this._isPointerDown = false; });
 	}
 
 	showSequencerPanel(point, sequencer = null) {
@@ -602,7 +606,25 @@ export class SequencerUIManager {
 						}
 					}
 
-					cell.onclick = (e) => {
+					cell.addEventListener('mousedown', () => {
+					if (track.editMode !== 'sustain') return;
+					const hasSustain = track.steps[stepIndex]?.sustains.includes(midiNote);
+					const mode = hasSustain ? 'erase' : 'paint';
+					this._sustainDrag = { midiNote, originStepIndex: stepIndex, track, trackDiv, sequencer, tracksContainer, didDrag: false, mode };
+				});
+
+				cell.addEventListener('mouseenter', () => {
+					if (!this._isPointerDown || !this._sustainDrag) return;
+					if (this._sustainDrag.midiNote !== midiNote) return;
+					if (!this._sustainDrag.didDrag) {
+						this._sustainDrag.didDrag = true;
+						this._applyDragSustain(this._sustainDrag.originStepIndex);
+					}
+					this._applyDragSustain(stepIndex);
+				});
+
+				cell.onclick = (e) => {
+					if (this._sustainDrag?.didDrag) return;
 						const currentStep = track.steps[stepIndex];
 						if (!currentStep) {
 							track.steps[stepIndex] = { notes: [], sustains: [], velocities: {} };
@@ -1298,6 +1320,26 @@ export class SequencerUIManager {
 				break;
 			}
 		}
+	}
+
+	_applyDragSustain(stepIndex) {
+		const { midiNote, mode, track, trackDiv, sequencer, tracksContainer } = this._sustainDrag;
+		if (!track.steps[stepIndex]) {
+			track.steps[stepIndex] = { notes: [], sustains: [], velocities: {} };
+		}
+		const step = track.steps[stepIndex];
+		if (mode === 'erase') {
+			if (!step.sustains.includes(midiNote)) return;
+			step.sustains = step.sustains.filter(n => n !== midiNote);
+		} else {
+			if (step.notes.includes(midiNote)) return;
+			if (step.sustains.includes(midiNote)) return;
+			if (!this.canPlaceSustain(track, stepIndex, midiNote)) return;
+			step.sustains.push(midiNote);
+			if (step.velocities[midiNote] === undefined) step.velocities[midiNote] = 100;
+		}
+		AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+		this.renderTrackGrid(track, trackDiv, sequencer, tracksContainer);
 	}
 
 	canPlaceSustain(track, stepIndex, midiNote) {

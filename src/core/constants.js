@@ -40,6 +40,7 @@ export const CONSTANTS = {
 		minMove: 5,
 		holdTime: 1.5
 	},
+	GPS_SMOOTHING_DEFAULT: 0.5,
 	GEOLOCATION_STATUS: {
 		INITIAL: 'initial',
 		SEARCHING: 'searching',
