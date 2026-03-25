@@ -191,6 +191,34 @@ Use bulk operations to work with multiple elements at once.
 
 ---
 
+## Splash Message
+
+Show a one-time message to users on app load — useful for announcements, changelogs, or usage cautions.
+
+### Setup
+
+Create a `message.json` file in the project root:
+
+```json
+{
+  "version": "2026-03-25",
+  "title": "What's New",
+  "body": "Your message text here."
+}
+```
+
+The message appears as a modal dialog on page load. Once dismissed, it won't appear again until the `version` value changes.
+
+### Updating the Message
+
+Change the `version` field to any new string — every user will see the updated message exactly once.
+
+### Disabling the Message
+
+Delete `message.json` or remove it from the server. A missing file is handled silently.
+
+---
+
 ## Keyboard Shortcuts
 
 | Shortcut | Action |

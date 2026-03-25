@@ -916,6 +916,12 @@ When Ambisonics mode selected:
 | **Max Gain Change** | Volume change limiting |
 | **Dead Zone** | Minimum movement threshold |
 
+### GPS Accuracy
+
+| Parameter | Description |
+|-----------|-------------|
+| **GPS Responsiveness** | Controls Kalman filter aggressiveness. |
+
 ### Listener Direction
 
 | Setting | Description |
