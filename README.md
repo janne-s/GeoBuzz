@@ -79,7 +79,7 @@ Sponsoring the project helps me maintain and improve the app, and eventually pro
 
 ### Distance Sequencers
 
-Step sequencers that advance based on walking distance rather than time. Create rhythmic patterns that play as you move through space.
+Step sequencers that advance based on walking distance rather than time. Create rhythmic patterns and note progressions that play as you move through space.
 
 ---
 
