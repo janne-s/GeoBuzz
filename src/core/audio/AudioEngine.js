@@ -426,6 +426,13 @@ export function audioUpdateLoop() {
 		}
 	}
 
+	const sequencers = Selectors.getSequencers();
+	for (let i = 0; i < sequencers.length; i++) {
+		if (sequencers[i].enabled) {
+			sequencers[i].processModulation();
+		}
+	}
+
 	if (positionsMayHaveChanged) {
 		const userPos = context.GeolocationManager?.getUserPosition();
 		if (userPos) {

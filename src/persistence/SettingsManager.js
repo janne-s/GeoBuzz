@@ -69,6 +69,8 @@ export class SettingsManager {
 				resumeOnReenter: seq.resumeOnReenter,
 				activePaths: seq.activePaths,
 				assignedPath: seq.assignedPath,
+				scenes: seq.scenes,
+				activeSceneIndex: seq.activeSceneIndex,
 				tracks: seq.tracks.map(track => ({
 					id: track.id,
 					instrumentType: track.instrumentType,
@@ -78,6 +80,7 @@ export class SettingsManager {
 					octave: track.octave,
 					numSteps: track.numSteps,
 					steps: track.steps,
+					sceneSteps: track.sceneSteps,
 					paramTarget: track.paramTarget,
 					editMode: track.editMode,
 					offsetMode: track.offsetMode,

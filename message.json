@@ -1,5 +1,5 @@
 {
-	"version": "2026-03-25",
+	"version": "2026-03-24",
 	"title": "Welcome to GeoBuzz",
-	"body": "This is a public demo instance. Your work is saved to the server but may be cleared periodically. Export your projects to keep a local backup or run GeoBuzz on your local or remote server. See Info menu item for more."
+	"body": "This is a public demo instance. Your work is saved to the server but may be cleared periodically. Export your projects to keep a local backup or run GeoBuzz on your local or remote server. Breaking changes may be introduced. See Info menu item for more."
 }

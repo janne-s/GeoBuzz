@@ -1089,6 +1089,9 @@ button {
 	gap: 8px;
 }
 
+.context-menu-header select {
+	max-width: 120px;
+}
 /* Universal context menu controls styling */
 .context-menu select,
 .context-menu input[type="text"],
@@ -2806,6 +2809,47 @@ input:checked+.slider:before {
 	margin-bottom: var(--spacing-xs);
 }
 
+.sequencer-actions-row {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-xs);
+	margin-bottom: var(--spacing-md);
+}
+
+.sequencer-actions-row .btn-add {
+	flex: 1;
+	margin-bottom: 0;
+}
+
+.sequencer-actions-row .scene-dropdown {
+	flex: 1;
+	font-size: var(--font-sm);
+	padding: var(--spacing-xs);
+}
+
+.sequencer-actions-row .scene-rename-btn,
+.sequencer-actions-row .scene-delete-btn {
+	flex-shrink: 0;
+}
+
+.sequencer-actions-row .scene-rename-btn {
+	color: var(--color-text-muted);
+}
+
+.sequencer-actions-row .scene-rename-btn:hover {
+	color: var(--color-primary-base);
+	background: rgba(0, 123, 255, 0.1);
+	border-radius: var(--border-radius);
+}
+
+.sequencer-actions-row .scene-delete-btn {
+	color: var(--color-danger-base);
+}
+
+.sequencer-actions-row .scene-delete-btn:hover {
+	border-radius: var(--border-radius);
+}
+
 .track-item {
 	margin-bottom: var(--spacing-lg);
 	padding: var(--spacing-md);
@@ -2832,22 +2876,44 @@ input:checked+.slider:before {
 	min-width: 60px;
 }
 
+.track-header-compact .track-duplicate-btn,
 .track-header-compact .track-delete-btn {
-	color: var(--color-danger-base);
-	font-size: 18px;
-	font-weight: bold;
+	font-size: 14px;
 	padding: 0;
-	width: 10% !important;
 	line-height: 1;
 	flex-shrink: 0;
 	background: var(--color-transparent);
 	border: none;
 	cursor: pointer;
-	margin-left: 60px;
 	margin-top: 0 !important;
 }
 
-.track-header-compact .track-delete-btn:hover {
+.track-header-compact .track-duplicate-btn,
+.track-header-compact .track-delete-btn,
+.sequencer-actions-row .scene-rename-btn,
+.sequencer-actions-row .scene-delete-btn  {
+		width: 10% !important;
+}
+
+.track-header-compact .track-duplicate-btn {
+	color: var(--color-text-muted);
+	margin-left: 35px;
+}
+
+.track-header-compact .track-duplicate-btn:hover {
+	color: var(--color-primary-base);
+	background: rgba(0, 123, 255, 0.1);
+	border-radius: var(--border-radius);
+}
+
+.track-header-compact .track-delete-btn {
+	color: var(--color-danger-base);
+	font-size: 18px;
+	font-weight: bold;
+}
+
+.track-header-compact .track-delete-btn:hover,
+.sequencer-actions-row .scene-delete-btn:hover {
 	color: var(--color-danger-base);
 	background: rgba(220, 53, 69, 0.1);
 	border-radius: var(--border-radius);

@@ -55,6 +55,10 @@ export class DistanceSequencer {
 		this._listeners = {};
 		this._tracksMap = new Map();
 
+		const defaultSceneId = `scene_${Date.now()}`;
+		this.scenes = options.scenes || [{ id: defaultSceneId, name: 'Scene 1' }];
+		this.activeSceneIndex = options.activeSceneIndex || 0;
+
 		if (options.tracks && options.tracks.length > 0) {
 			this.tracks.forEach(track => {
 				if (track.currentStep === undefined) {
@@ -66,6 +70,17 @@ export class DistanceSequencer {
 					}
 					delete track.lfo;
 				}
+
+				if (!track.sceneSteps) {
+					track.sceneSteps = {};
+					const sceneId = this.scenes[0].id;
+					track.sceneSteps[sceneId] = track.steps || [];
+					track.steps = track.sceneSteps[sceneId];
+				} else {
+					const activeSceneId = this.scenes[this.activeSceneIndex].id;
+					track.steps = track.sceneSteps[activeSceneId] || [];
+				}
+
 				this._tracksMap.set(track.id, track);
 
 				if (track.instrumentType === 'sound' && track.instrumentId && AppState) {
@@ -192,15 +207,6 @@ export class DistanceSequencer {
 
 		this._isMovingFastEnough = true;
 		this.totalDistance += smoothedDistance;
-
-		this.tracks.forEach(track => {
-			if (this._activeNotes.has(track.id)) {
-				const activeNotes = this._activeNotes.get(track.id);
-				if (activeNotes && activeNotes.size > 0) {
-					this._processTrackModulation(track);
-				}
-			}
-		});
 
 		const distanceSinceLastGlobalStep = this.totalDistance - this.lastStepDistance;
 		if (distanceSinceLastGlobalStep >= this.stepLength) {
@@ -352,6 +358,16 @@ export class DistanceSequencer {
 
 		this.dispatchEvent('stateChange');
 		this.onTrackStepTrigger(track, track.currentStep);
+	}
+
+	processModulation() {
+		if (!this.enabled) return;
+		this.tracks.forEach(track => {
+			const activeNotes = this._activeNotes.get(track.id);
+			if (activeNotes && activeNotes.size > 0) {
+				this._processTrackModulation(track);
+			}
+		});
 	}
 
 	_processTrackModulation(track) {
@@ -916,6 +932,24 @@ export class DistanceSequencer {
 			params.lfo = trackData.lfo || deepClone(DEFAULT_LFO_STRUCTURE);
 		}
 
+		const numSteps = trackData.numSteps !== undefined ? trackData.numSteps : this.numSteps;
+		const makeEmptySteps = (count) => Array(count).fill(null).map(() => ({
+			notes: [],
+			sustains: [],
+			velocity: 0.8
+		}));
+
+		const activeSceneId = this.scenes[this.activeSceneIndex].id;
+		const sceneSteps = {};
+		if (trackData.sceneSteps) {
+			Object.assign(sceneSteps, trackData.sceneSteps);
+		} else {
+			const initialSteps = trackData.steps || makeEmptySteps(numSteps);
+			this.scenes.forEach(scene => {
+				sceneSteps[scene.id] = scene.id === activeSceneId ? initialSteps : makeEmptySteps(numSteps);
+			});
+		}
+
 		const track = {
 			id: `track_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
 			instrumentType: trackData.instrumentType || 'synth',
@@ -923,12 +957,9 @@ export class DistanceSequencer {
 			synthType: trackData.synthType || 'Synth',
 			synthParams: params,
 			octave: trackData.octave !== undefined ? trackData.octave : 4,
-			numSteps: trackData.numSteps !== undefined ? trackData.numSteps : this.numSteps,
-			steps: trackData.steps || Array(trackData.numSteps !== undefined ? trackData.numSteps : this.numSteps).fill(null).map(() => ({
-				notes: [],
-				sustains: [],
-				velocity: 0.8
-			})),
+			numSteps: numSteps,
+			sceneSteps: sceneSteps,
+			steps: sceneSteps[activeSceneId],
 			paramTarget: trackData.paramTarget || 'pitch',
 			editMode: trackData.editMode || 'note',
 			offsetMode: trackData.offsetMode || 'division',
@@ -949,6 +980,32 @@ export class DistanceSequencer {
 
 		this.dispatchEvent('stateChange');
 		return track;
+	}
+
+	duplicateTrack(trackId) {
+		const source = this._tracksMap.get(trackId);
+		if (!source) return;
+
+		const sceneSteps = {};
+		for (const [sceneId, steps] of Object.entries(source.sceneSteps)) {
+			sceneSteps[sceneId] = deepClone(steps);
+		}
+
+		return this.addTrack({
+			instrumentType: source.instrumentType,
+			instrumentId: source.instrumentId,
+			synthType: source.synthType,
+			synthParams: deepClone(source.synthParams),
+			octave: source.octave,
+			numSteps: source.numSteps,
+			sceneSteps,
+			paramTarget: source.paramTarget,
+			editMode: source.editMode,
+			offsetMode: source.offsetMode,
+			offsetFraction: source.offsetFraction,
+			offsetSteps: source.offsetSteps,
+			offset: source.offset
+		});
 	}
 
 	async removeTrack(trackId) {
@@ -998,8 +1055,11 @@ export class DistanceSequencer {
 			if (track.numSteps !== undefined) return;
 
 			if (this.numSteps > oldCount) {
-				for (let i = oldCount; i < this.numSteps; i++) {
-					track.steps.push({ notes: [], sustains: [], velocity: 0.8 });
+				for (const sceneId of Object.keys(track.sceneSteps)) {
+					const steps = track.sceneSteps[sceneId];
+					for (let i = oldCount; i < this.numSteps; i++) {
+						steps.push({ notes: [], sustains: [], velocity: 0.8 });
+					}
 				}
 			}
 
@@ -1011,6 +1071,65 @@ export class DistanceSequencer {
 		if (this.currentStep >= this.numSteps) {
 			this.currentStep = this.numSteps - 1;
 		}
+		this.dispatchEvent('stateChange');
+	}
+
+	getActiveSceneId() {
+		return this.scenes[this.activeSceneIndex].id;
+	}
+
+	addScene(copyFromCurrent = false) {
+		const newId = `scene_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+		const existingNumbers = this.scenes.map(s => {
+			const match = s.name.match(/^Scene (\d+)$/);
+			return match ? parseInt(match[1]) : 0;
+		});
+		const name = `Scene ${Math.max(0, ...existingNumbers) + 1}`;
+		this.scenes.push({ id: newId, name });
+
+		this.tracks.forEach(track => {
+			const numSteps = track.numSteps !== undefined ? track.numSteps : this.numSteps;
+			if (copyFromCurrent) {
+				track.sceneSteps[newId] = deepClone(track.steps);
+			} else {
+				track.sceneSteps[newId] = Array(numSteps).fill(null).map(() => ({
+					notes: [], sustains: [], velocity: 0.8
+				}));
+			}
+		});
+
+		this.switchScene(this.scenes.length - 1);
+		return this.scenes[this.scenes.length - 1];
+	}
+
+	deleteScene(sceneIndex) {
+		if (this.scenes.length <= 1) return;
+
+		const sceneId = this.scenes[sceneIndex].id;
+		this.scenes.splice(sceneIndex, 1);
+
+		this.tracks.forEach(track => {
+			delete track.sceneSteps[sceneId];
+		});
+
+		if (this.activeSceneIndex >= this.scenes.length) {
+			this.activeSceneIndex = this.scenes.length - 1;
+		}
+		const activeSceneId = this.getActiveSceneId();
+		this.tracks.forEach(track => {
+			track.steps = track.sceneSteps[activeSceneId];
+		});
+
+		this.dispatchEvent('stateChange');
+	}
+
+	switchScene(sceneIndex) {
+		if (sceneIndex < 0 || sceneIndex >= this.scenes.length) return;
+		this.activeSceneIndex = sceneIndex;
+		const activeSceneId = this.getActiveSceneId();
+		this.tracks.forEach(track => {
+			track.steps = track.sceneSteps[activeSceneId];
+		});
 		this.dispatchEvent('stateChange');
 	}
 

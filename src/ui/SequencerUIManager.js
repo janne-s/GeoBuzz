@@ -20,7 +20,7 @@ export class SequencerUIManager {
 		this._sustainDrag = null;
 		this._isPointerDown = false;
 		document.addEventListener('mousedown', () => { this._isPointerDown = true; });
-		document.addEventListener('mouseup', () => { this._isPointerDown = false; });
+		document.addEventListener('mouseup', () => { this._isPointerDown = false; this._sustainDrag = null; });
 	}
 
 	showSequencerPanel(point, sequencer = null) {
@@ -67,6 +67,10 @@ export class SequencerUIManager {
 		labelInput.oninput = () => {
 			sequencer.label = labelInput.value || sequencer.label;
 			this.refreshSequencersList();
+			const navSelect = menu.querySelector('.element-nav-dropdown select');
+			if (navSelect && navSelect.selectedOptions[0]) {
+				navSelect.selectedOptions[0].textContent = sequencer.label;
+			}
 		};
 		labelGroup.appendChild(labelLabel);
 		labelGroup.appendChild(labelInput);
@@ -373,11 +377,83 @@ export class SequencerUIManager {
 
 		this.refreshTracksUI(tracksContainer, sequencer);
 
+		const actionsRow = createElement('div', 'sequencer-actions-row');
+
 		const addTrackBtn = createButton('<i class="fas fa-plus"></i> Add Track', () => {
 			sequencer.addTrack();
 			this.refreshTracksUI(tracksContainer, sequencer);
 		}, 'btn-add');
-		tracksTabContent.appendChild(addTrackBtn);
+		actionsRow.appendChild(addTrackBtn);
+
+		const addSceneBtn = createButton('<i class="fas fa-plus"></i> Add Scene', async () => {
+			const result = await ModalSystem.show({
+				title: 'Add Scene',
+				message: 'Create a new scene from:',
+				buttons: [
+					{ text: 'Copy Current', result: 'copy', primary: true },
+					{ text: 'Empty', result: 'empty' },
+					{ text: 'Cancel', result: 'cancel' }
+				]
+			});
+			if (result === 'cancel' || result === null) return;
+			sequencer.addScene(result === 'copy');
+			refreshSceneControls();
+			this.refreshTracksUI(tracksContainer, sequencer);
+			AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+		}, 'btn-add');
+		actionsRow.appendChild(addSceneBtn);
+
+		const sceneDropdown = createSelect(
+			sequencer.scenes.map((s, i) => ({ value: String(i), label: s.name })),
+			String(sequencer.activeSceneIndex),
+			(e) => {
+				sequencer.switchScene(parseInt(e.target.value));
+				this.refreshTracksUI(tracksContainer, sequencer);
+				AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+			}
+		);
+		sceneDropdown.className = 'scene-dropdown';
+		actionsRow.appendChild(sceneDropdown);
+
+		const renameSceneBtn = createButton('<i class="fas fa-pen"></i>', async () => {
+			const scene = sequencer.scenes[sequencer.activeSceneIndex];
+			const newName = await ModalSystem.prompt('Rename scene:', scene.name, 'Rename Scene');
+			if (!newName) return;
+			scene.name = newName;
+			refreshSceneControls();
+			AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+		}, 'btn-icon scene-rename-btn');
+		renameSceneBtn.title = 'Rename Scene';
+		actionsRow.appendChild(renameSceneBtn);
+
+		const deleteSceneBtn = createButton('<i class="fas fa-trash"></i>', async () => {
+			if (await ModalSystem.confirm(`Delete ${sequencer.scenes[sequencer.activeSceneIndex].name}?`, 'Delete Scene')) {
+				sequencer.deleteScene(sequencer.activeSceneIndex);
+				refreshSceneControls();
+				this.refreshTracksUI(tracksContainer, sequencer);
+				AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+			}
+		}, 'btn-icon scene-delete-btn');
+		deleteSceneBtn.title = 'Delete Scene';
+		actionsRow.appendChild(deleteSceneBtn);
+
+		const refreshSceneControls = () => {
+			const hasMultipleScenes = sequencer.scenes.length > 1;
+			sceneDropdown.style.display = hasMultipleScenes ? '' : 'none';
+			renameSceneBtn.style.display = hasMultipleScenes ? '' : 'none';
+			deleteSceneBtn.style.display = hasMultipleScenes ? '' : 'none';
+			sceneDropdown.innerHTML = '';
+			sequencer.scenes.forEach((s, i) => {
+				const opt = document.createElement('option');
+				opt.value = i;
+				opt.textContent = s.name;
+				opt.selected = i === sequencer.activeSceneIndex;
+				sceneDropdown.appendChild(opt);
+			});
+		};
+		refreshSceneControls();
+
+		tracksTabContent.appendChild(actionsRow);
 
 		const statusDiv = createElement('div', 'sequencer-status');
 		menu.appendChild(statusDiv);
@@ -983,8 +1059,19 @@ export class SequencerUIManager {
 				trackHeader.appendChild(settingsBtn);
 			}
 
+			const duplicateTrackBtn = createElement('button', 'btn-icon track-duplicate-btn');
+			duplicateTrackBtn.innerHTML = '<i class="fas fa-clone"></i>';
+			duplicateTrackBtn.title = 'Duplicate Track';
+			duplicateTrackBtn.onclick = () => {
+				sequencer.duplicateTrack(track.id);
+				this.refreshTracksUI(container, sequencer);
+				AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+			};
+			trackHeader.appendChild(duplicateTrackBtn);
+
 			const deleteTrackBtn = createElement('button', 'btn-icon track-delete-btn');
 			deleteTrackBtn.innerHTML = '<i class="fas fa-trash"></i>';
+			deleteTrackBtn.title = 'Delete Track';
 			deleteTrackBtn.onclick = async () => {
 				await sequencer.removeTrack(track.id);
 				this.refreshTracksUI(container, sequencer);
