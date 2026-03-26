@@ -38,3 +38,4 @@
 - Sustain painting blocking note input afterwards
 - Sequencer label not updating live in the navigation dropdown
 - Distance sequencer LFO modulation now runs at frame rate instead of GPS update rate
+- Release envelope using exponential curve for perceptually correct fade-out on synths

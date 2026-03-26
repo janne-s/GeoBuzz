@@ -362,9 +362,12 @@ export class DistanceSequencer {
 
 	processModulation() {
 		if (!this.enabled) return;
+		const now = Tone.now();
 		this.tracks.forEach(track => {
 			const activeNotes = this._activeNotes.get(track.id);
-			if (activeNotes && activeNotes.size > 0) {
+			const hasActiveNotes = activeNotes && activeNotes.size > 0;
+			const inRelease = track._releaseUntil && now < track._releaseUntil;
+			if (hasActiveNotes || inRelease) {
 				this._processTrackModulation(track);
 			}
 		});
@@ -796,7 +799,9 @@ export class DistanceSequencer {
 				} else if (soundObj.synth instanceof Tone.NoiseSynth) {
 					soundObj.synth.triggerRelease();
 					if (!willHaveActiveNotes && soundObj.envelopeGain) {
-						soundObj.envelopeGain.gain.rampTo(0, soundObj.params.release || 0.1);
+						const release = soundObj.params.release || 0.1;
+						this._exponentialRelease(soundObj.envelopeGain.gain, release);
+						track._releaseUntil = Tone.now() + release;
 					}
 				} else {
 					const note = Tone.Frequency(midiNote, 'midi').toNote();
@@ -827,7 +832,9 @@ export class DistanceSequencer {
 					}
 
 					if (!willHaveActiveNotes && soundObj.envelopeGain) {
-						soundObj.envelopeGain.gain.rampTo(0, soundObj.params.release || 0.1);
+						const release = soundObj.params.release || 0.1;
+						this._exponentialRelease(soundObj.envelopeGain.gain, release);
+						track._releaseUntil = Tone.now() + release;
 					}
 				}
 			}
@@ -844,7 +851,9 @@ export class DistanceSequencer {
 				} else if (soundEl.synth instanceof Tone.NoiseSynth) {
 					soundEl.synth.triggerRelease();
 					if (!willHaveActiveNotes && soundEl.envelopeGain) {
-						soundEl.envelopeGain.gain.rampTo(0, soundEl.params.release || 0.1);
+						const release = soundEl.params.release || 0.1;
+						this._exponentialRelease(soundEl.envelopeGain.gain, release);
+						track._releaseUntil = Tone.now() + release;
 					}
 				} else {
 					const note = Tone.Frequency(midiNote, 'midi').toNote();
@@ -865,7 +874,9 @@ export class DistanceSequencer {
 					}
 
 					if (!willHaveActiveNotes && soundEl.envelopeGain) {
-						soundEl.envelopeGain.gain.rampTo(0, soundEl.params.release || 0.1);
+						const release = soundEl.params.release || 0.1;
+						this._exponentialRelease(soundEl.envelopeGain.gain, release);
+						track._releaseUntil = Tone.now() + release;
 					}
 				}
 			}
@@ -1072,6 +1083,15 @@ export class DistanceSequencer {
 			this.currentStep = this.numSteps - 1;
 		}
 		this.dispatchEvent('stateChange');
+	}
+
+	_exponentialRelease(gainParam, duration) {
+		const now = Tone.now();
+		const currentValue = Math.max(0.001, gainParam.value);
+		gainParam.cancelScheduledValues(now);
+		gainParam.setValueAtTime(currentValue, now);
+		gainParam.exponentialRampToValueAtTime(0.001, now + duration);
+		gainParam.setValueAtTime(0, now + duration);
 	}
 
 	getActiveSceneId() {

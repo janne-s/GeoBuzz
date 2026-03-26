@@ -371,7 +371,7 @@ export class PolyphonyManager {
 		if (soundObj.type === 'NoiseSynth') {
 			this.triggerPolyphonic(soundObj.synth, [], false, soundObj);
 			if (soundObj.envelopeGain) {
-				soundObj.envelopeGain.gain.rampTo(0, soundObj.params.release || 0.1);
+				PolyphonyManager.exponentialRelease(soundObj.envelopeGain.gain, soundObj.params.release || 0.1);
 			}
 			return;
 		}
@@ -380,7 +380,7 @@ export class PolyphonyManager {
 
 		if (!playbackSource) {
 			if (soundObj.envelopeGain) {
-				soundObj.envelopeGain.gain.rampTo(0, soundObj.params.release || 0.1);
+				PolyphonyManager.exponentialRelease(soundObj.envelopeGain.gain, soundObj.params.release || 0.1);
 			}
 			return;
 		}
@@ -392,8 +392,17 @@ export class PolyphonyManager {
 		}
 
 		if (soundObj.envelopeGain) {
-			soundObj.envelopeGain.gain.rampTo(0, soundObj.params.release || 0.1);
+			PolyphonyManager.exponentialRelease(soundObj.envelopeGain.gain, soundObj.params.release || 0.1);
 		}
+	}
+
+	static exponentialRelease(gainParam, duration) {
+		const now = Tone.now();
+		const currentValue = Math.max(0.001, gainParam.value);
+		gainParam.cancelScheduledValues(now);
+		gainParam.setValueAtTime(currentValue, now);
+		gainParam.exponentialRampToValueAtTime(0.001, now + duration);
+		gainParam.setValueAtTime(0, now + duration);
 	}
 
 	static generateChord(basePitch, polyphony) {
