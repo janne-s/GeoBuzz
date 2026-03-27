@@ -199,7 +199,7 @@ export function showFileManagerDialog(soundObj = null, onFileSelected = null) {
 				uploadStatus.style.display = "none";
 			}, CONSTANTS.STATUS_LONG_MS);
 		} catch (err) {
-			uploadStatus.innerHTML = `<strong>Error:</strong> ${err.message}`;
+			uploadStatus.innerHTML = `<strong>Error:</strong> ${err?.message || 'Upload failed'}`;
 			console.error("Upload error:", err);
 		}
 	};

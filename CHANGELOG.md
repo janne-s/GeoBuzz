@@ -46,7 +46,6 @@
 
 - Scene change zones for distance sequencer: control paths can trigger scene switches based on listener position
 - Base scene setting for the distance sequencer (fallback scene when outside all scene change zones)
-- Zone type documentation in features.md (interior, corridor, both)
 
 ### Fixed
 
