@@ -3231,6 +3231,50 @@ input:checked+.slider:before {
 	border-color: var(--color-primary-base);
 }
 
+.section-header {
+	font-size: var(--font-sm);
+	font-weight: 600;
+	margin-top: var(--spacing-md);
+	margin-bottom: var(--spacing-xxs);
+	color: var(--color-text-primary);
+}
+
+.scene-change-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-bottom: var(--spacing-xxs);
+	padding: var(--spacing-xs);
+	border-radius: var(--border-radius);
+	transition: background 0.2s;
+}
+
+.scene-change-row:hover {
+	background: var(--color-bg-light);
+}
+
+.scene-change-row input[type="checkbox"] {
+	flex-shrink: 0;
+	cursor: pointer;
+}
+
+.scene-change-scene-select {
+	font-size: var(--font-sm);
+	padding: var(--spacing-xxs) var(--spacing-xs);
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius);
+	background: var(--color-white);
+	cursor: pointer;
+	width: 80px;
+	flex-shrink: 0;
+}
+
+.scene-change-scene-select:disabled {
+	background: var(--color-bg-medium);
+	color: var(--color-text-muted);
+	cursor: not-allowed;
+}
+
 /* ========================================
 	   UTILITY CLASSES
 	   ======================================== */

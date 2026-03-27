@@ -51,6 +51,10 @@ export class DistanceSequencer {
 		this.resumeOnReenter = options.resumeOnReenter !== undefined ? options.resumeOnReenter : false;
 		this.restartOnReenter = options.restartOnReenter !== undefined ? options.restartOnReenter : false;
 		this.activePaths = options.activePaths || [];
+		this.sceneChangePaths = options.sceneChangePaths || [];
+		this._sceneChangeInsideState = new Map();
+		this._sceneChangeEntryOrder = [];
+		this.baseSceneIndex = options.baseSceneIndex !== undefined ? options.baseSceneIndex : 0;
 		this.tracks = options.tracks || [];
 		this._listeners = {};
 		this._tracksMap = new Map();
@@ -150,6 +154,7 @@ export class DistanceSequencer {
 			}
 			this._releaseAllNotes();
 		}
+		this._updateSceneChangePaths(userPos);
 		this.dispatchEvent('stateChange');
 
 		if (!this.insideArea) return;
@@ -431,9 +436,13 @@ export class DistanceSequencer {
 		const paramsToReset = new Set([...track._previouslyModulatedParams].filter(p => !modulatedParams.has(p)));
 
 		paramsToReset.forEach(target => {
-			const baseValue = soundObj.params[target];
-			if (baseValue !== undefined) {
-				context.updateSynthParam(soundObj, target, baseValue, { isModulation: true });
+			if (target === 'pitch' || target === 'frequency') {
+				context.updateSynthParam(soundObj, 'detune', soundObj.params.detune || 0, { isModulation: true });
+			} else {
+				const baseValue = soundObj.params[target];
+				if (baseValue !== undefined) {
+					context.updateSynthParam(soundObj, target, baseValue, { isModulation: true });
+				}
 			}
 			track._previouslyModulatedParams.delete(target);
 		});
@@ -447,14 +456,9 @@ export class DistanceSequencer {
 
 			let finalValue;
 
-			if (target === 'pitch') {
-				const baseFreq = Tone.Frequency(baseValue, "midi").toFrequency();
-				finalValue = Tone.Frequency(baseFreq).transpose(totalOffset / 100).toFrequency();
-				context.updateSynthParam(soundObj, 'frequency', finalValue, { isModulation: true });
-
-			} else if (target === 'frequency') {
-				finalValue = Math.max(CONSTANTS.FREQUENCY_MIN, baseValue + totalOffset);
-				context.updateSynthParam(soundObj, 'frequency', finalValue, { isModulation: true });
+			if (target === 'pitch' || target === 'frequency') {
+				const detuneCents = target === 'pitch' ? totalOffset : (totalOffset / baseValue) * 1200;
+				context.updateSynthParam(soundObj, 'detune', (soundObj.params.detune || 0) + detuneCents, { isModulation: true });
 
 			} else {
 				const paramMin = def.min !== undefined ? def.min : 0;
@@ -1002,7 +1006,7 @@ export class DistanceSequencer {
 			sceneSteps[sceneId] = deepClone(steps);
 		}
 
-		return this.addTrack({
+		const newTrack = this.addTrack({
 			instrumentType: source.instrumentType,
 			instrumentId: source.instrumentId,
 			synthType: source.synthType,
@@ -1017,6 +1021,8 @@ export class DistanceSequencer {
 			offsetSteps: source.offsetSteps,
 			offset: source.offset
 		});
+		newTrack.currentStep = source.currentStep;
+		return newTrack;
 	}
 
 	async removeTrack(trackId) {
@@ -1092,6 +1098,51 @@ export class DistanceSequencer {
 		gainParam.setValueAtTime(currentValue, now);
 		gainParam.exponentialRampToValueAtTime(0.001, now + duration);
 		gainParam.setValueAtTime(0, now + duration);
+	}
+
+	_updateSceneChangePaths(userPos) {
+		if (!this.sceneChangePaths || this.sceneChangePaths.length === 0) return;
+
+		const currentStates = context.PathZoneChecker.checkIndividualPaths(userPos, this.sceneChangePaths);
+		let changed = false;
+
+		for (const config of this.sceneChangePaths) {
+			const isInside = currentStates.get(config.id) || false;
+			const wasInside = this._sceneChangeInsideState.get(config.id) || false;
+			this._sceneChangeInsideState.set(config.id, isInside);
+
+			if (!wasInside && isInside) {
+				this._sceneChangeEntryOrder = this._sceneChangeEntryOrder.filter(id => id !== config.id);
+				this._sceneChangeEntryOrder.push(config.id);
+				changed = true;
+			} else if (wasInside && !isInside) {
+				this._sceneChangeEntryOrder = this._sceneChangeEntryOrder.filter(id => id !== config.id);
+				changed = true;
+			}
+		}
+
+		if (changed) {
+			const targetIndex = this._resolveCurrentScene();
+			if (targetIndex !== this.activeSceneIndex) {
+				this.switchScene(targetIndex);
+			}
+		}
+	}
+
+	_resolveCurrentScene() {
+		for (let i = this._sceneChangeEntryOrder.length - 1; i >= 0; i--) {
+			const id = this._sceneChangeEntryOrder[i];
+			const config = this.sceneChangePaths.find(c => c.id === id);
+			if (!config) continue;
+			const isInside = this._sceneChangeInsideState.get(id);
+			if (isInside) {
+				const sceneIndex = config.sceneIndex;
+				if (sceneIndex >= 0 && sceneIndex < this.scenes.length) {
+					return sceneIndex;
+				}
+			}
+		}
+		return this.baseSceneIndex;
 	}
 
 	getActiveSceneId() {

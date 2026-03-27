@@ -576,11 +576,33 @@ Each track has:
 
 ### Spatial Tab
 
+#### Active Area
+
 | Parameter | Description |
 |-----------|-------------|
-| **Active Paths** | Checkboxes for paths that trigger sequencer |
-| **Resume on Re-enter** | Continue from last position |
-| **Restart on Re-enter** | Start from beginning |
+| **Active Paths** | Checkboxes for paths/sounds that define where the sequencer plays. If none selected, the sequencer plays anywhere |
+| **Zone Type** | Per-path zone detection mode (see below) |
+| **Resume on Re-enter** | Continue from last step when re-entering the active area |
+| **Restart on Re-enter** | Reset to step 0 when re-entering the active area |
+
+#### Zone Types
+
+| Zone | Description |
+|------|-------------|
+| **Interior** | Inside the shape boundary. Available for circles, ovals, and polygons. Lines have no interior |
+| **Corridor** | A band outside the shape boundary, extending outward by the path's tolerance distance. The only option for lines |
+| **Both** | Union of interior and corridor |
+
+#### Scene Changes
+
+| Parameter | Description |
+|-----------|-------------|
+| **Scene Change Paths** | Checkboxes for paths/sounds that trigger scene changes when the listener enters their zone |
+| **Zone Type** | Same zone detection modes as active area |
+| **Target Scene** | Which scene to switch to when the listener enters the zone |
+| **Base Scene** | The fallback scene used when the listener is not inside any scene change zone |
+
+When multiple scene change zones overlap, the most recently entered zone determines the active scene. When the listener exits a zone, the scene reverts to the next innermost zone's scene, or to the base scene if no other zones are active. A path can serve as both an active area and a scene change zone simultaneously.
 
 ---
 

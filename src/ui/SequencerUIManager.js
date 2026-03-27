@@ -178,6 +178,59 @@ export class SequencerUIManager {
 		restartGroup.appendChild(restartToggle);
 		spatialTabContent.appendChild(restartGroup);
 
+		const sceneChangeHeader = createElement('div', 'section-header');
+		sceneChangeHeader.textContent = 'Scene Changes';
+		spatialTabContent.appendChild(sceneChangeHeader);
+
+		const sceneChangeContainer = createElement('div', 'path-checkbox-list');
+		spatialTabContent.appendChild(sceneChangeContainer);
+
+		const baseSceneGroup = createElement('div', 'parameter-control');
+		const baseSceneLabel = createElement('label');
+		baseSceneLabel.textContent = 'Base Scene';
+		const baseSceneSelect = createElement('select', 'scene-change-scene-select');
+		baseSceneSelect.onchange = (e) => {
+			sequencer.baseSceneIndex = parseInt(e.target.value);
+			AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+		};
+		baseSceneGroup.appendChild(baseSceneLabel);
+		baseSceneGroup.appendChild(baseSceneSelect);
+		spatialTabContent.appendChild(baseSceneGroup);
+
+		const refreshSceneChangeUI = () => {
+			sceneChangeContainer.innerHTML = '';
+			const hasSpatialElements = Selectors.getPaths().length > 0 || Selectors.getSounds().length > 0;
+			const hasScenes = sequencer.scenes.length > 1;
+
+			if (!hasSpatialElements) {
+				const msg = createElement('div', 'info-message');
+				msg.textContent = 'No spatial elements available';
+				sceneChangeContainer.appendChild(msg);
+			} else if (!hasScenes) {
+				const msg = createElement('div', 'info-message');
+				msg.textContent = 'Add more scenes to use scene changes';
+				sceneChangeContainer.appendChild(msg);
+			} else {
+				Selectors.getPaths().forEach(path => {
+					sceneChangeContainer.appendChild(this.createSceneChangeRow(path, sequencer, 'path'));
+				});
+				Selectors.getSounds().forEach(sound => {
+					sceneChangeContainer.appendChild(this.createSceneChangeRow(sound, sequencer, 'sound'));
+				});
+			}
+
+			baseSceneSelect.innerHTML = '';
+			sequencer.scenes.forEach((s, i) => {
+				const opt = document.createElement('option');
+				opt.value = i;
+				opt.textContent = s.name;
+				opt.selected = i === sequencer.baseSceneIndex;
+				baseSceneSelect.appendChild(opt);
+			});
+			baseSceneSelect.disabled = !hasScenes;
+		};
+		refreshSceneChangeUI();
+
 		menu.appendChild(spatialTabContent);
 		menu.appendChild(tracksTabContent);
 
@@ -450,6 +503,7 @@ export class SequencerUIManager {
 				opt.selected = i === sequencer.activeSceneIndex;
 				sceneDropdown.appendChild(opt);
 			});
+			refreshSceneChangeUI();
 		};
 		refreshSceneControls();
 
@@ -457,6 +511,8 @@ export class SequencerUIManager {
 
 		const statusDiv = createElement('div', 'sequencer-status');
 		menu.appendChild(statusDiv);
+
+		let lastKnownSceneIndex = sequencer.activeSceneIndex;
 
 		const updateUI = () => {
 			const areaStatus = sequencer.activePaths.length === 0 ?
@@ -468,6 +524,12 @@ export class SequencerUIManager {
 			<strong>Distance:</strong> ${sequencer.totalDistance.toFixed(1)}m
 			<strong>Area:</strong> ${areaStatus}
 		`;
+
+			if (sequencer.activeSceneIndex !== lastKnownSceneIndex) {
+				lastKnownSceneIndex = sequencer.activeSceneIndex;
+				sceneDropdown.value = String(sequencer.activeSceneIndex);
+				this.refreshTracksUI(tracksContainer, sequencer);
+			}
 
 			sequencer.tracks.forEach((track, trackIndex) => {
 				const trackDiv = tracksContainer.children[trackIndex];
@@ -1391,6 +1453,82 @@ export class SequencerUIManager {
 		row.appendChild(checkbox);
 		row.appendChild(labelSpan);
 		row.appendChild(zoneSelect);
+
+		return row;
+	}
+
+	createSceneChangeRow(item, sequencer, type) {
+		const existingConfig = sequencer.sceneChangePaths.find(
+			sc => sc.type === type && sc.id === item.id
+		);
+
+		const row = createElement('div', 'scene-change-row');
+
+		const checkbox = createElement('input');
+		checkbox.type = 'checkbox';
+		checkbox.checked = !!existingConfig;
+
+		const labelSpan = createElement('span', 'path-selection-label');
+		labelSpan.textContent = type === 'path' ? item.label : (item.label || item.name);
+
+		const zoneSelect = createElement('select', 'path-zone-select');
+		if (type === 'path' && item.type === 'line') {
+			zoneSelect.innerHTML = '<option value="corridor">Corridor</option>';
+		} else {
+			zoneSelect.innerHTML = `
+			<option value="interior">Interior</option>
+			<option value="corridor">Corridor</option>
+			<option value="both">Both</option>
+		`;
+		}
+		zoneSelect.value = existingConfig?.zone || (type === 'path' && item.type === 'line' ? 'corridor' : 'interior');
+		zoneSelect.disabled = !existingConfig;
+
+		const sceneSelect = createSelect(
+			sequencer.scenes.map((s, i) => ({ value: String(i), label: s.name })),
+			String(existingConfig?.sceneIndex ?? 0),
+			(e) => {
+				const config = sequencer.sceneChangePaths.find(sc => sc.type === type && sc.id === item.id);
+				if (config) config.sceneIndex = parseInt(e.target.value);
+				AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+			}
+		);
+		sceneSelect.className = 'scene-change-scene-select';
+		sceneSelect.disabled = !existingConfig;
+
+		const updateConfig = () => {
+			if (checkbox.checked) {
+				sequencer.sceneChangePaths.push({
+					type, id: item.id,
+					zone: zoneSelect.value,
+					sceneIndex: parseInt(sceneSelect.value)
+				});
+				zoneSelect.disabled = false;
+				sceneSelect.disabled = false;
+			} else {
+				sequencer.sceneChangePaths = sequencer.sceneChangePaths.filter(
+					sc => !(sc.type === type && sc.id === item.id)
+				);
+				sequencer._sceneChangeInsideState.delete(item.id);
+				sequencer._sceneChangeEntryOrder = sequencer._sceneChangeEntryOrder.filter(id => id !== item.id);
+				zoneSelect.disabled = true;
+				sceneSelect.disabled = true;
+			}
+			AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+		};
+
+		checkbox.onchange = updateConfig;
+
+		zoneSelect.onchange = () => {
+			const config = sequencer.sceneChangePaths.find(sc => sc.type === type && sc.id === item.id);
+			if (config) config.zone = zoneSelect.value;
+			AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+		};
+
+		row.appendChild(checkbox);
+		row.appendChild(labelSpan);
+		row.appendChild(zoneSelect);
+		row.appendChild(sceneSelect);
 
 		return row;
 	}

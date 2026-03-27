@@ -68,6 +68,8 @@ export class SettingsManager {
 				loop: seq.loop,
 				resumeOnReenter: seq.resumeOnReenter,
 				activePaths: seq.activePaths,
+				sceneChangePaths: seq.sceneChangePaths,
+				baseSceneIndex: seq.baseSceneIndex,
 				assignedPath: seq.assignedPath,
 				scenes: seq.scenes,
 				activeSceneIndex: seq.activeSceneIndex,

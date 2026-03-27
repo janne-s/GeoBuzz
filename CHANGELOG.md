@@ -39,3 +39,17 @@
 - Sequencer label not updating live in the navigation dropdown
 - Distance sequencer LFO modulation now runs at frame rate instead of GPS update rate
 - Release envelope using exponential curve for perceptually correct fade-out on synths
+
+## 2026-03-27
+
+### Added
+
+- Scene change zones for distance sequencer: control paths can trigger scene switches based on listener position
+- Base scene setting for the distance sequencer (fallback scene when outside all scene change zones)
+- Zone type documentation in features.md (interior, corridor, both)
+
+### Fixed
+
+- Sequencer pitch modulation overriding piano roll notes (now uses detune for correct polyphonic behavior)
+- Duplicating a track mid-playback causing it to wait for loop restart before playing
+- Scene changes not reflected live in the sequencer UI (scene dropdown, track grid, scene change section)

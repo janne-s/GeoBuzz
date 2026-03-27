@@ -87,6 +87,24 @@ export const PathZoneChecker = {
 		return false;
 	},
 
+	checkIndividualPaths(userPos, pathConfigs) {
+		const results = new Map();
+		if (!pathConfigs || pathConfigs.length === 0) return results;
+
+		for (const config of pathConfigs) {
+			let shape;
+			if (config.type === 'path') {
+				shape = AppState.getPath(config.id);
+			} else if (config.type === 'sound') {
+				shape = AppState.getSound(config.id);
+			}
+			if (!shape) continue;
+			const zone = config.zone || 'interior';
+			results.set(config.id, this.isPointInZone(userPos, shape, zone));
+		}
+		return results;
+	},
+
 	checkActivePaths(userPos, activePaths) {
 		if (!activePaths || activePaths.length === 0) return true;
 
