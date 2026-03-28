@@ -48,6 +48,8 @@ export class DistanceSequencer {
 		this.releaseOnStop = options.releaseOnStop !== undefined ? options.releaseOnStop : true;
 		this.releaseDelay = options.releaseDelay !== undefined ? options.releaseDelay : 0;
 		this.loop = options.loop !== undefined ? options.loop : true;
+		this.muted = options.muted || false;
+		this.soloed = options.soloed || false;
 		this.resumeOnReenter = options.resumeOnReenter !== undefined ? options.resumeOnReenter : false;
 		this.restartOnReenter = options.restartOnReenter !== undefined ? options.restartOnReenter : false;
 		this.activePaths = options.activePaths || [];
@@ -243,10 +245,15 @@ export class DistanceSequencer {
 			const absoluteStepCount = Math.floor(effectiveDistance / this.stepLength);
 			const expectedStep = this.loop ? (absoluteStepCount % trackSteps) : Math.min(absoluteStepCount, trackSteps - 1);
 
-			const nextStep = track.currentStep === -1 ? 0 : (track.currentStep + 1) % trackSteps;
-
-			if (expectedStep === nextStep || (track.currentStep === -1 && expectedStep === 0)) {
-				this.advanceTrackStep(track);
+			if (track.currentStep === -1) {
+				track.currentStep = expectedStep;
+				this.dispatchEvent('stateChange');
+				this.onTrackStepTrigger(track, expectedStep);
+			} else {
+				const nextStep = (track.currentStep + 1) % trackSteps;
+				if (expectedStep === nextStep) {
+					this.advanceTrackStep(track);
+				}
 			}
 		});
 
@@ -646,11 +653,40 @@ export class DistanceSequencer {
 		}
 	}
 
+	isTrackAudible(track) {
+		const sequencers = Selectors.getSequencers();
+		const anySeqSoloed = sequencers.some(s => s.soloed);
+		if (anySeqSoloed && !this.soloed) return false;
+		if (this.muted) return false;
+		const anyTrackSoloed = this.tracks.some(t => t.soloed);
+		if (anyTrackSoloed && !track.soloed) return false;
+		if (track.muted) return false;
+		return true;
+	}
+
+	releaseTrackNotes(track) {
+		const activeNotes = this._activeNotes.get(track.id);
+		if (activeNotes && activeNotes.size > 0) {
+			activeNotes.forEach(note => this._triggerRelease(track, note));
+			this._activeNotes.delete(track.id);
+		}
+	}
+
+	applyMuteState() {
+		this.tracks.forEach(track => {
+			if (!this.isTrackAudible(track)) {
+				this.releaseTrackNotes(track);
+			}
+		});
+	}
+
 	async onTrackStepTrigger(track, stepIndex) {
 		if (!track.steps[stepIndex]) {
 			console.warn(`Step ${stepIndex} does not exist for track ${track.id}`);
 			return;
 		}
+
+		if (!this.isTrackAudible(track)) return;
 
 		this._processTrackModulation(track);
 
@@ -981,6 +1017,8 @@ export class DistanceSequencer {
 			offsetFraction: trackData.offsetFraction !== undefined ? trackData.offsetFraction : 0,
 			offsetSteps: trackData.offsetSteps !== undefined ? trackData.offsetSteps : 0,
 			offset: trackData.offset !== undefined ? trackData.offset : 0,
+			muted: trackData.muted || false,
+			soloed: trackData.soloed || false,
 			currentStep: -1
 		};
 		this.tracks.push(track);
@@ -1019,7 +1057,9 @@ export class DistanceSequencer {
 			offsetMode: source.offsetMode,
 			offsetFraction: source.offsetFraction,
 			offsetSteps: source.offsetSteps,
-			offset: source.offset
+			offset: source.offset,
+			muted: source.muted,
+			soloed: source.soloed
 		});
 		newTrack.currentStep = source.currentStep;
 		return newTrack;

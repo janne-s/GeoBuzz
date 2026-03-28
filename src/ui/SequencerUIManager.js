@@ -13,6 +13,7 @@ import { MenuManager } from './controllers/MenuManager.js';
 import { createDraggableHeader, createElementNavigationDropdown } from './controllers/HeaderBuilder.js';
 import { createMenuStructure } from './controllers/UIBuilder.js';
 import { hasKeyboard } from '../core/utils/typeChecks.js';
+import { deepClone } from '../core/utils/math.js';
 
 export class SequencerUIManager {
 	constructor(appContext) {
@@ -594,12 +595,22 @@ export class SequencerUIManager {
 				...sequencer,
 				id: `seq_${Date.now()}`,
 				label: `${sequencer.label} (Copy)`,
-				tracks: sequencer.tracks.map(track => ({
-					...track,
-					id: `track_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
-					steps: track.steps.map(step => ({ ...step }))
-				}))
+				scenes: deepClone(sequencer.scenes),
+				sceneChangePaths: deepClone(sequencer.sceneChangePaths),
+				tracks: sequencer.tracks.map(track => {
+					const sceneSteps = {};
+					for (const [sceneId, steps] of Object.entries(track.sceneSteps)) {
+						sceneSteps[sceneId] = deepClone(steps);
+					}
+					return {
+						...track,
+						id: `track_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+						synthParams: deepClone(track.synthParams),
+						sceneSteps
+					};
+				})
 			});
+			newSequencer.reset();
 			AppState.dispatch({ type: 'SEQUENCER_ADDED', payload: { sequencer: newSequencer } });
 			this.refreshSequencersList();
 			this.appContext.closeAllMenus();
@@ -1144,6 +1155,23 @@ export class SequencerUIManager {
 			trackDiv.appendChild(trackHeader);
 
 			const trackOffsetGroup = createElement('div', 'parameter-control');
+
+			const trackSoloBtn = createElement('button', `solo-btn ${track.soloed ? 'active' : ''}`);
+			trackSoloBtn.textContent = 'S';
+			trackSoloBtn.onclick = () => {
+				track.soloed = !track.soloed;
+				sequencer.applyMuteState();
+				this.refreshTracksUI(container, sequencer);
+			};
+
+			const trackMuteBtn = createElement('button', `mute-btn ${track.muted ? 'active' : ''}`);
+			trackMuteBtn.textContent = 'M';
+			trackMuteBtn.onclick = () => {
+				track.muted = !track.muted;
+				sequencer.applyMuteState();
+				this.refreshTracksUI(container, sequencer);
+			};
+
 			const trackOffsetLabel = createElement('label');
 			trackOffsetLabel.textContent = 'Offset';
 			const offsetModeSelect = createElement('select');
@@ -1253,6 +1281,8 @@ export class SequencerUIManager {
 			trackOffsetGroup.appendChild(stepsInput);
 			trackOffsetGroup.appendChild(meterInput);
 			trackOffsetGroup.appendChild(meterDisplay);
+			trackOffsetGroup.appendChild(trackSoloBtn);
+			trackOffsetGroup.appendChild(trackMuteBtn);
 			trackDiv.appendChild(trackOffsetGroup);
 
 			const octaveAndModeRow = createElement('div', 'track-octave-mode-row');
@@ -1582,11 +1612,31 @@ export class SequencerUIManager {
 
 		list.innerHTML = '';
 
-		Selectors.getSequencers().forEach((seq, index) => {
+		const sequencers = Selectors.getSequencers();
+
+		sequencers.forEach((seq, index) => {
 			const item = createElement('div', 'sequencer-list-item');
 
 			const label = createElement('span');
 			label.textContent = seq.label;
+
+			const soloBtn = createElement('button', `solo-btn ${seq.soloed ? 'active' : ''}`);
+			soloBtn.textContent = 'S';
+			soloBtn.onclick = (e) => {
+				e.stopPropagation();
+				seq.soloed = !seq.soloed;
+				sequencers.forEach(s => s.applyMuteState());
+				this.refreshSequencersList();
+			};
+
+			const muteBtn = createElement('button', `mute-btn ${seq.muted ? 'active' : ''}`);
+			muteBtn.textContent = 'M';
+			muteBtn.onclick = (e) => {
+				e.stopPropagation();
+				seq.muted = !seq.muted;
+				seq.applyMuteState();
+				this.refreshSequencersList();
+			};
 
 			const status = createElement('span');
 			status.innerHTML = seq.enabled ?
@@ -1594,6 +1644,8 @@ export class SequencerUIManager {
 				'<i class="fas fa-circle icon-muted"></i>';
 
 			item.appendChild(label);
+			item.appendChild(soloBtn);
+			item.appendChild(muteBtn);
 			item.appendChild(status);
 
 			item.onclick = () => {

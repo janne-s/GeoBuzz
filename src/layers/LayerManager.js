@@ -297,7 +297,7 @@ class LayerManagerClass {
 			item.appendChild(nameEl);
 
 			const soloBtn = document.createElement('button');
-			soloBtn.className = `user-layer-solo ${layer.soloed ? 'active' : ''}`;
+			soloBtn.className = `solo-btn ${layer.soloed ? 'active' : ''}`;
 			soloBtn.textContent = 'S';
 			soloBtn.title = layer.soloed ? 'Unsolo layer' : 'Solo layer';
 			soloBtn.onclick = (e) => {
@@ -307,7 +307,7 @@ class LayerManagerClass {
 			item.appendChild(soloBtn);
 
 			const muteBtn = document.createElement('button');
-			muteBtn.className = `user-layer-mute ${layer.muted ? 'active' : ''}`;
+			muteBtn.className = `mute-btn ${layer.muted ? 'active' : ''}`;
 			muteBtn.textContent = 'M';
 			muteBtn.title = layer.muted ? 'Unmute layer' : 'Mute layer';
 			muteBtn.onclick = (e) => {

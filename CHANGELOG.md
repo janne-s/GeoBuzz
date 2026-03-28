@@ -52,3 +52,13 @@
 - Sequencer pitch modulation overriding piano roll notes (now uses detune for correct polyphonic behavior)
 - Duplicating a track mid-playback causing it to wait for loop restart before playing
 - Scene changes not reflected live in the sequencer UI (scene dropdown, track grid, scene change section)
+
+## 2026-03-28
+
+### Added
+
+- Solo and mute controls for distance sequencers (per-sequencer and per-track)
+
+### Fixed
+
+- Duplicated sequencers not playing in sync due to copied runtime track state
