@@ -2,6 +2,8 @@
 
 Inspiring starting points for custom buzz players. Not production-ready — springboards for your own development.
 
+![GeoBuzz screenshot](/docs/geobuzz-examples-screenshots.jpg)
+
 ---
 
 ## Examples
