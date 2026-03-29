@@ -2216,6 +2216,7 @@ label.layer-item span {
 .pitch-display {
 	min-width: 50px;
 	text-align: right;
+	font-size: var(--font-lg);
 }
 
 /* Tab content styles */
