@@ -50,6 +50,7 @@ export const SimulationController = {
 			}
 		});
 		AppState.dispatch({ type: 'SIMULATION_STOPPED' });
+		AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 		if (AppState.simulation.animationState.frameId) {
 			cancelAnimationFrame(AppState.simulation.animationState.frameId);
 			AppState.simulation.animationState.frameId = null;

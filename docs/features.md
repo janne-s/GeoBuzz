@@ -78,6 +78,12 @@ Appears in the Sound tab when Volume Model is set to Ray-Cast Based:
 | **Tolerance** | Line | Detection distance from line |
 | **Smoothing** | Line | Curve interpolation |
 
+#### Speed Gate
+
+| Parameter | Description |
+|-----------|-------------|
+| **Min Speed Gate** | Minimum movement speed (m/s) required for the sound to play. When the user's speed falls below this threshold, the sound is silenced as if the user left the area. Default: 0 (disabled) |
+
 ---
 
 ### Sound Tab

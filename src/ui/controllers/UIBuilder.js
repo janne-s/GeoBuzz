@@ -336,6 +336,13 @@ export function createSpatialSection(obj) {
 				contentContainer.appendChild(smoothingSection);
 			}
 
+			const speedGateDef = PARAMETER_REGISTRY['speedGate'];
+			if (speedGateDef) {
+				contentContainer.appendChild(
+					context.createParameterControl(speedGateDef, 'speedGate', obj, undefined, { small: true, updateNode: false })
+				);
+			}
+
 			return contentContainer;
 		}
 	});
