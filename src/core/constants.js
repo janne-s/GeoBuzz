@@ -258,7 +258,9 @@ export const CONSTANTS = {
 		polyphony: 1,
 		speedAdvance: false,
 		speedAdvanceThreshold: 0.2,
-		speedGate: 0
+		speedGate: 0,
+		speedMin: 0,
+		speedMax: 10
 	},
 
 	DEFAULT_EQ_VALUES: {

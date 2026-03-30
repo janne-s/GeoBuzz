@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-03-30
+
+### Added
+
+- Per-key speed gate for grid mode sampler
+
 ## 2026-03-29
 
 ### Fixed

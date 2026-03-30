@@ -329,7 +329,7 @@ export const SYNTH_REGISTRY = {
 			sampler.maxPolyphony = params.polyphony || 4;
 			return sampler;
 		},
-		parameters: ['attack', 'release', 'loop', 'filterFreq', 'filterType', 'resonance', 'pan', 'polyphony', 'speedGate', 'samplerMode', 'gridSamples', 'soundFile']
+		parameters: ['attack', 'release', 'loop', 'filterFreq', 'filterType', 'resonance', 'pan', 'polyphony', 'speedGate', 'speedMin', 'speedMax', 'samplerMode', 'gridSamples', 'soundFile']
 	}
 };
 

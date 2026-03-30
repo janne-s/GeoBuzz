@@ -47,7 +47,7 @@ Serve the project via any web server and open in browser. ES modules require HTT
 
 Data is stored locally in the browser using IndexedDB. Each workspace gets a unique URL you can bookmark to return later. All actions are automatically saved.
 
-**Private/incognito mode:** IndexedDB data is discarded when the browser window closes. Workspace URLs from private sessions cannot be opened in normal mode.
+**Private/incognito mode:** IndexedDB data is discarded when the browser window closes. Workspace URLs from private sessions cannot be opened in normal mode. Some browsers restrict IndexedDB access in private mode, which may prevent file uploads from working.
 
 **Data persistence:** On Safari, IndexedDB may be evicted after 7 days if the user hasn't visited the origin.
 

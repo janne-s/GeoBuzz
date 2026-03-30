@@ -436,114 +436,6 @@ async function syncPitchToKeyboard(obj, newPitch) {
 
 // MENU TABS
 
-async function showGridSampleDialog(soundObj, midiNote) {
-	const noteName = Tone.Frequency(midiNote, 'midi').toNote();
-	const existingSample = soundObj.params.gridSamples[midiNote] || { fileName: null, pitch: 0 };
-
-	const overlay = document.createElement('div');
-	overlay.className = 'modal-overlay';
-
-	const modal = document.createElement('div');
-	modal.className = 'modal-dialog';
-	modal.style.maxWidth = '400px';
-
-	const currentFileName = existingSample.fileName || 'No sample loaded';
-
-	modal.innerHTML = `
-		<div class="modal-header">
-			<h3>Configure ${noteName}</h3>
-		</div>
-		<div class="modal-body">
-			<div class="parameter-control">
-				<label>Sample File</label>
-				<div class="file-info-text">${currentFileName}</div>
-			</div>
-			<div class="parameter-control">
-				<label>Pitch Adjustment</label>
-				<input type="range" id="gridPitchSlider" class="pitch-slider" min="-12" max="12" step="1" value="${existingSample.pitch || 0}">
-				<span id="gridPitchDisplay" class="pitch-display">${existingSample.pitch || 0} st</span>
-			</div>
-		</div>
-		<div class="modal-footer modal-footer-equal">
-			<button id="gridLoadBtn" class="btn-primary">Load Sample</button>
-			${existingSample.fileName ? '<button id="gridClearBtn" class="btn-secondary">Clear</button>' : ''}
-			<button id="gridCancelBtn" class="btn-secondary">Close</button>
-		</div>
-	`;
-
-	overlay.appendChild(modal);
-	document.body.appendChild(overlay);
-
-	const pitchSlider = modal.querySelector('#gridPitchSlider');
-	const pitchDisplay = modal.querySelector('#gridPitchDisplay');
-
-	pitchSlider.oninput = () => {
-		const value = parseInt(pitchSlider.value);
-		pitchDisplay.textContent = `${value > 0 ? '+' : ''}${value} st`;
-	};
-
-	return new Promise((resolve) => {
-		const cleanup = () => {
-			document.body.removeChild(overlay);
-		};
-
-		modal.querySelector('#gridLoadBtn').onclick = async () => {
-			cleanup();
-
-			const fileSelected = await new Promise((resolveFile) => {
-				showFileManagerDialog(soundObj, (selectedFile) => {
-					resolveFile(selectedFile);
-				});
-			});
-
-			if (fileSelected) {
-				if (!soundObj.params.gridSamples) soundObj.params.gridSamples = {};
-				soundObj.params.gridSamples[midiNote] = {
-					fileName: fileSelected,
-					pitch: parseInt(pitchSlider.value)
-				};
-
-				await changeSoundType(soundObj, 'Sampler');
-
-				resolve(true);
-			} else {
-				resolve(false);
-			}
-		};
-
-		const clearBtn = modal.querySelector('#gridClearBtn');
-		if (clearBtn) {
-			clearBtn.onclick = async () => {
-				cleanup();
-
-				if (soundObj.params.gridSamples && soundObj.params.gridSamples[midiNote]) {
-					delete soundObj.params.gridSamples[midiNote];
-					await changeSoundType(soundObj, 'Sampler');
-				}
-
-				resolve(true);
-			};
-		}
-
-		modal.querySelector('#gridCancelBtn').onclick = () => {
-			if (existingSample.fileName && soundObj.params.gridSamples[midiNote]) {
-				const newPitch = parseInt(pitchSlider.value);
-				if (newPitch !== existingSample.pitch) {
-					soundObj.params.gridSamples[midiNote].pitch = newPitch;
-				}
-			}
-			cleanup();
-			resolve(false);
-		};
-
-		overlay.onclick = (e) => {
-			if (e.target === overlay) {
-				modal.querySelector('#gridCancelBtn').click();
-			}
-		};
-	});
-}
-
 const ParameterManager = {
 	getValue(target, paramKey, options = {}) {
 		if (paramKey.startsWith('lfo_')) {
@@ -2376,7 +2268,7 @@ appContext.initialize({
 		changeSoundType,
 		showMenuTab,
 		showFileManagerDialog,
-		showGridSampleDialog,
+		showGridSampleDialog: DialogManager.showGridSampleDialog,
 		showSoundMenu,
 		showPathMenu,
 		changeFX,

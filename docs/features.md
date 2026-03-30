@@ -197,6 +197,7 @@ For keyboard-triggered sounds.
 | **Clear Selection** | Remove all selected notes |
 | **Grid Edit/Play Mode** | Toggle between sample assignment and preview (Sampler in Grid mode) |
 | **Clear All Samples** | Remove all grid samples (Sampler in Grid mode) |
+| **Speed Range** | Per-key speed range slider in single mode; per-key speed range in grid mode individual key edit dialog (Sampler only) |
 
 ---
 

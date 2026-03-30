@@ -257,6 +257,17 @@ export function updateAudio(userPos, now) {
 				}
 			}
 
+			if (s.type === 'Sampler' && isInside) {
+				const userSpeed = getUserMovementSpeed();
+				const speedMin = s.params.speedMin ?? 0;
+				const speedMax = s.params.speedMax ?? 10;
+				if (speedMin > 0 || speedMax < 10) {
+					if (userSpeed < speedMin || userSpeed > speedMax) {
+						isInside = false;
+					}
+				}
+			}
+
 			const wasInside = s.wasInsideArea || false;
 			s.wasInsideArea = isInside;
 
@@ -348,6 +359,41 @@ export function updateAudio(userPos, now) {
 				} else if (!isInside && s.isPlaying) {
 					s.isPlaying = false;
 					NoteManager.release(s);
+				} else if (isInside && s.isPlaying && s.type === 'Sampler' && s.params.samplerMode === 'grid') {
+					const gridSamples = s.params.gridSamples;
+					const hasGridSpeedRanges = gridSamples && Object.values(gridSamples).some(
+						gs => (gs.speedMin ?? 0) > 0 || (gs.speedMax ?? 10) < 10
+					);
+					s._hasGridSpeedRanges = hasGridSpeedRanges;
+					if (hasGridSpeedRanges) {
+						const userSpeed = getUserMovementSpeed();
+						const eligibleKeys = new Set();
+						for (const [midi, gs] of Object.entries(gridSamples)) {
+							if (!gs.fileName) continue;
+							const sMin = gs.speedMin ?? 0;
+							const sMax = gs.speedMax ?? 10;
+							if (userSpeed >= sMin && userSpeed <= sMax) {
+								eligibleKeys.add(midi);
+							}
+						}
+						const prevKeys = s._eligibleGridKeys;
+						const changed = !prevKeys ||
+							eligibleKeys.size !== prevKeys.size ||
+							[...eligibleKeys].some(k => !prevKeys.has(k));
+						if (changed) {
+							s._skipEnvelope = true;
+							NoteManager.release(s);
+							NoteManager.trigger(s);
+							s._skipEnvelope = false;
+						}
+						s._eligibleGridKeys = eligibleKeys;
+					} else if (s._eligibleGridKeys) {
+						delete s._eligibleGridKeys;
+						s._skipEnvelope = true;
+						NoteManager.release(s);
+						NoteManager.trigger(s);
+						s._skipEnvelope = false;
+					}
 				}
 			}
 
@@ -397,7 +443,9 @@ export function audioUpdateLoop() {
 	if (audioUpdateLoop.lastSpeed === undefined || Math.abs(currentSpeed - audioUpdateLoop.lastSpeed) > CONSTANTS.ZERO_SPEED_THRESHOLD) {
 		const sounds = Selectors.getSounds();
 		for (let i = 0; i < sounds.length; i++) {
-			if (sounds[i].params?.speedGate > 0 || sounds[i].params?.speedLockScale > 0 || sounds[i].params?.speedAdvance) {
+			const p = sounds[i].params;
+			if (p?.speedGate > 0 || p?.speedLockScale > 0 || p?.speedAdvance ||
+				(sounds[i].type === 'Sampler' && (p?.speedMin > 0 || p?.speedMax < 10 || sounds[i]._hasGridSpeedRanges))) {
 				positionsMayHaveChanged = true;
 				break;
 			}

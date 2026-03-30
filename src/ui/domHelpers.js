@@ -52,6 +52,122 @@ export function makeValueEditable(display, slider, { modalSystem, formatValue, o
 	});
 }
 
+export function createDualRangeSlider({ min, max, step, valueLow, valueHigh, unit, formatValue, modalSystem, onChange, onCommit }) {
+	const fmt = formatValue || ((v) => parseFloat(v).toFixed(1) + (unit || ''));
+
+	const container = createElement('div', 'dual-range-container');
+	const track = createElement('div', 'dual-range-track');
+	const fill = createElement('div', 'dual-range-fill');
+	track.appendChild(fill);
+
+	const sliderLow = createElement('input', 'dual-range-input dual-range-low');
+	sliderLow.type = 'range';
+	sliderLow.min = min;
+	sliderLow.max = max;
+	sliderLow.step = step;
+	sliderLow.value = valueLow;
+
+	const sliderHigh = createElement('input', 'dual-range-input dual-range-high');
+	sliderHigh.type = 'range';
+	sliderHigh.min = min;
+	sliderHigh.max = max;
+	sliderHigh.step = step;
+	sliderHigh.value = valueHigh;
+
+	const displayLow = createElement('span', 'value-display dual-range-value-low');
+	displayLow.textContent = fmt(valueLow);
+	const displayHigh = createElement('span', 'value-display dual-range-value-high');
+	displayHigh.textContent = fmt(valueHigh);
+
+	const updateFill = () => {
+		const range = max - min;
+		const lowPct = ((parseFloat(sliderLow.value) - min) / range) * 100;
+		const highPct = ((parseFloat(sliderHigh.value) - min) / range) * 100;
+		fill.style.left = lowPct + '%';
+		fill.style.width = (highPct - lowPct) + '%';
+	};
+
+	const fireChange = () => {
+		if (onChange) onChange(parseFloat(sliderLow.value), parseFloat(sliderHigh.value));
+	};
+
+	const fireCommit = () => {
+		if (onCommit) onCommit(parseFloat(sliderLow.value), parseFloat(sliderHigh.value));
+	};
+
+	sliderLow.oninput = () => {
+		if (parseFloat(sliderLow.value) > parseFloat(sliderHigh.value)) {
+			sliderLow.value = sliderHigh.value;
+		}
+		displayLow.textContent = fmt(sliderLow.value);
+		updateFill();
+		fireChange();
+	};
+
+	sliderHigh.oninput = () => {
+		if (parseFloat(sliderHigh.value) < parseFloat(sliderLow.value)) {
+			sliderHigh.value = sliderLow.value;
+		}
+		displayHigh.textContent = fmt(sliderHigh.value);
+		updateFill();
+		fireChange();
+	};
+
+	sliderLow.onchange = fireCommit;
+	sliderHigh.onchange = fireCommit;
+
+	if (modalSystem) {
+		makeValueEditable(displayLow, sliderLow, {
+			modalSystem,
+			formatValue: fmt,
+			onUpdate: (val) => {
+				if (val > parseFloat(sliderHigh.value)) {
+					sliderHigh.value = val;
+					displayHigh.textContent = fmt(val);
+				}
+				updateFill();
+				fireChange();
+				fireCommit();
+			}
+		});
+		makeValueEditable(displayHigh, sliderHigh, {
+			modalSystem,
+			formatValue: fmt,
+			onUpdate: (val) => {
+				if (val < parseFloat(sliderLow.value)) {
+					sliderLow.value = val;
+					displayLow.textContent = fmt(val);
+				}
+				updateFill();
+				fireChange();
+				fireCommit();
+			}
+		});
+	}
+
+	const label = createElement('label');
+	label.textContent = 'Speed Range';
+
+	const sliders = createElement('div', 'dual-range-sliders');
+	sliders.appendChild(track);
+	sliders.appendChild(sliderLow);
+	sliders.appendChild(sliderHigh);
+
+	container.appendChild(label);
+	container.appendChild(displayLow);
+	container.appendChild(sliders);
+	container.appendChild(displayHigh);
+
+	updateFill();
+
+	container.getValues = () => ({
+		low: parseFloat(sliderLow.value),
+		high: parseFloat(sliderHigh.value)
+	});
+
+	return container;
+}
+
 export function animateSliderReset(slider) {
 	slider.classList.add('slider-flash');
 	requestAnimationFrame(() => {

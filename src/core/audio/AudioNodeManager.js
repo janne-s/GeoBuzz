@@ -1,6 +1,7 @@
 import { CONSTANTS } from '../constants.js';
 import { Selectors } from '../state/selectors.js';
 import { SYNTH_REGISTRY } from './SynthRegistry.js';
+import { getUserMovementSpeed } from './AudioEngine.js';
 
 export class AudioNodeManager {
 	static createAudioChain(type, params = {}, spatialMode = 'off') {
@@ -332,6 +333,17 @@ export class PolyphonyManager {
 			if (!allLoaded) {
 				return;
 			}
+
+			if (soundObj.params.samplerMode === 'single') {
+				const speedMin = soundObj.params.speedMin ?? 0;
+				const speedMax = soundObj.params.speedMax ?? 10;
+				if (speedMin > 0 || speedMax < 10) {
+					const userSpeed = getUserMovementSpeed();
+					if (userSpeed < speedMin || userSpeed > speedMax) {
+						return;
+					}
+				}
+			}
 		}
 
 		if (soundObj.type === 'NoiseSynth') {
@@ -351,7 +363,7 @@ export class PolyphonyManager {
 			this.triggerPolyphonic(soundObj.synth, playbackSource.values, true, soundObj);
 		}
 
-		if (soundObj.envelopeGain) {
+		if (soundObj.envelopeGain && !soundObj._skipEnvelope) {
 			const now = Tone.now();
 			const attack = soundObj.params.attack || 0.01;
 			const decay = soundObj.params.decay || 0.2;
@@ -391,7 +403,7 @@ export class PolyphonyManager {
 			this.triggerPolyphonic(soundObj.synth, playbackSource.values, false, soundObj);
 		}
 
-		if (soundObj.envelopeGain) {
+		if (soundObj.envelopeGain && !soundObj._skipEnvelope) {
 			PolyphonyManager.exponentialRelease(soundObj.envelopeGain.gain, soundObj.params.release || 0.1);
 		}
 	}
@@ -456,6 +468,15 @@ export class PolyphonyManager {
 						const gridSample = soundObj.params.gridSamples[midiNote];
 
 						if (gridSample && gridSample.fileName) {
+							const speedMin = gridSample.speedMin ?? 0;
+							const speedMax = gridSample.speedMax ?? 10;
+							if (speedMin > 0 || speedMax < 10) {
+								const userSpeed = getUserMovementSpeed();
+								if (userSpeed < speedMin || userSpeed > speedMax) {
+									return;
+								}
+							}
+
 							const buffer = synth._buffers.get(midiNote.toString());
 							if (!buffer) {
 								console.warn(`Grid sampler: buffer not found for MIDI ${midiNote}`);
