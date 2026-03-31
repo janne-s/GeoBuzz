@@ -35,7 +35,7 @@ import { calcGain, calculatePathGain, calculateRelativePosition, calculateBearin
 import { processLFOs, processPathLFOs } from './audio/LFOProcessor.js';
 
 // Utils
-import { toRadians, toDegrees, deepClone, setTemporaryFlag, isCircularPath, decodePolyline, mapValue } from './utils/math.js';
+import { toRadians, toDegrees, deepClone, setTemporaryFlag, isCircularPath, mapValue } from './utils/math.js';
 import { debounce, throttle } from './utils/debounce.js';
 import { isValidLatLon, isValidMarker, isValidSound, isValidControlPath, isValidSequencer, clampNumber } from './utils/validation.js';
 import { isFileSynth, hasKeyboard, isGranularMode, isLinearPath, isTouchDevice } from './utils/typeChecks.js';
@@ -2305,7 +2305,6 @@ appContext.initialize({
 		toDegrees,
 		setTemporaryFlag,
 		isCircularPath,
-		decodePolyline,
 		mapValue,
 		debounce,
 		throttle,

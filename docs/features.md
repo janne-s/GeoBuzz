@@ -891,7 +891,7 @@ Selecting "Simulate Point-to-Point" or "Simulate Along Path" opens a controls ba
 1. Click "Simulate Point-to-Point" in user menu — controls bar appears with "Place a target."
 2. Click on the map to place a draggable target marker
 3. Drag the target to adjust position, then press **Go**
-4. The app routes via OSRM pedestrian routing and animates user movement along the path
+4. The app fetches local road data via Overpass API and routes the user along nearby streets. Try again after a while if the API can't be reached. For production use replace the route finding APi with something more robust.
 
 #### Path Simulation
 

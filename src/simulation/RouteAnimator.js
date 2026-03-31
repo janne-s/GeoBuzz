@@ -2,8 +2,143 @@ import { AppState } from '../core/state/StateManager.js';
 import { Selectors } from '../core/state/selectors.js';
 import { GeolocationManager } from '../core/geospatial/GeolocationManager.js';
 import { updateAudio } from '../core/audio/AudioEngine.js';
-import { toRadians, toDegrees, decodePolyline } from '../core/utils/math.js';
+import { toRadians, toDegrees } from '../core/utils/math.js';
 import { CONSTANTS } from '../core/constants.js';
+import { Geometry } from '../core/geospatial/Geometry.js';
+
+let roadGraph = null;
+let graphBBox = null;
+
+function createBBox(lat, lng, radiusMeters) {
+	const dLat = radiusMeters / 110540;
+	const dLng = radiusMeters / (111320 * Math.cos(lat * Math.PI / 180));
+	return {
+		south: lat - dLat,
+		north: lat + dLat,
+		west: lng - dLng,
+		east: lng + dLng
+	};
+}
+
+function isInsideBBox(lat, lng, bbox) {
+	return lat >= bbox.south && lat <= bbox.north && lng >= bbox.west && lng <= bbox.east;
+}
+
+async function loadRoadNetwork(centerLat, centerLng) {
+	const radius = 1200;
+	const bbox = createBBox(centerLat, centerLng, radius);
+
+	const query = `[out:json][timeout:20];way["highway"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});(._;>;);out body;`;
+
+	let data;
+	for (let attempt = 0; attempt < 2; attempt++) {
+		try {
+			const response = await fetch('https://overpass-api.de/api/interpreter', {
+				method: 'POST',
+				body: query
+			});
+			data = await response.json();
+			break;
+		} catch (e) {
+			if (attempt === 1) throw e;
+		}
+	}
+
+	const nodes = {};
+	const graph = {};
+
+	for (const el of data.elements) {
+		if (el.type === 'node') {
+			nodes[el.id] = [el.lat, el.lon];
+		}
+	}
+
+	for (const el of data.elements) {
+		if (el.type === 'way') {
+			for (let i = 0; i < el.nodes.length - 1; i++) {
+				const a = el.nodes[i];
+				const b = el.nodes[i + 1];
+				if (!nodes[a] || !nodes[b]) continue;
+
+				const dist = Geometry.distance(L.latLng(...nodes[a]), L.latLng(...nodes[b]));
+
+				graph[a] = graph[a] || [];
+				graph[b] = graph[b] || [];
+				graph[a].push({ node: b, weight: dist });
+				graph[b].push({ node: a, weight: dist });
+			}
+		}
+	}
+
+	roadGraph = { nodes, graph };
+	graphBBox = bbox;
+}
+
+function findNearestNode(lat, lng) {
+	let bestId = null;
+	let bestDist = Infinity;
+
+	for (const id in roadGraph.nodes) {
+		const [nLat, nLng] = roadGraph.nodes[id];
+		const d = Math.hypot(nLat - lat, nLng - lng);
+		if (d < bestDist) {
+			bestDist = d;
+			bestId = id;
+		}
+	}
+
+	return bestId;
+}
+
+function dijkstra(start, end) {
+	const dist = {};
+	const prev = {};
+	const queue = new Set(Object.keys(roadGraph.graph));
+
+	for (const node of queue) dist[node] = Infinity;
+	dist[start] = 0;
+
+	while (queue.size) {
+		let u = null;
+		let min = Infinity;
+
+		for (const n of queue) {
+			if (dist[n] < min) {
+				min = dist[n];
+				u = n;
+			}
+		}
+
+		if (!u || u === end) break;
+		queue.delete(u);
+
+		for (const edge of roadGraph.graph[u] || []) {
+			const alt = dist[u] + edge.weight;
+			if (alt < dist[edge.node]) {
+				dist[edge.node] = alt;
+				prev[edge.node] = u;
+			}
+		}
+	}
+
+	const path = [];
+	let u = end;
+	while (u) {
+		path.unshift(u);
+		u = prev[u];
+	}
+
+	return { path, distance: dist[end] };
+}
+
+function straightLineFallback(startLat, startLng, endLat, endLng) {
+	const start = L.latLng(startLat, startLng);
+	const end = L.latLng(endLat, endLng);
+	return {
+		points: [start, end],
+		totalDistance: Geometry.distance(start, end)
+	};
+}
 
 export const RouteAnimator = {
 	getPointAtDistance(routePoints, distance) {
@@ -111,23 +246,33 @@ export const RouteAnimator = {
 
 		const startPoint = GeolocationManager.getUserPosition();
 		const endPoint = Selectors.getSimulationTarget().getLatLng();
-		const profile = 'foot';
-
-		const url = `https://router.project-osrm.org/route/v1/${profile}/${startPoint.lng},${startPoint.lat};${endPoint.lng},${endPoint.lat}?overview=full&geometries=polyline`;
 
 		try {
-			const response = await fetch(url);
-			const data = await response.json();
+			const needsLoad = !roadGraph || !graphBBox ||
+				!isInsideBBox(startPoint.lat, startPoint.lng, graphBBox) ||
+				!isInsideBBox(endPoint.lat, endPoint.lng, graphBBox);
 
-			if (data.code !== 'Ok' || data.routes.length === 0) {
-				throw new Error('No route found.');
+			if (needsLoad) {
+				const centerLat = (startPoint.lat + endPoint.lat) / 2;
+				const centerLng = (startPoint.lng + endPoint.lng) / 2;
+				await loadRoadNetwork(centerLat, centerLng);
 			}
 
-			const route = data.routes[0];
-			const decodedPoints = decodePolyline(route.geometry).map(p => L.latLng(p[0], p[1]));
+			const startNode = findNearestNode(startPoint.lat, startPoint.lng);
+			const endNode = findNearestNode(endPoint.lat, endPoint.lng);
+			const result = dijkstra(startNode, endNode);
 
-			AppState.simulation.route.points = decodedPoints;
-			AppState.simulation.route.totalDistance = route.distance;
+			if (!result.path.length || result.distance === Infinity) {
+				throw new Error('No route found in road graph.');
+			}
+
+			const latLngPoints = result.path.map(id => {
+				const [lat, lng] = roadGraph.nodes[id];
+				return L.latLng(lat, lng);
+			});
+
+			AppState.simulation.route.points = latLngPoints;
+			AppState.simulation.route.totalDistance = result.distance;
 
 			AppState.dispatch({ type: 'SIMULATION_STARTED' });
 			AppState.simulation.animationState.startTime = performance.now();
@@ -136,7 +281,18 @@ export const RouteAnimator = {
 
 		} catch (error) {
 			console.error('Routing error:', error);
-			document.getElementById('simulationStatusText').textContent = 'Could not find a route.';
+
+			const statusText = document.getElementById('simulationStatusText');
+			if (statusText) statusText.textContent = 'Road data unavailable, using straight line.';
+
+			const fallback = straightLineFallback(startPoint.lat, startPoint.lng, endPoint.lat, endPoint.lng);
+			AppState.simulation.route.points = fallback.points;
+			AppState.simulation.route.totalDistance = fallback.totalDistance;
+
+			AppState.dispatch({ type: 'SIMULATION_STARTED' });
+			AppState.simulation.animationState.startTime = performance.now();
+			AppState.simulation.animationState.lastUpdateTime = AppState.simulation.animationState.startTime;
+			AppState.simulation.animationState.frameId = requestAnimationFrame((t) => this.animateMovement(t, stopSimulation));
 		}
 	}
 };

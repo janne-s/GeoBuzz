@@ -9,7 +9,7 @@ import { CONSTANTS, COLORS, PATH_COLORS } from './core/constants.js';
 import { AppState, StateManager } from './core/state/StateManager.js';
 import { Selectors } from './core/state/selectors.js';
 import { Actions, ActionTypes } from './core/state/actions.js';
-import { toRadians, toDegrees, deepClone, setTemporaryFlag, isCircularPath, decodePolyline, mapValue } from './core/utils/math.js';
+import { toRadians, toDegrees, deepClone, setTemporaryFlag, isCircularPath, mapValue } from './core/utils/math.js';
 import { debounce, throttle } from './core/utils/debounce.js';
 import { isValidLatLon, isValidMarker, isValidSound, isValidControlPath, isValidSequencer, clampNumber } from './core/utils/validation.js';
 import { CoordinateTransform } from './core/utils/coordinates.js';
@@ -102,7 +102,6 @@ export const GeoBuzz = {
 		deepClone,
 		setTemporaryFlag,
 		isCircularPath,
-		decodePolyline,
 		mapValue,
 		debounce,
 		throttle,

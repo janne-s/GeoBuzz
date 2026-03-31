@@ -2,6 +2,10 @@
 
 ## 2026-03-31
 
+### Changed
+
+- Replaced OSRM routing with Overpass API and client-side Dijkstra for point-to-point simulation
+
 ### Fixed
 
 - Speed gate behavior for sampler (single and grid mode) and spatial min speed gate
