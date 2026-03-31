@@ -31,22 +31,26 @@ async function loadRoadNetwork(centerLat, centerLng) {
 	const query = `[out:json][timeout:20];way["highway"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});(._;>;);out body;`;
 
 	const statusText = document.getElementById('simulationStatusText');
+	const endpoints = [
+		'https://overpass-api.de/api/interpreter',
+		'https://overpass.kumi.systems/api/interpreter'
+	];
 	let data;
-	for (let attempt = 0; attempt < 2; attempt++) {
-		const response = await fetch('https://overpass-api.de/api/interpreter', {
-			method: 'POST',
-			body: query
-		});
-		if (response.ok) {
-			data = await response.json();
-			break;
-		}
-		if (attempt === 0) {
+	for (const endpoint of endpoints) {
+		for (let attempt = 0; attempt < 2; attempt++) {
+			try {
+				const response = await fetch(endpoint, { method: 'POST', body: query });
+				if (response.ok) {
+					data = await response.json();
+					break;
+				}
+			} catch (e) {}
 			if (statusText) statusText.textContent = 'Retrying road data...';
-		} else {
-			throw new Error(`Overpass API ${response.status}`);
 		}
+		if (data) break;
 	}
+	if (!data) throw new Error('All Overpass endpoints failed');
+	if (statusText) statusText.textContent = 'Simulating...';
 
 	const nodes = {};
 	const graph = {};
@@ -284,7 +288,7 @@ export const RouteAnimator = {
 			AppState.simulation.animationState.frameId = requestAnimationFrame((t) => this.animateMovement(t, stopSimulation));
 
 		} catch (error) {
-			console.error('Routing error:', error);
+			console.warn('Routing fallback:', error.message);
 
 			const statusText = document.getElementById('simulationStatusText');
 			if (statusText) statusText.textContent = 'Road data unavailable, using straight line.';
