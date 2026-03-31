@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-03-31
+
+### Fixed
+
+- Speed gate behavior for sampler (single and grid mode) and spatial min speed gate
+
 ## 2026-03-30
 
 ### Added

@@ -2645,8 +2645,8 @@ AppState.subscribe((action) => {
 			const isSelected = action.type === 'SOUND_NOTE_SELECTED';
 			const isSamplerWithLoop = sound.type === 'Sampler' && sound.params.loop;
 
-			if (action.payload.isGridSampler || isSamplerWithLoop) {
-				if (sound.isPlaying) {
+			if (action.payload.isGridSampler || isSamplerWithLoop || (sound.type === 'Sampler' && sound.params.samplerMode === 'single')) {
+				if (sound.isPlaying && sound._speedGateOpen !== false) {
 					PolyphonyManager.triggerPolyphonic(sound.synth, [action.payload.note], isSelected, sound);
 				}
 			} else {

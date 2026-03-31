@@ -250,14 +250,14 @@ export function updateAudio(userPos, now) {
 		} else {
 			isInside = effectiveGain > 0;
 
-			if (s.params.speedGate > 0 && isInside) {
+			if (s.params.speedGate > 0 && isInside && !s.isPlaying) {
 				const userSpeed = getUserMovementSpeed();
 				if (userSpeed < s.params.speedGate) {
 					isInside = false;
 				}
 			}
 
-			if (s.type === 'Sampler' && isInside) {
+			if (s.type === 'Sampler' && s.params.samplerMode !== 'grid' && isInside && !s.isPlaying) {
 				const userSpeed = getUserMovementSpeed();
 				const speedMin = s.params.speedMin ?? 0;
 				const speedMax = s.params.speedMax ?? 10;
@@ -380,7 +380,18 @@ export function updateAudio(userPos, now) {
 						const changed = !prevKeys ||
 							eligibleKeys.size !== prevKeys.size ||
 							[...eligibleKeys].some(k => !prevKeys.has(k));
-						if (changed) {
+						if (changed && prevKeys) {
+							const added = [...eligibleKeys].filter(k => !prevKeys.has(k));
+							const removed = [...prevKeys].filter(k => !eligibleKeys.has(k));
+							if (removed.length > 0) {
+								const removedMidi = removed.map(k => parseInt(k));
+								NoteManager.triggerPolyphonic(s.synth, removedMidi, false, s);
+							}
+							if (added.length > 0) {
+								const addedMidi = added.map(k => parseInt(k));
+								NoteManager.triggerPolyphonic(s.synth, addedMidi, true, s);
+							}
+						} else if (changed) {
 							s._skipEnvelope = true;
 							NoteManager.release(s);
 							NoteManager.trigger(s);
@@ -388,12 +399,42 @@ export function updateAudio(userPos, now) {
 						}
 						s._eligibleGridKeys = eligibleKeys;
 					} else if (s._eligibleGridKeys) {
+						const prevKeys = s._eligibleGridKeys;
 						delete s._eligibleGridKeys;
+						const allKeys = new Set();
+						for (const [midi, gs] of Object.entries(gridSamples)) {
+							if (gs.fileName) allKeys.add(midi);
+						}
+						const added = [...allKeys].filter(k => !prevKeys.has(k));
+						if (added.length > 0) {
+							const addedMidi = added.map(k => parseInt(k));
+							NoteManager.triggerPolyphonic(s.synth, addedMidi, true, s);
+						}
+					}
+				} else if (isInside && s.isPlaying && s.type === 'Sampler' && s.params.samplerMode !== 'grid') {
+					const speedMin = s.params.speedMin ?? 0;
+					const speedMax = s.params.speedMax ?? 10;
+					const hasSpeedGate = speedMin > 0 || speedMax < 10;
+					const userSpeed = hasSpeedGate ? getUserMovementSpeed() : 0;
+					const inRange = !hasSpeedGate || (userSpeed >= speedMin && userSpeed <= speedMax);
+					if (inRange !== (s._speedGateOpen !== false)) {
 						s._skipEnvelope = true;
 						NoteManager.release(s);
-						NoteManager.trigger(s);
+						if (inRange) NoteManager.trigger(s);
 						s._skipEnvelope = false;
 					}
+					s._speedGateOpen = inRange;
+				} else if (isInside && s.isPlaying && (s.params.speedGate > 0 || s._spatialSpeedGateOpen === false)) {
+					const hasGate = s.params.speedGate > 0;
+					const userSpeed = hasGate ? getUserMovementSpeed() : 0;
+					const inRange = !hasGate || userSpeed >= s.params.speedGate;
+					if (inRange !== (s._spatialSpeedGateOpen !== false)) {
+						s._skipEnvelope = true;
+						NoteManager.release(s);
+						if (inRange) NoteManager.trigger(s);
+						s._skipEnvelope = false;
+					}
+					s._spatialSpeedGateOpen = inRange;
 				}
 			}
 

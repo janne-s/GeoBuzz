@@ -443,7 +443,6 @@ export async function showGridSampleDialog(soundObj, midiNote) {
 			}
 		},
 		onCommit: () => {
-			delete soundObj._eligibleGridKeys;
 			AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 		}
 	});
@@ -513,7 +512,6 @@ export async function showGridSampleDialog(soundObj, midiNote) {
 					speedMax: speedValues.high
 				};
 			}
-			delete soundObj._eligibleGridKeys;
 			AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 			cleanup();
 			resolve(false);
