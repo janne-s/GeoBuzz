@@ -30,17 +30,21 @@ async function loadRoadNetwork(centerLat, centerLng) {
 
 	const query = `[out:json][timeout:20];way["highway"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});(._;>;);out body;`;
 
+	const statusText = document.getElementById('simulationStatusText');
 	let data;
 	for (let attempt = 0; attempt < 2; attempt++) {
-		try {
-			const response = await fetch('https://overpass-api.de/api/interpreter', {
-				method: 'POST',
-				body: query
-			});
+		const response = await fetch('https://overpass-api.de/api/interpreter', {
+			method: 'POST',
+			body: query
+		});
+		if (response.ok) {
 			data = await response.json();
 			break;
-		} catch (e) {
-			if (attempt === 1) throw e;
+		}
+		if (attempt === 0) {
+			if (statusText) statusText.textContent = 'Retrying road data...';
+		} else {
+			throw new Error(`Overpass API ${response.status}`);
 		}
 	}
 
