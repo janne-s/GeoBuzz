@@ -24,6 +24,12 @@ function isInsideBBox(lat, lng, bbox) {
 	return lat >= bbox.south && lat <= bbox.north && lng >= bbox.west && lng <= bbox.east;
 }
 
+function fetchWithTimeout(url, options, timeoutMs) {
+	const controller = new AbortController();
+	const id = setTimeout(() => controller.abort(), timeoutMs);
+	return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(id));
+}
+
 async function loadRoadNetwork(centerLat, centerLng) {
 	const radius = 1200;
 	const bbox = createBBox(centerLat, centerLng, radius);
@@ -35,19 +41,17 @@ async function loadRoadNetwork(centerLat, centerLng) {
 		'https://overpass-api.de/api/interpreter',
 		'https://overpass.kumi.systems/api/interpreter'
 	];
+	const FETCH_TIMEOUT_MS = 25000;
 	let data;
 	for (const endpoint of endpoints) {
-		for (let attempt = 0; attempt < 2; attempt++) {
-			try {
-				const response = await fetch(endpoint, { method: 'POST', body: query });
-				if (response.ok) {
-					data = await response.json();
-					break;
-				}
-			} catch (e) {}
-			if (statusText) statusText.textContent = 'Retrying road data...';
-		}
-		if (data) break;
+		try {
+			const response = await fetchWithTimeout(endpoint, { method: 'POST', body: query }, FETCH_TIMEOUT_MS);
+			if (response.ok) {
+				data = await response.json();
+				break;
+			}
+		} catch (e) {}
+		if (statusText) statusText.textContent = 'Retrying road data...';
 	}
 	if (!data) throw new Error('All Overpass endpoints failed');
 	if (statusText) statusText.textContent = 'Simulating...';
