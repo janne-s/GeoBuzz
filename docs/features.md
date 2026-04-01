@@ -82,7 +82,7 @@ Appears in the Sound tab when Volume Model is set to Ray-Cast Based:
 
 | Parameter | Description |
 |-----------|-------------|
-| **Min Speed Gate** | Minimum movement speed (m/s) required for the sound to play. When the user's speed falls below this threshold, the sound is silenced as if the user left the area. Default: 0 (disabled) |
+| **Speed Gate** | Dual-range slider (min/max, m/s) defining the movement speed range in which the sound plays. Outside this range, the sound is silenced as if the user left the area. Default: 0–10 (disabled) |
 
 ---
 
@@ -197,7 +197,7 @@ For keyboard-triggered sounds.
 | **Clear Selection** | Remove all selected notes |
 | **Grid Edit/Play Mode** | Toggle between sample assignment and preview (Sampler in Grid mode) |
 | **Clear All Samples** | Remove all grid samples (Sampler in Grid mode) |
-| **Speed Range** | Per-key speed range slider in single mode; per-key speed range in grid mode individual key edit dialog (Sampler only) |
+| **Speed Range** | Per-key speed range in grid mode individual key edit dialog (Sampler in Grid mode only) |
 
 ---
 
