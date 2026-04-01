@@ -1,4 +1,4 @@
-import { createElement, createButton, createSelect, animateSliderReset, makeValueEditable } from '../domHelpers.js';
+import { createElement, createButton, createSelect, animateSliderReset, makeValueEditable, createDualRangeSlider } from '../domHelpers.js';
 import { AppState } from '../../core/state/StateManager.js';
 import { Selectors } from '../../core/state/selectors.js';
 import { COLORS, CONSTANTS } from '../../core/constants.js';
@@ -336,12 +336,20 @@ export function createSpatialSection(obj) {
 				contentContainer.appendChild(smoothingSection);
 			}
 
-			const speedGateDef = PARAMETER_REGISTRY['speedGate'];
-			if (speedGateDef) {
-				contentContainer.appendChild(
-					context.createParameterControl(speedGateDef, 'speedGate', obj, undefined, { small: true, updateNode: false })
-				);
-			}
+			const speedGateSlider = createDualRangeSlider({
+				label: 'Speed Gate',
+				min: 0, max: 10, step: 0.1,
+				valueLow: obj.params.speedGateMin ?? 0,
+				valueHigh: obj.params.speedGateMax ?? 10,
+				unit: ' m/s',
+				modalSystem: context.ModalSystem,
+				onChange: (low, high) => {
+					obj.params.speedGateMin = low;
+					obj.params.speedGateMax = high;
+					AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
+				}
+			});
+			contentContainer.appendChild(speedGateSlider);
 
 			return contentContainer;
 		}

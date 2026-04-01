@@ -2628,7 +2628,7 @@ AppState.subscribe((action) => {
 					target.params.originalValues[paramKey] = value;
 				}
 
-				if (paramKey === 'speedGate') {
+				if (paramKey === 'speedGateMin' || paramKey === 'speedGateMax') {
 					AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 				}
 			}

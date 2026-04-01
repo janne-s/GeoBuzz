@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-04-01
+
+### Changed
+
+- Consolidated speed gate into a unified min/max range on the Spatial tab for all sound types, replacing the separate spatial min-only gate and sampler-specific speed range
+
 ## 2026-03-31
 
 ### Changed

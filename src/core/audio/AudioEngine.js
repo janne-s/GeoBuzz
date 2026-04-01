@@ -250,19 +250,12 @@ export function updateAudio(userPos, now) {
 		} else {
 			isInside = effectiveGain > 0;
 
-			if (s.params.speedGate > 0 && isInside && !s.isPlaying) {
-				const userSpeed = getUserMovementSpeed();
-				if (userSpeed < s.params.speedGate) {
-					isInside = false;
-				}
-			}
-
-			if (s.type === 'Sampler' && s.params.samplerMode !== 'grid' && isInside && !s.isPlaying) {
-				const userSpeed = getUserMovementSpeed();
-				const speedMin = s.params.speedMin ?? 0;
-				const speedMax = s.params.speedMax ?? 10;
-				if (speedMin > 0 || speedMax < 10) {
-					if (userSpeed < speedMin || userSpeed > speedMax) {
+			if (isInside && !s.isPlaying) {
+				const gateMin = s.params.speedGateMin ?? 0;
+				const gateMax = s.params.speedGateMax ?? 10;
+				if (gateMin > 0 || gateMax < 10) {
+					const userSpeed = getUserMovementSpeed();
+					if (userSpeed < gateMin || userSpeed > gateMax) {
 						isInside = false;
 					}
 				}
@@ -286,6 +279,16 @@ export function updateAudio(userPos, now) {
 					}
 				} else if (s.synth.playbackRate !== s.params.speed) {
 					s.synth.playbackRate = s.params.speed || 1.0;
+				}
+
+				const gateMin = s.params.speedGateMin ?? 0;
+				const gateMax = s.params.speedGateMax ?? 10;
+				if (isInside && (gateMin > 0 || gateMax < 10)) {
+					const userSpeed = getUserMovementSpeed();
+					if (userSpeed < gateMin || userSpeed > gateMax) {
+						isInside = false;
+						s.wasInsideArea = false;
+					}
 				}
 
 				if (s.params.speedAdvance) {
@@ -411,30 +414,21 @@ export function updateAudio(userPos, now) {
 							NoteManager.triggerPolyphonic(s.synth, addedMidi, true, s);
 						}
 					}
-				} else if (isInside && s.isPlaying && s.type === 'Sampler' && s.params.samplerMode !== 'grid') {
-					const speedMin = s.params.speedMin ?? 0;
-					const speedMax = s.params.speedMax ?? 10;
-					const hasSpeedGate = speedMin > 0 || speedMax < 10;
-					const userSpeed = hasSpeedGate ? getUserMovementSpeed() : 0;
-					const inRange = !hasSpeedGate || (userSpeed >= speedMin && userSpeed <= speedMax);
-					if (inRange !== (s._speedGateOpen !== false)) {
-						s._skipEnvelope = true;
-						NoteManager.release(s);
-						if (inRange) NoteManager.trigger(s);
-						s._skipEnvelope = false;
+				} else if (isInside && s.isPlaying) {
+					const gateMin = s.params.speedGateMin ?? 0;
+					const gateMax = s.params.speedGateMax ?? 10;
+					const hasSpeedGate = gateMin > 0 || gateMax < 10;
+					if (hasSpeedGate || s._speedGateOpen === false) {
+						const userSpeed = hasSpeedGate ? getUserMovementSpeed() : 0;
+						const inRange = !hasSpeedGate || (userSpeed >= gateMin && userSpeed <= gateMax);
+						if (inRange !== (s._speedGateOpen !== false)) {
+							s._skipEnvelope = true;
+							NoteManager.release(s);
+							if (inRange) NoteManager.trigger(s);
+							s._skipEnvelope = false;
+						}
+						s._speedGateOpen = inRange;
 					}
-					s._speedGateOpen = inRange;
-				} else if (isInside && s.isPlaying && (s.params.speedGate > 0 || s._spatialSpeedGateOpen === false)) {
-					const hasGate = s.params.speedGate > 0;
-					const userSpeed = hasGate ? getUserMovementSpeed() : 0;
-					const inRange = !hasGate || userSpeed >= s.params.speedGate;
-					if (inRange !== (s._spatialSpeedGateOpen !== false)) {
-						s._skipEnvelope = true;
-						NoteManager.release(s);
-						if (inRange) NoteManager.trigger(s);
-						s._skipEnvelope = false;
-					}
-					s._spatialSpeedGateOpen = inRange;
 				}
 			}
 
@@ -485,8 +479,8 @@ export function audioUpdateLoop() {
 		const sounds = Selectors.getSounds();
 		for (let i = 0; i < sounds.length; i++) {
 			const p = sounds[i].params;
-			if (p?.speedGate > 0 || p?.speedLockScale > 0 || p?.speedAdvance ||
-				(sounds[i].type === 'Sampler' && (p?.speedMin > 0 || p?.speedMax < 10 || sounds[i]._hasGridSpeedRanges))) {
+			if ((p?.speedGateMin ?? 0) > 0 || (p?.speedGateMax ?? 10) < 10 || p?.speedLockScale > 0 || p?.speedAdvance ||
+				(sounds[i].type === 'Sampler' && sounds[i]._hasGridSpeedRanges)) {
 				positionsMayHaveChanged = true;
 				break;
 			}

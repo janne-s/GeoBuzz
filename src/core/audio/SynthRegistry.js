@@ -132,7 +132,7 @@ export const SYNTH_REGISTRY = {
 			}
 			return new Tone.Synth(baseOptions);
 		},
-		parameters: ['pitch', 'frequency', 'waveform', 'pulseWidth', 'detune', 'portamento', 'partialCount', 'partialCurve', 'attack', 'decay', 'sustain', 'release', 'filterFreq', 'filterType', 'resonance', 'pan', 'polyphony', 'speedGate']
+		parameters: ['pitch', 'frequency', 'waveform', 'pulseWidth', 'detune', 'portamento', 'partialCount', 'partialCurve', 'attack', 'decay', 'sustain', 'release', 'filterFreq', 'filterType', 'resonance', 'pan', 'polyphony', 'speedGateMin', 'speedGateMax']
 	},
 
 	AMSynth: {
@@ -159,7 +159,7 @@ export const SYNTH_REGISTRY = {
 			return new Tone.AMSynth(baseOptions);
 		},
 		parameters: ['pitch', 'frequency', 'waveform', 'pulseWidth', 'modWaveform', 'harmonicity',
-			'detune', 'portamento', 'partialCount', 'partialCurve', 'modPartialCount', 'modPartialCurve', 'attack', 'decay', 'sustain', 'release', 'modAttack', 'modRelease', 'filterFreq', 'filterType', 'resonance', 'pan', 'polyphony', 'speedGate'
+			'detune', 'portamento', 'partialCount', 'partialCurve', 'modPartialCount', 'modPartialCurve', 'attack', 'decay', 'sustain', 'release', 'modAttack', 'modRelease', 'filterFreq', 'filterType', 'resonance', 'pan', 'polyphony', 'speedGateMin', 'speedGateMax'
 		]
 	},
 
@@ -186,7 +186,7 @@ export const SYNTH_REGISTRY = {
 			}
 			return new Tone.FMSynth(baseOptions);
 		},
-		parameters: ['pitch', 'frequency', 'waveform', 'pulseWidth', 'modWaveform', 'modIndex', 'harmonicity', 'detune', 'portamento', 'partialCount', 'partialCurve', 'modPartialCount', 'modPartialCurve', 'attack', 'decay', 'sustain', 'release', 'modAttack', 'modRelease', 'filterFreq', 'filterType', 'resonance', 'pan', 'polyphony', 'speedGate']
+		parameters: ['pitch', 'frequency', 'waveform', 'pulseWidth', 'modWaveform', 'modIndex', 'harmonicity', 'detune', 'portamento', 'partialCount', 'partialCurve', 'modPartialCount', 'modPartialCurve', 'attack', 'decay', 'sustain', 'release', 'modAttack', 'modRelease', 'filterFreq', 'filterType', 'resonance', 'pan', 'polyphony', 'speedGateMin', 'speedGateMax']
 	},
 
 	FatOscillator: {
@@ -218,7 +218,7 @@ export const SYNTH_REGISTRY = {
 		},
 		parameters: ['pitch', 'frequency', 'waveform', 'pulseWidth', 'count', 'spread',
 			'detune', 'portamento', 'attack', 'decay', 'sustain', 'release',
-			'filterFreq', 'filterType', 'resonance', 'pan', 'polyphony', 'speedGate'
+			'filterFreq', 'filterType', 'resonance', 'pan', 'polyphony', 'speedGateMin', 'speedGateMax'
 		]
 	},
 
@@ -236,7 +236,7 @@ export const SYNTH_REGISTRY = {
 			return new Tone.NoiseSynth(baseOptions);
 		},
 		parameters: ['noiseType', 'attack', 'decay', 'sustain', 'release',
-			'filterFreq', 'filterType', 'resonance', 'pan', 'speedGate'
+			'filterFreq', 'filterType', 'resonance', 'pan', 'speedGateMin', 'speedGateMax'
 		]
 	},
 
@@ -267,7 +267,7 @@ export const SYNTH_REGISTRY = {
 			}
 		},
 		parameters: [
-			'speed', 'speedLockScale', 'speedLockReference', 'fadeIn', 'fadeOut', 'loop', 'loopStart', 'loopEnd', 'loopFadeIn', 'loopFadeOut', 'reverse', 'playbackMode', 'timeStretchMode', 'grainSize', 'overlap', 'grainDetune', 'speedAdvance', 'speedAdvanceThreshold', 'speedGate', 'filterFreq', 'filterType', 'resonance', 'pan', 'resumePlayback'
+			'speed', 'speedLockScale', 'speedLockReference', 'fadeIn', 'fadeOut', 'loop', 'loopStart', 'loopEnd', 'loopFadeIn', 'loopFadeOut', 'reverse', 'playbackMode', 'timeStretchMode', 'grainSize', 'overlap', 'grainDetune', 'speedAdvance', 'speedAdvanceThreshold', 'speedGateMin', 'speedGateMax', 'filterFreq', 'filterType', 'resonance', 'pan', 'resumePlayback'
 		]
 	},
 
@@ -292,7 +292,7 @@ export const SYNTH_REGISTRY = {
 			connect: function() { return this; },
 			toDestination: function() { return this; }
 		}),
-		parameters: ['streamUrl', 'fadeIn', 'fadeOut', 'pan', 'speedGate']
+		parameters: ['streamUrl', 'fadeIn', 'fadeOut', 'pan', 'speedGateMin', 'speedGateMax']
 	},
 
 	Sampler: {
@@ -329,7 +329,7 @@ export const SYNTH_REGISTRY = {
 			sampler.maxPolyphony = params.polyphony || 4;
 			return sampler;
 		},
-		parameters: ['attack', 'release', 'loop', 'filterFreq', 'filterType', 'resonance', 'pan', 'polyphony', 'speedGate', 'speedMin', 'speedMax', 'samplerMode', 'gridSamples', 'soundFile']
+		parameters: ['attack', 'release', 'loop', 'filterFreq', 'filterType', 'resonance', 'pan', 'polyphony', 'speedGateMin', 'speedGateMax', 'samplerMode', 'gridSamples', 'soundFile']
 	}
 };
 

@@ -790,8 +790,8 @@ export const PARAMETER_REGISTRY = {
 		serialize: true,
 		ui: true
 	},
-	speedGate: {
-		label: 'Min Speed Gate',
+	speedGateMin: {
+		label: 'Speed Gate Min',
 		type: 'range',
 		min: 0,
 		max: 10,
@@ -800,7 +800,19 @@ export const PARAMETER_REGISTRY = {
 		unit: ' m/s',
 		category: 'spatial',
 		serialize: true,
-		ui: true
+		ui: false
+	},
+	speedGateMax: {
+		label: 'Speed Gate Max',
+		type: 'range',
+		min: 0,
+		max: 10,
+		step: 0.1,
+		defaultValue: 10,
+		unit: ' m/s',
+		category: 'spatial',
+		serialize: true,
+		ui: false
 	},
 
 	selectedNotes: {
@@ -834,30 +846,6 @@ export const PARAMETER_REGISTRY = {
 		ui: false
 	},
 
-	speedMin: {
-		label: 'Speed Min',
-		type: 'range',
-		min: 0,
-		max: 10,
-		step: 0.1,
-		defaultValue: 0,
-		unit: ' m/s',
-		category: 'sampler',
-		serialize: true,
-		ui: false
-	},
-	speedMax: {
-		label: 'Speed Max',
-		type: 'range',
-		min: 0,
-		max: 10,
-		step: 0.1,
-		defaultValue: 10,
-		unit: ' m/s',
-		category: 'sampler',
-		serialize: true,
-		ui: false
-	},
 	gridSamples: {
 		label: 'Grid Samples',
 		type: 'custom',

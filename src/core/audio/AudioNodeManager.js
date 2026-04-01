@@ -335,11 +335,11 @@ export class PolyphonyManager {
 			}
 
 			if (soundObj.params.samplerMode === 'single') {
-				const speedMin = soundObj.params.speedMin ?? 0;
-				const speedMax = soundObj.params.speedMax ?? 10;
-				if (speedMin > 0 || speedMax < 10) {
+				const gateMin = soundObj.params.speedGateMin ?? 0;
+				const gateMax = soundObj.params.speedGateMax ?? 10;
+				if (gateMin > 0 || gateMax < 10) {
 					const userSpeed = getUserMovementSpeed();
-					if (userSpeed < speedMin || userSpeed > speedMax) {
+					if (userSpeed < gateMin || userSpeed > gateMax) {
 						return;
 					}
 				}
@@ -382,7 +382,7 @@ export class PolyphonyManager {
 
 		if (soundObj.type === 'NoiseSynth') {
 			this.triggerPolyphonic(soundObj.synth, [], false, soundObj);
-			if (soundObj.envelopeGain) {
+			if (soundObj.envelopeGain && !soundObj._skipEnvelope) {
 				PolyphonyManager.exponentialRelease(soundObj.envelopeGain.gain, soundObj.params.release || 0.1);
 			}
 			return;

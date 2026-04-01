@@ -52,7 +52,7 @@ export function makeValueEditable(display, slider, { modalSystem, formatValue, o
 	});
 }
 
-export function createDualRangeSlider({ min, max, step, valueLow, valueHigh, unit, formatValue, modalSystem, onChange, onCommit }) {
+export function createDualRangeSlider({ label: labelText = 'Speed Range', min, max, step, valueLow, valueHigh, unit, formatValue, modalSystem, onChange, onCommit }) {
 	const fmt = formatValue || ((v) => parseFloat(v).toFixed(1) + (unit || ''));
 
 	const container = createElement('div', 'dual-range-container');
@@ -146,7 +146,7 @@ export function createDualRangeSlider({ min, max, step, valueLow, valueHigh, uni
 	}
 
 	const label = createElement('label');
-	label.textContent = 'Speed Range';
+	label.textContent = labelText;
 
 	const sliders = createElement('div', 'dual-range-sliders');
 	sliders.appendChild(track);

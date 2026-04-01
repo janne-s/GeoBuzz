@@ -1,4 +1,4 @@
-import { createElement, createButton, createSelect, createDualRangeSlider } from '../domHelpers.js';
+import { createElement, createButton, createSelect } from '../domHelpers.js';
 import { createCollapsibleSection } from '../controllers/UIBuilder.js';
 import { AppState } from '../../core/state/StateManager.js';
 import { Selectors } from '../../core/state/selectors.js';
@@ -418,25 +418,7 @@ export const MenuTabs = {
 				}, 'keyboard-clear-btn');
 				keyboardSection.appendChild(clearBtn);
 
-				if (obj.type === 'Sampler') {
-					if (obj.params.speedMin === undefined) obj.params.speedMin = 0;
-					if (obj.params.speedMax === undefined) obj.params.speedMax = 10;
-
-					const speedRange = createDualRangeSlider({
-						min: 0, max: 10, step: 0.1,
-						valueLow: obj.params.speedMin,
-						valueHigh: obj.params.speedMax,
-						unit: ' m/s',
-						modalSystem: context.ModalSystem,
-						onChange: (low, high) => {
-							obj.params.speedMin = low;
-							obj.params.speedMax = high;
-							AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
-						}
-					});
-					keyboardSection.appendChild(speedRange);
-				}
-			} else {
+				} else {
 				const clearAllBtn = createButton('Clear All Samples', async () => {
 					const confirm = await context.ModalSystem.confirm(
 						'Remove all samples from the grid?',

@@ -139,7 +139,8 @@ const PARAMETER_DESCRIPTIONS = {
 	gamma: 'Volume falloff curve with distance (higher = steeper falloff)',
 	edgeMargin: 'Distance from zone edge where volume starts fading out',
 	minRadius: 'Inner radius where volume reaches maximum before falloff begins',
-	speedGate: 'Minimum movement speed required for sound to play',
+	speedGateMin: 'Minimum movement speed required for sound to play',
+	speedGateMax: 'Maximum movement speed above which sound stops playing',
 
 	fx_eq_low: 'Low frequency band gain in decibels (below low/mid crossover)',
 	fx_eq_mid: 'Mid frequency band gain in decibels (between crossovers)',
