@@ -402,7 +402,7 @@ export function createUIEventHandlers({
 		'#calculateRouteBtn': () => {
 			const statusText = document.getElementById('simulationStatusText');
 			if (Selectors.getSimulationTarget()) {
-				statusText.textContent = "Simulating...";
+				statusText.textContent = "Loading road data...";
 				getRouteAndAnimate();
 			} else {
 				statusText.textContent = "Please place a target.";
