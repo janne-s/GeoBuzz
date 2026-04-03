@@ -7,7 +7,7 @@ import { getUserMovementSpeed } from '../core/audio/AudioEngine.js';
 import { destroySound } from '../core/audio/SoundLifecycle.js';
 import { setSequencerControl } from '../core/audio/SoundCreation.js';
 import { DistanceSequencer } from '../core/audio/DistanceSequencer.js';
-import { createElement, createButton, createSelect } from './domHelpers.js';
+import { createElement, createButton, createSelect, createDualRangeSlider } from './domHelpers.js';
 import { ModalSystem } from './ModalSystem.js';
 import { MenuManager } from './controllers/MenuManager.js';
 import { createDraggableHeader, createElementNavigationDropdown } from './controllers/HeaderBuilder.js';
@@ -725,10 +725,16 @@ export class SequencerUIManager {
 				for (let s = 0; s < stepsInRow; s++) {
 					const stepIndex = rowStartStep + s;
 					if (!track.steps[stepIndex]) {
-						track.steps[stepIndex] = { notes: [], sustains: [], velocities: {} };
+						track.steps[stepIndex] = { notes: [], sustains: [], velocities: {}, speedGateMin: {}, speedGateMax: {} };
 					}
 					if (!track.steps[stepIndex].velocities) {
 						track.steps[stepIndex].velocities = {};
+					}
+					if (!track.steps[stepIndex].speedGateMin) {
+						track.steps[stepIndex].speedGateMin = {};
+					}
+					if (!track.steps[stepIndex].speedGateMax) {
+						track.steps[stepIndex].speedGateMax = {};
 					}
 
 					const hasNote = track.steps[stepIndex].notes.includes(midiNote);
@@ -755,6 +761,16 @@ export class SequencerUIManager {
 						}
 					}
 
+					if (hasNote) {
+						const sgMin = track.steps[stepIndex].speedGateMin[midiNote];
+						const sgMax = track.steps[stepIndex].speedGateMax[midiNote];
+						const hasSpeedGate = sgMin !== undefined && sgMax !== undefined &&
+							!(sgMin === CONSTANTS.SEQUENCER_SPEED_GATE_MIN && sgMax === CONSTANTS.SEQUENCER_SPEED_GATE_MAX);
+						if (hasSpeedGate) {
+							cell.classList.add('speed-gated');
+						}
+					}
+
 					cell.addEventListener('mousedown', () => {
 					if (track.editMode !== 'sustain') return;
 					const hasSustain = track.steps[stepIndex]?.sustains.includes(midiNote);
@@ -776,7 +792,7 @@ export class SequencerUIManager {
 					if (this._sustainDrag?.didDrag) return;
 						const currentStep = track.steps[stepIndex];
 						if (!currentStep) {
-							track.steps[stepIndex] = { notes: [], sustains: [], velocities: {} };
+							track.steps[stepIndex] = { notes: [], sustains: [], velocities: {}, speedGateMin: {}, speedGateMax: {} };
 						}
 						if (!track.steps[stepIndex].velocities) {
 							track.steps[stepIndex].velocities = {};
@@ -789,15 +805,26 @@ export class SequencerUIManager {
 							return;
 						}
 
+						if (track.editMode === 'spd') {
+							if (track.steps[stepIndex].notes.includes(midiNote) || track.steps[stepIndex].sustains.includes(midiNote)) {
+								const originStep = this._findNoteOrigin(track, stepIndex, midiNote);
+								this.showSpeedGateEditor(track, trackDiv, originStep, midiNote, sequencer, tracksContainer);
+							}
+							return;
+						}
+
 					const currentHasNote = track.steps[stepIndex].notes.includes(midiNote);
 						const currentHasSustain = track.steps[stepIndex].sustains.includes(midiNote);
 
 						if (currentHasNote) {
 							track.steps[stepIndex].notes = track.steps[stepIndex].notes.filter(n => n !== midiNote);
 							delete track.steps[stepIndex].velocities[midiNote];
+							delete track.steps[stepIndex].speedGateMin[midiNote];
+							delete track.steps[stepIndex].speedGateMax[midiNote];
 							this.cleanOrphanedSustains(track, stepIndex, midiNote);
 						} else if (currentHasSustain) {
 							track.steps[stepIndex].sustains = track.steps[stepIndex].sustains.filter(n => n !== midiNote);
+							this.cleanOrphanedSustains(track, stepIndex, midiNote);
 						} else {
 							if (track.editMode === 'sustain') {
 								if (this.canPlaceSustain(track, stepIndex, midiNote)) {
@@ -836,6 +863,7 @@ export class SequencerUIManager {
 		}
 
 		trackDiv.querySelectorAll('.velocity-panel').forEach(el => el.remove());
+		trackDiv.querySelectorAll('.speed-gate-panel').forEach(el => el.remove());
 
 		if (track.editMode === 'vel') {
 			const velocityPanel = createElement('div', 'velocity-panel');
@@ -863,11 +891,31 @@ export class SequencerUIManager {
 
 			trackDiv.appendChild(velocityPanel);
 		}
+
+		if (track.editMode === 'spd') {
+			const speedGatePanel = createElement('div', 'speed-gate-panel');
+
+			const slider = createDualRangeSlider({
+				label: 'Speed Gate',
+				min: CONSTANTS.SEQUENCER_SPEED_GATE_MIN,
+				max: CONSTANTS.SEQUENCER_SPEED_GATE_MAX,
+				step: CONSTANTS.SEQUENCER_SPEED_GATE_STEP,
+				valueLow: CONSTANTS.SEQUENCER_SPEED_GATE_MIN,
+				valueHigh: CONSTANTS.SEQUENCER_SPEED_GATE_MAX,
+				unit: ' m/s',
+				modalSystem: ModalSystem
+			});
+			speedGatePanel.appendChild(slider);
+
+			trackDiv.appendChild(speedGatePanel);
+		}
 	}
 
 	showVelocityEditor(track, trackDiv, stepIndex, midiNote, sequencer, tracksContainer) {
 		const velocityPanel = trackDiv.querySelector('.velocity-panel');
 		if (!velocityPanel) return;
+
+		this.highlightNoteChain(track, trackDiv, stepIndex, midiNote);
 
 		const velocitySlider = velocityPanel.querySelector('.velocity-slider');
 		const velocityDisplay = velocityPanel.querySelector('.velocity-value');
@@ -904,6 +952,126 @@ export class SequencerUIManager {
 				}
 			}
 		};
+	}
+
+	_getCellForNote(trackDiv, track, stepIndex, midiNote) {
+		const stepsPerRow = 16;
+		const noteCount = 12;
+		const baseNote = (track.octave + 1) * 12;
+		const noteOffset = midiNote - baseNote;
+		const trackStepCount = track.numSteps !== undefined ? track.numSteps : track.steps.length;
+		const rowIdx = Math.floor(stepIndex / stepsPerRow);
+		const stepInRow = stepIndex % stepsPerRow;
+		const gridWrappers = trackDiv.querySelectorAll('.piano-roll-wrapper');
+		if (!gridWrappers[rowIdx]) return null;
+		const grid = gridWrappers[rowIdx].querySelector('.piano-roll');
+		if (!grid) return null;
+		const rowStartStep = rowIdx * stepsPerRow;
+		const rowEndStep = Math.min(rowStartStep + stepsPerRow, trackStepCount);
+		const stepsInRow = rowEndStep - rowStartStep;
+		const cellIndex = (noteCount - 1 - noteOffset) * stepsInRow + stepInRow;
+		return grid.children[cellIndex] || null;
+	}
+
+	highlightNoteChain(track, trackDiv, stepIndex, midiNote) {
+		trackDiv.querySelectorAll('.selected-note, .selected-sustain').forEach(el => {
+			el.classList.remove('selected-note', 'selected-sustain');
+		});
+
+		const noteCell = this._getCellForNote(trackDiv, track, stepIndex, midiNote);
+		if (noteCell) noteCell.classList.add('selected-note');
+
+		const originStep = this._findNoteOrigin(track, stepIndex, midiNote);
+		const originCell = this._getCellForNote(trackDiv, track, originStep, midiNote);
+		if (originCell && originCell !== noteCell) originCell.classList.add('selected-note');
+
+		const trackStepCount = track.numSteps !== undefined ? track.numSteps : track.steps.length;
+		for (let i = originStep + 1; i < trackStepCount; i++) {
+			if (!track.steps[i]) break;
+			if (track.steps[i].sustains.includes(midiNote)) {
+				const cell = this._getCellForNote(trackDiv, track, i, midiNote);
+				if (cell) cell.classList.add('selected-sustain');
+			} else {
+				break;
+			}
+		}
+	}
+
+	_findNoteOrigin(track, stepIndex, midiNote) {
+		if (track.steps[stepIndex].notes.includes(midiNote)) return stepIndex;
+		for (let i = stepIndex - 1; i >= 0; i--) {
+			if (track.steps[i].notes.includes(midiNote)) return i;
+			if (!track.steps[i].sustains.includes(midiNote)) break;
+		}
+		return stepIndex;
+	}
+
+	showSpeedGateEditor(track, trackDiv, stepIndex, midiNote, sequencer, tracksContainer) {
+		const panel = trackDiv.querySelector('.speed-gate-panel');
+		if (!panel) return;
+
+		this.highlightNoteChain(track, trackDiv, stepIndex, midiNote);
+
+		if (!track.steps[stepIndex].speedGateMin) track.steps[stepIndex].speedGateMin = {};
+		if (!track.steps[stepIndex].speedGateMax) track.steps[stepIndex].speedGateMax = {};
+
+		const currentMin = track.steps[stepIndex].speedGateMin[midiNote] ?? CONSTANTS.SEQUENCER_SPEED_GATE_MIN;
+		const currentMax = track.steps[stepIndex].speedGateMax[midiNote] ?? CONSTANTS.SEQUENCER_SPEED_GATE_MAX;
+
+		panel.innerHTML = '';
+
+		const slider = createDualRangeSlider({
+			label: 'Speed Gate',
+			min: CONSTANTS.SEQUENCER_SPEED_GATE_MIN,
+			max: CONSTANTS.SEQUENCER_SPEED_GATE_MAX,
+			step: CONSTANTS.SEQUENCER_SPEED_GATE_STEP,
+			valueLow: currentMin,
+			valueHigh: currentMax,
+			unit: ' m/s',
+			modalSystem: ModalSystem,
+			onChange: (low, high) => {
+				track.steps[stepIndex].speedGateMin[midiNote] = low;
+				track.steps[stepIndex].speedGateMax[midiNote] = high;
+				this.updateSpeedGateVisuals(track, trackDiv, stepIndex, midiNote);
+			},
+			onCommit: () => {
+				AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+			}
+		});
+
+		panel.appendChild(slider);
+	}
+
+	updateSpeedGateVisuals(track, trackDiv, stepIndex, midiNote) {
+		const stepsPerRow = 16;
+		const noteCount = 12;
+		const baseNote = (track.octave + 1) * 12;
+		const noteOffset = midiNote - baseNote;
+		const trackStepCount = track.numSteps !== undefined ? track.numSteps : track.steps.length;
+
+		const getCell = (idx) => {
+			const rowIdx = Math.floor(idx / stepsPerRow);
+			const stepInRow = idx % stepsPerRow;
+			const gridWrappers = trackDiv.querySelectorAll('.piano-roll-wrapper');
+			if (!gridWrappers[rowIdx]) return null;
+			const grid = gridWrappers[rowIdx].querySelector('.piano-roll');
+			if (!grid) return null;
+			const rowStartStep = rowIdx * stepsPerRow;
+			const rowEndStep = Math.min(rowStartStep + stepsPerRow, trackStepCount);
+			const stepsInRow = rowEndStep - rowStartStep;
+			const cellIndex = (noteCount - 1 - noteOffset) * stepsInRow + stepInRow;
+			return grid.children[cellIndex];
+		};
+
+		const sgMin = track.steps[stepIndex].speedGateMin?.[midiNote];
+		const sgMax = track.steps[stepIndex].speedGateMax?.[midiNote];
+		const hasSpeedGate = sgMin !== undefined && sgMax !== undefined &&
+			!(sgMin === CONSTANTS.SEQUENCER_SPEED_GATE_MIN && sgMax === CONSTANTS.SEQUENCER_SPEED_GATE_MAX);
+
+		const cell = getCell(stepIndex);
+		if (cell) {
+			cell.classList.toggle('speed-gated', hasSpeedGate);
+		}
 	}
 
 	updateVelocityVisuals(track, trackDiv, stepIndex, midiNote) {
@@ -1146,6 +1314,8 @@ export class SequencerUIManager {
 			deleteTrackBtn.innerHTML = '<i class="fas fa-trash"></i>';
 			deleteTrackBtn.title = 'Delete Track';
 			deleteTrackBtn.onclick = async () => {
+				const confirmed = await ModalSystem.confirm(`Delete Track ${trackIndex + 1}?`, 'Delete Track');
+				if (!confirmed) return;
 				await sequencer.removeTrack(track.id);
 				this.refreshTracksUI(container, sequencer);
 				AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
@@ -1425,6 +1595,23 @@ export class SequencerUIManager {
 			};
 			modeSelector.appendChild(velMode);
 
+			const spdMode = createElement('div', 'mode-box');
+			spdMode.classList.add('spd-mode');
+			if (track.editMode === 'spd') spdMode.classList.add('active');
+			const spdLabel = createElement('span');
+			spdLabel.textContent = 'Spd';
+			spdMode.appendChild(spdLabel);
+			spdMode.onclick = () => {
+				if (track.editMode === 'spd') {
+					track.editMode = 'note';
+				} else {
+					track.editMode = 'spd';
+				}
+				this.refreshTracksUI(container, sequencer);
+				AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+			};
+			modeSelector.appendChild(spdMode);
+
 			octaveAndModeRow.appendChild(modeSelector);
 			trackDiv.appendChild(octaveAndModeRow);
 
@@ -1586,6 +1773,7 @@ export class SequencerUIManager {
 		if (mode === 'erase') {
 			if (!step.sustains.includes(midiNote)) return;
 			step.sustains = step.sustains.filter(n => n !== midiNote);
+			this.cleanOrphanedSustains(track, stepIndex, midiNote);
 		} else {
 			if (step.notes.includes(midiNote)) return;
 			if (step.sustains.includes(midiNote)) return;

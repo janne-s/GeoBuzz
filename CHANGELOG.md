@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-04-02
+
+### Added
+
+- Per-note speed gate in the distance sequencer with dual-range slider editor, origin-note inheritance for sustains, and per-step gating
+
+### Fixed
+
+- Removing a sustain mid-chain now cuts the tail of the chain instead of leaving orphaned sustains
+- Track deletion in the distance sequencer now requires confirmation
+
 ## 2026-04-01
 
 ### Changed

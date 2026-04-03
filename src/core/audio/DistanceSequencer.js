@@ -722,14 +722,55 @@ export class DistanceSequencer {
 		}
 
 		const allNotesToTrigger = new Set([...notesToStart, ...notesToRetrigger]);
+
+		const userSpeed = context.getUserMovementSpeed();
+
+		const getNoteSpeedGate = (note, fromStepIndex) => {
+			const originStep = this._findNoteOriginStep(track, fromStepIndex, note);
+			const sgMin = track.steps[originStep]?.speedGateMin;
+			const sgMax = track.steps[originStep]?.speedGateMax;
+			const gateMin = sgMin?.[note] ?? CONSTANTS.SEQUENCER_SPEED_GATE_MIN;
+			const gateMax = sgMax?.[note] ?? CONSTANTS.SEQUENCER_SPEED_GATE_MAX;
+			return { gateMin, gateMax };
+		};
+
+		const isSpeedGated = (note, fromStepIndex) => {
+			const { gateMin, gateMax } = getNoteSpeedGate(note, fromStepIndex);
+			if (gateMin === CONSTANTS.SEQUENCER_SPEED_GATE_MIN && gateMax === CONSTANTS.SEQUENCER_SPEED_GATE_MAX) return false;
+			return userSpeed < gateMin || userSpeed > gateMax;
+		};
+
+		for (const note of [...allNotesToTrigger]) {
+			if (isSpeedGated(note, stepIndex)) {
+				allNotesToTrigger.delete(note);
+				notesForThisStep.delete(note);
+			}
+		}
+
+		for (const note of [...sustainedNotes]) {
+			if (isSpeedGated(note, stepIndex)) {
+				notesForThisStep.delete(note);
+				sustainedNotes.delete(note);
+				await this._triggerRelease(track, note, notesForThisStep.size > 0);
+			}
+		}
+
+		track.steps[stepIndex].sustains.forEach(note => {
+			if (sustainedNotes.has(note) || allNotesToTrigger.has(note)) return;
+			if (!isSpeedGated(note, stepIndex)) {
+				allNotesToTrigger.add(note);
+				notesForThisStep.add(note);
+			}
+		});
+
 		if (allNotesToTrigger.size > 0) {
 			const notesArray = Array.from(allNotesToTrigger);
 			const velocities = track.steps[stepIndex].velocities || {};
-		const velocitiesNormalized = {};
-		notesArray.forEach(note => {
-			const midiVel = velocities[note] ?? 100;
-			velocitiesNormalized[note] = midiVel / 127;
-		});
+			const velocitiesNormalized = {};
+			notesArray.forEach(note => {
+				const midiVel = velocities[note] ?? 100;
+				velocitiesNormalized[note] = midiVel / 127;
+			});
 			try {
 				await this._triggerAttackChord(track, notesArray, velocitiesNormalized, hasSustainedNotes || hadActiveNotes);
 			} catch (error) {
@@ -818,6 +859,15 @@ export class DistanceSequencer {
 				console.error("Error preparing synth for sequencer:", error);
 			}
 		}
+	}
+
+	_findNoteOriginStep(track, stepIndex, midiNote) {
+		if (track.steps[stepIndex]?.notes?.includes(midiNote)) return stepIndex;
+		for (let i = stepIndex - 1; i >= 0; i--) {
+			if (track.steps[i]?.notes?.includes(midiNote)) return i;
+			if (!track.steps[i]?.sustains?.includes(midiNote)) break;
+		}
+		return stepIndex;
 	}
 
 	async _triggerAttack(track, midiNote, velocity, hasActiveNotes = false) {
@@ -987,7 +1037,9 @@ export class DistanceSequencer {
 		const makeEmptySteps = (count) => Array(count).fill(null).map(() => ({
 			notes: [],
 			sustains: [],
-			velocity: 0.8
+			velocity: 0.8,
+			speedGateMin: {},
+			speedGateMax: {}
 		}));
 
 		const activeSceneId = this.scenes[this.activeSceneIndex].id;
