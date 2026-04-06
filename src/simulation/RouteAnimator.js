@@ -259,15 +259,20 @@ export const RouteAnimator = {
 		const startPoint = GeolocationManager.getUserPosition();
 		const endPoint = Selectors.getSimulationTarget().getLatLng();
 
+		const statusText = document.getElementById('simulationStatusText');
+
 		try {
 			const needsLoad = !roadGraph || !graphBBox ||
 				!isInsideBBox(startPoint.lat, startPoint.lng, graphBBox) ||
 				!isInsideBBox(endPoint.lat, endPoint.lng, graphBBox);
 
 			if (needsLoad) {
+				if (statusText) statusText.textContent = 'Loading road data...';
 				const centerLat = (startPoint.lat + endPoint.lat) / 2;
 				const centerLng = (startPoint.lng + endPoint.lng) / 2;
 				await loadRoadNetwork(centerLat, centerLng);
+			} else {
+				if (statusText) statusText.textContent = 'Simulating...';
 			}
 
 			const startNode = findNearestNode(startPoint.lat, startPoint.lng);

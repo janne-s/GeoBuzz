@@ -326,11 +326,28 @@ export class SequencerUIManager {
 			sequencer.stepLength = parseInt(lengthSlider.value);
 			lengthDisplay.textContent = `${sequencer.stepLength}m`;
 
+			sequencer.lastStepDistance = Math.floor(sequencer.totalDistance / sequencer.stepLength) * sequencer.stepLength;
+			sequencer.currentStep = sequencer.loop
+				? (Math.floor(sequencer.totalDistance / sequencer.stepLength) % sequencer.numSteps)
+				: Math.min(Math.floor(sequencer.totalDistance / sequencer.stepLength), sequencer.numSteps - 1);
+
 			sequencer.tracks.forEach(track => {
 				if (track.offsetMode === 'division' && track.offsetFraction !== undefined) {
 					track.offset = track.offsetFraction * sequencer.stepLength;
 				} else if (track.offsetMode === 'steps' && track.offsetSteps !== undefined) {
 					track.offset = track.offsetSteps * sequencer.stepLength;
+				}
+
+				const effectiveDistance = sequencer.totalDistance - track.offset;
+				if (effectiveDistance >= 0) {
+					const trackSteps = Math.min(
+						track.steps.length,
+						track.numSteps !== undefined ? track.numSteps : sequencer.numSteps
+					);
+					const absoluteStepCount = Math.floor(effectiveDistance / sequencer.stepLength);
+					track.currentStep = sequencer.loop
+						? (absoluteStepCount % trackSteps)
+						: Math.min(absoluteStepCount, trackSteps - 1);
 				}
 			});
 

@@ -233,6 +233,23 @@ export function setSequencerControl(sound, controlled) {
 			sound.envelopeGain.gain.setValueAtTime(0, now);
 		}
 
+		const neutralEnvelope = { attack: CONSTANTS.SEQUENCER_INTERNAL_ATTACK, decay: 0, sustain: 1 };
+		if (sound.synth instanceof Tone.PolySynth) {
+			sound._savedEnvelope = { ...sound.synth.get().envelope };
+			sound.synth.set({ envelope: neutralEnvelope });
+		} else if (sound.synth?.envelope) {
+			sound._savedEnvelope = {
+				attack: sound.synth.envelope.attack,
+				decay: sound.synth.envelope.decay,
+				sustain: sound.synth.envelope.sustain
+			};
+			Object.assign(sound.synth.envelope, neutralEnvelope);
+		}
+		if (sound.type === 'Sampler' && sound.synth) {
+			sound._savedSamplerAttack = sound.synth.attack;
+			sound.synth.attack = CONSTANTS.SEQUENCER_INTERNAL_ATTACK;
+		}
+
 		if (sound.synth && !sound.synth.disposed) {
 			if (sound.synth instanceof Tone.PolySynth) {
 				sound.synth.releaseAll();
@@ -249,6 +266,19 @@ export function setSequencerControl(sound, controlled) {
 	} else if (wasControlled && !controlled) {
 		sound.wasInsideArea = false;
 		sound.isPlaying = false;
+
+		if (sound._savedEnvelope) {
+			if (sound.synth instanceof Tone.PolySynth) {
+				sound.synth.set({ envelope: sound._savedEnvelope });
+			} else if (sound.synth?.envelope) {
+				Object.assign(sound.synth.envelope, sound._savedEnvelope);
+			}
+			delete sound._savedEnvelope;
+		}
+		if (sound._savedSamplerAttack !== undefined && sound.synth) {
+			sound.synth.attack = sound._savedSamplerAttack;
+			delete sound._savedSamplerAttack;
+		}
 
 		const GeolocationManager = context.GeolocationManager;
 		const NoteManager = context.NoteManager;

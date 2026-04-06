@@ -350,19 +350,26 @@ export function createUIEventHandlers({
 		},
 
 		'#speedSelect:change': (e) => {
-			AppState.simulation.speedKmh = parseFloat(e.target.value);
 			if (Selectors.isSimulationActive()) {
-				getRouteAndAnimate();
+				const prevSpeedMs = (AppState.simulation.speedKmh * 1000) / 3600;
+				const now = performance.now();
+				const distanceTravelled = prevSpeedMs * ((now - AppState.simulation.animationState.startTime) / 1000);
+				AppState.simulation.speedKmh = parseFloat(e.target.value);
+				const newSpeedMs = (AppState.simulation.speedKmh * 1000) / 3600;
+				if (newSpeedMs > 0) {
+					AppState.simulation.animationState.startTime = now - (distanceTravelled / newSpeedMs) * 1000;
+				}
+			} else {
+				AppState.simulation.speedKmh = parseFloat(e.target.value);
 			}
 		},
 
 		'#calculateRouteBtn': () => {
-			const statusText = document.getElementById('simulationStatusText');
 			if (Selectors.getSimulationTarget()) {
-				statusText.textContent = "Loading road data...";
 				getRouteAndAnimate();
 			} else {
-				statusText.textContent = "Please place a target.";
+				const statusText = document.getElementById('simulationStatusText');
+				if (statusText) statusText.textContent = 'Please place a target.';
 			}
 		}
 	};

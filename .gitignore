@@ -9,3 +9,6 @@
 # OS
 .DS_Store
 .claude
+
+# IDE
+*.code-workspace

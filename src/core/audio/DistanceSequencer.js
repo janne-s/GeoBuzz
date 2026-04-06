@@ -294,6 +294,16 @@ export class DistanceSequencer {
 				const gainValue = soundObj.params.volume * CONSTANTS.SEQUENCER_SYNTH_GAIN;
 				soundObj.gain.gain.setValueAtTime(gainValue, Tone.now());
 
+				const neutralEnvelope = { attack: CONSTANTS.SEQUENCER_INTERNAL_ATTACK, decay: 0, sustain: 1 };
+				if (soundObj.synth instanceof Tone.PolySynth) {
+					soundObj.synth.set({ envelope: neutralEnvelope });
+				} else if (soundObj.synth?.envelope) {
+					Object.assign(soundObj.synth.envelope, neutralEnvelope);
+				}
+				if (soundObj.type === 'Sampler') {
+					soundObj.synth.attack = CONSTANTS.SEQUENCER_INTERNAL_ATTACK;
+				}
+
 				if (track.synthType === 'SoundFile' && params.soundFile) {
 					await context.autoLoadSoundFile(soundObj, params.soundFile);
 					context._applySoundFilePlaybackParams(soundObj, false);
@@ -714,10 +724,6 @@ export class DistanceSequencer {
 		const hadActiveNotes = previouslyActiveNotes.size > 0;
 
 		for (const midiNote of notesToStop) {
-			await this._triggerRelease(track, midiNote, willHaveActiveNotes);
-		}
-
-		for (const midiNote of notesToRetrigger) {
 			await this._triggerRelease(track, midiNote, willHaveActiveNotes);
 		}
 

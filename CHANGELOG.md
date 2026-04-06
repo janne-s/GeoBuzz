@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-04-06
+
+### Fixed
+
+- Internal ADSR neutralization for sequencer synths to prevent user envelope bleed
+- Double-release of retrigger notes in distance sequencer
+- Speed change continuity during simulation
+- Simulation status text sequencing
+
 ## 2026-04-02
 
 ### Added
