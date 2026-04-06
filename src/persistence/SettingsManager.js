@@ -67,6 +67,10 @@ export class SettingsManager {
 				releaseOnStop: seq.releaseOnStop,
 				loop: seq.loop,
 				resumeOnReenter: seq.resumeOnReenter,
+				restartOnReenter: seq.restartOnReenter,
+				releaseDelay: seq.releaseDelay,
+				muted: seq.muted,
+				soloed: seq.soloed,
 				activePaths: seq.activePaths,
 				sceneChangePaths: seq.sceneChangePaths,
 				baseSceneIndex: seq.baseSceneIndex,
@@ -88,7 +92,9 @@ export class SettingsManager {
 					offsetMode: track.offsetMode,
 					offsetFraction: track.offsetFraction,
 					offsetSteps: track.offsetSteps,
-					offset: track.offset
+					offset: track.offset,
+					muted: track.muted,
+					soloed: track.soloed
 				}))
 			}))
 		};

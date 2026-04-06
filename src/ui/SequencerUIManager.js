@@ -1348,6 +1348,7 @@ export class SequencerUIManager {
 			trackSoloBtn.onclick = () => {
 				track.soloed = !track.soloed;
 				sequencer.applyMuteState();
+				AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
 				this.refreshTracksUI(container, sequencer);
 			};
 
@@ -1356,6 +1357,7 @@ export class SequencerUIManager {
 			trackMuteBtn.onclick = () => {
 				track.muted = !track.muted;
 				sequencer.applyMuteState();
+				AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
 				this.refreshTracksUI(container, sequencer);
 			};
 
@@ -1831,6 +1833,7 @@ export class SequencerUIManager {
 				e.stopPropagation();
 				seq.soloed = !seq.soloed;
 				sequencers.forEach(s => s.applyMuteState());
+				AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer: seq } });
 				this.refreshSequencersList();
 			};
 
@@ -1840,6 +1843,7 @@ export class SequencerUIManager {
 				e.stopPropagation();
 				seq.muted = !seq.muted;
 				seq.applyMuteState();
+				AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer: seq } });
 				this.refreshSequencersList();
 			};
 

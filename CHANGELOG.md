@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Sequencer and track mute/solo, restart on re-enter, and release delay not persisted across sessions
 - Internal ADSR neutralization for sequencer synths to prevent user envelope bleed
 - Double-release of retrigger notes in distance sequencer
 - Speed change continuity during simulation
