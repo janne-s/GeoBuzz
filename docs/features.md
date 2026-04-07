@@ -82,7 +82,8 @@ Appears in the Sound tab when Volume Model is set to Ray-Cast Based:
 
 | Parameter | Description |
 |-----------|-------------|
-| **Speed Gate** | Dual-range slider (min/max, m/s) defining the movement speed range in which the sound plays. Outside this range, the sound is silenced as if the user left the area. Default: 0–10 (disabled) |
+| **Speed Gate** | Dual-range slider (min/max, m/s) defining the movement speed range in which the sound plays. Outside this range, the sound is silenced as if the user left the area. |
+| **Speed Gate Hold** | How long (seconds) the listener must continuously remain inside or outside the speed range before the gate opens or closes. Prevents rapid toggling from momentary speed fluctuations. |
 
 ---
 
@@ -165,7 +166,7 @@ Parameters are organized by category. Which categories appear depends on the syn
 |-----------|-------------|
 | **Volume** | Output level |
 | **Pan** | Stereo position (left to right) |
-| **Curve Strength** | Volume falloff curve shape |
+| **Curve Strength** | Volume falloff curve shape. 1.0 = linear fade from peak to edge; higher values concentrate volume near the peak and drop off more steeply toward edges |
 | **Release Mode** | Stop or Release (what happens on exit) |
 | **Polyphony** | Voice limit (synths that support it) |
 
@@ -242,9 +243,9 @@ Motion controls (link playback to user movement):
 
 | Parameter | Description |
 |-----------|-------------|
-| **Source** | Modulation source: LFO, Walkable LFO, Speed, GPS Instability, Distance, X position, Y position |
+| **Source** | Modulation source: LFO (time-based), Walkable LFO (advances by distance walked rather than time), Speed, GPS Instability, Distance, X position, Y position |
 | **Target** | Sound parameter to modulate |
-| **Waveform** | Modulation shape: Sine, Triangle, Saw Up, Saw Down, Square, S&H, S&H Hard |
+| **Waveform** | Modulation shape: Sine, Triangle, Saw Up, Saw Down, Square, S&H (Sample & Hold with interpolation), S&H Hard (Sample & Hold, no interpolation) |
 | **Range** | Modulation depth |
 | **Frequency** | Rate (Hz for LFO, cycles/m for Walkable) |
 | **Reference Speed** | Speed for 100% modulation (Speed source only) |
@@ -568,7 +569,7 @@ Each track has:
 | **Instrument Type** | What the track triggers: synth or sound |
 | **Instrument** | Specific synth or sound |
 | **Offset** | Step offset from main sequence |
-| **Offset Mode** | How offset is calculated: meters, steps, division |
+| **Offset Mode** | How offset is calculated: meters (absolute distance), steps (number of sequence steps), division (fraction of the total sequence length) |
 | **Steps** | Per-track step count override |
 
 ### Step Editor
@@ -944,13 +945,13 @@ When Ambisonics mode selected:
 |-----------|-------------|
 | **Position Smoothing** | Location interpolation |
 | **Max Gain Change** | Volume change limiting |
-| **Dead Zone** | Minimum movement threshold |
+| **Dead Zone** | Minimum distance moved per update before position is recalculated. Filters out GPS jitter when standing still |
 
 ### GPS Accuracy
 
 | Parameter | Description |
 |-----------|-------------|
-| **GPS Responsiveness** | Controls Kalman filter aggressiveness. |
+| **GPS Responsiveness** | How quickly position tracks new GPS readings vs. how much noise filtering is applied |
 
 ### Listener Direction
 

@@ -28,6 +28,36 @@ export function setContext(ctx) {
 	context = ctx;
 }
 
+function evaluateSpeedGateWithHold(s, inRange, nowMs, userSpeed) {
+	const hold = (s.params.speedGateHold ?? 0) * 1000;
+	if (hold === 0) return inRange;
+
+	if (!inRange && userSpeed < CONSTANTS.ZERO_SPEED_THRESHOLD) {
+		s._speedGateCommitted = false;
+		s._speedGateTransitionStart = null;
+		return false;
+	}
+
+	if (s._speedGateCommitted === undefined) {
+		s._speedGateCommitted = inRange;
+		s._speedGateTransitionStart = null;
+		return inRange;
+	}
+	if (inRange === s._speedGateCommitted) {
+		s._speedGateTransitionStart = null;
+		return inRange;
+	}
+	if (s._speedGateTransitionStart === null) {
+		s._speedGateTransitionStart = nowMs;
+	}
+	if (nowMs - s._speedGateTransitionStart >= hold) {
+		s._speedGateCommitted = inRange;
+		s._speedGateTransitionStart = null;
+		return inRange;
+	}
+	return s._speedGateCommitted;
+}
+
 export function getTotalDistanceTraveled() {
 	return totalDistanceTraveled;
 }
@@ -255,7 +285,8 @@ export function updateAudio(userPos, now) {
 				const gateMax = s.params.speedGateMax ?? 10;
 				if (gateMin > 0 || gateMax < 10) {
 					const userSpeed = getUserMovementSpeed();
-					if (userSpeed < gateMin || userSpeed > gateMax) {
+					const rawInRange = userSpeed >= gateMin && userSpeed <= gateMax;
+					if (!evaluateSpeedGateWithHold(s, rawInRange, performance.now(), userSpeed)) {
 						isInside = false;
 					}
 				}
@@ -285,7 +316,8 @@ export function updateAudio(userPos, now) {
 				const gateMax = s.params.speedGateMax ?? 10;
 				if (isInside && (gateMin > 0 || gateMax < 10)) {
 					const userSpeed = getUserMovementSpeed();
-					if (userSpeed < gateMin || userSpeed > gateMax) {
+					const rawInRange = userSpeed >= gateMin && userSpeed <= gateMax;
+					if (!evaluateSpeedGateWithHold(s, rawInRange, performance.now(), userSpeed)) {
 						isInside = false;
 						s.wasInsideArea = false;
 					}
@@ -420,7 +452,8 @@ export function updateAudio(userPos, now) {
 					const hasSpeedGate = gateMin > 0 || gateMax < 10;
 					if (hasSpeedGate || s._speedGateOpen === false) {
 						const userSpeed = hasSpeedGate ? getUserMovementSpeed() : 0;
-						const inRange = !hasSpeedGate || (userSpeed >= gateMin && userSpeed <= gateMax);
+						const rawInRange = !hasSpeedGate || (userSpeed >= gateMin && userSpeed <= gateMax);
+						const inRange = evaluateSpeedGateWithHold(s, rawInRange, performance.now(), userSpeed);
 						if (inRange !== (s._speedGateOpen !== false)) {
 							s._skipEnvelope = true;
 							NoteManager.release(s);
@@ -491,6 +524,10 @@ export function audioUpdateLoop() {
 	const sounds = Selectors.getSounds();
 	for (let i = 0; i < sounds.length; i++) {
 		const s = sounds[i];
+		if (s._speedGateTransitionStart !== null && s._speedGateTransitionStart !== undefined) {
+			positionsMayHaveChanged = true;
+			break;
+		}
 		const lfo = s.params?.lfo;
 		if (lfo) {
 			if ((lfo.x.freq > 0 && lfo.x.range > 0) ||

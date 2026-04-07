@@ -814,6 +814,18 @@ export const PARAMETER_REGISTRY = {
 		serialize: true,
 		ui: false
 	},
+	speedGateHold: {
+		label: 'Speed Gate Hold',
+		type: 'range',
+		min: 0,
+		max: 10,
+		step: 0.1,
+		defaultValue: 0,
+		unit: ' s',
+		category: 'spatial',
+		serialize: true,
+		ui: false
+	},
 
 	selectedNotes: {
 		label: 'Selected Notes',

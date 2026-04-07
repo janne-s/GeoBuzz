@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-04-07
+
+### Added
+
+- Speed gate hold parameter: configurable hysteresis (0–10 s) preventing rapid gate toggling from momentary speed fluctuations. Applies to the sound-level speed gate on the Spatial tab
+
 ## 2026-04-06
 
 ### Fixed

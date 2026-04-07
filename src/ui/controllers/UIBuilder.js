@@ -351,6 +351,37 @@ export function createSpatialSection(obj) {
 			});
 			contentContainer.appendChild(speedGateSlider);
 
+			const holdSection = createElement('div', 'parameter-control');
+			const holdLabel = createElement('label');
+			holdLabel.textContent = 'Speed Gate Hold';
+			const holdSlider = createElement('input');
+			holdSlider.type = 'range';
+			holdSlider.min = 0;
+			holdSlider.max = 10;
+			holdSlider.step = 0.1;
+			holdSlider.value = obj.params.speedGateHold ?? 0;
+			const holdDisplay = createElement('span', 'value-display');
+			holdDisplay.textContent = parseFloat(holdSlider.value).toFixed(1) + ' s';
+			holdSlider.oninput = () => {
+				obj.params.speedGateHold = parseFloat(holdSlider.value);
+				holdDisplay.textContent = obj.params.speedGateHold.toFixed(1) + ' s';
+				AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
+			};
+			makeValueEditable(holdDisplay, holdSlider, {
+				modalSystem: context.ModalSystem,
+				formatValue: (val) => parseFloat(val).toFixed(1) + ' s',
+				onUpdate: (val) => {
+					obj.params.speedGateHold = val;
+					holdSlider.value = val;
+					holdDisplay.textContent = val.toFixed(1) + ' s';
+					AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
+				}
+			});
+			holdSection.appendChild(holdLabel);
+			holdSection.appendChild(holdSlider);
+			holdSection.appendChild(holdDisplay);
+			contentContainer.appendChild(holdSection);
+
 			return contentContainer;
 		}
 	});
