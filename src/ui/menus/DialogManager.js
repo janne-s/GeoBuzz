@@ -1,4 +1,4 @@
-import { createElement, createDualRangeSlider } from '../domHelpers.js';
+import { createElement, createDualRangeSlider, makeValueEditable } from '../domHelpers.js';
 import { createDraggableHeader } from '../controllers/HeaderBuilder.js';
 import { CONSTANTS } from '../../core/constants.js';
 
@@ -326,7 +326,8 @@ export async function showGridSampleDialog(soundObj, midiNote) {
 		pitchDisplay.textContent = `${value > 0 ? '+' : ''}${value} st`;
 	};
 
-	const speedRangeSlider = createDualRangeSlider({
+	const speedGateSlider = createDualRangeSlider({
+		label: 'Speed Gate',
 		min: 0, max: 10, step: 0.1,
 		valueLow: existingSample.speedMin ?? 0,
 		valueHigh: existingSample.speedMax ?? 10,
@@ -342,7 +343,45 @@ export async function showGridSampleDialog(soundObj, midiNote) {
 			AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 		}
 	});
-	modal.querySelector('.modal-body').appendChild(speedRangeSlider);
+	modal.querySelector('.modal-body').appendChild(speedGateSlider);
+
+	let holdTouched = false;
+	const holdSection = createElement('div', 'parameter-control');
+	const holdLabel = createElement('label');
+	holdLabel.textContent = 'Speed Gate Hold';
+	const holdSlider = createElement('input');
+	holdSlider.type = 'range';
+	holdSlider.min = 0;
+	holdSlider.max = 10;
+	holdSlider.step = 0.1;
+	holdSlider.value = existingSample.speedGateHold ?? (soundObj.params.speedGateHold ?? 0);
+	const holdDisplay = createElement('span', 'value-display');
+	holdDisplay.textContent = parseFloat(holdSlider.value).toFixed(1) + ' s';
+	holdSlider.oninput = () => {
+		holdTouched = true;
+		const val = parseFloat(holdSlider.value);
+		holdDisplay.textContent = val.toFixed(1) + ' s';
+		if (soundObj.params.gridSamples[midiNote]) {
+			soundObj.params.gridSamples[midiNote].speedGateHold = val;
+		}
+	};
+	makeValueEditable(holdDisplay, holdSlider, {
+		modalSystem: ModalSystem,
+		formatValue: (val) => parseFloat(val).toFixed(1) + ' s',
+		onUpdate: (val) => {
+			holdTouched = true;
+			holdSlider.value = val;
+			holdDisplay.textContent = val.toFixed(1) + ' s';
+			if (soundObj.params.gridSamples[midiNote]) {
+				soundObj.params.gridSamples[midiNote].speedGateHold = val;
+			}
+			AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
+		}
+	});
+	holdSection.appendChild(holdLabel);
+	holdSection.appendChild(holdSlider);
+	holdSection.appendChild(holdDisplay);
+	modal.querySelector('.modal-body').appendChild(holdSection);
 
 	return new Promise((resolve) => {
 		const cleanup = () => {
@@ -360,13 +399,15 @@ export async function showGridSampleDialog(soundObj, midiNote) {
 
 			if (fileSelected) {
 				if (!soundObj.params.gridSamples) soundObj.params.gridSamples = {};
-				const speedValues = speedRangeSlider.getValues();
-				soundObj.params.gridSamples[midiNote] = {
+				const speedValues = speedGateSlider.getValues();
+				const entry = {
 					fileName: fileSelected,
 					pitch: parseInt(pitchSlider.value),
 					speedMin: speedValues.low,
 					speedMax: speedValues.high
 				};
+				if (holdTouched) entry.speedGateHold = parseFloat(holdSlider.value);
+				soundObj.params.gridSamples[midiNote] = entry;
 
 				delete soundObj._eligibleGridKeys;
 				await changeSoundType(soundObj, 'Sampler');
@@ -385,6 +426,7 @@ export async function showGridSampleDialog(soundObj, midiNote) {
 				if (soundObj.params.gridSamples && soundObj.params.gridSamples[midiNote]) {
 					delete soundObj.params.gridSamples[midiNote];
 					delete soundObj._eligibleGridKeys;
+					if (soundObj._gridKeyHoldState) delete soundObj._gridKeyHoldState[midiNote];
 					await changeSoundType(soundObj, 'Sampler');
 				}
 
@@ -394,19 +436,23 @@ export async function showGridSampleDialog(soundObj, midiNote) {
 
 		modal.querySelector('#gridCancelBtn').onclick = () => {
 			const newPitch = parseInt(pitchSlider.value);
-			const speedValues = speedRangeSlider.getValues();
+			const speedValues = speedGateSlider.getValues();
+			const holdVal = holdTouched ? parseFloat(holdSlider.value) : undefined;
 			if (soundObj.params.gridSamples[midiNote]) {
 				soundObj.params.gridSamples[midiNote].pitch = newPitch;
 				soundObj.params.gridSamples[midiNote].speedMin = speedValues.low;
 				soundObj.params.gridSamples[midiNote].speedMax = speedValues.high;
-			} else if (newPitch !== 0 || speedValues.low !== 0 || speedValues.high !== 10) {
+				if (holdTouched) soundObj.params.gridSamples[midiNote].speedGateHold = holdVal;
+			} else if (newPitch !== 0 || speedValues.low !== 0 || speedValues.high !== 10 || holdTouched) {
 				if (!soundObj.params.gridSamples) soundObj.params.gridSamples = {};
-				soundObj.params.gridSamples[midiNote] = {
+				const entry = {
 					fileName: null,
 					pitch: newPitch,
 					speedMin: speedValues.low,
 					speedMax: speedValues.high
 				};
+				if (holdTouched) entry.speedGateHold = holdVal;
+				soundObj.params.gridSamples[midiNote] = entry;
 			}
 			AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 			cleanup();

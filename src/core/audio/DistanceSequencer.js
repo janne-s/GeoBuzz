@@ -44,7 +44,9 @@ export class DistanceSequencer {
 		this.enabled = options.enabled !== undefined ? options.enabled : true;
 		this.numSteps = options.numSteps || CONSTANTS.SEQUENCER_DEFAULT_STEPS;
 		this.stepLength = options.stepLength || CONSTANTS.SEQUENCER_DEFAULT_LENGTH;
-		this.speedThreshold = options.speedThreshold !== undefined ? options.speedThreshold : CONSTANTS.SEQUENCER_SPEED_THRESHOLD;
+		this.speedGateMin = options.speedGateMin !== undefined ? options.speedGateMin : CONSTANTS.SEQUENCER_SPEED_THRESHOLD;
+		this.speedGateMax = options.speedGateMax !== undefined ? options.speedGateMax : CONSTANTS.SEQUENCER_SPEED_GATE_MAX;
+		this.speedGateHold = options.speedGateHold !== undefined ? options.speedGateHold : CONSTANTS.SEQUENCER_SPEED_GATE_HOLD_DEFAULT;
 		this.releaseOnStop = options.releaseOnStop !== undefined ? options.releaseOnStop : true;
 		this.releaseDelay = options.releaseDelay !== undefined ? options.releaseDelay : 0;
 		this.loop = options.loop !== undefined ? options.loop : true;
@@ -110,6 +112,8 @@ export class DistanceSequencer {
 		this._synthPool = new Map();
 		this._isMovingFastEnough = false;
 		this._releaseTimeoutId = null;
+		this._speedGateCommitted = undefined;
+		this._speedGateTransitionStart = null;
 
 		this.geoMode = false;
 		this.gridMode = false;
@@ -132,6 +136,37 @@ export class DistanceSequencer {
 		if (this._listeners[event]) {
 			this._listeners[event].forEach(callback => callback(data));
 		}
+	}
+
+	_evaluateSpeedGate(speed, nowMs) {
+		const inRange = speed >= this.speedGateMin && speed <= this.speedGateMax;
+		const hold = this.speedGateHold * 1000;
+		if (hold === 0) return inRange;
+
+		if (!inRange && speed < CONSTANTS.ZERO_SPEED_THRESHOLD) {
+			this._speedGateCommitted = false;
+			this._speedGateTransitionStart = null;
+			return false;
+		}
+
+		if (this._speedGateCommitted === undefined) {
+			this._speedGateCommitted = inRange;
+			this._speedGateTransitionStart = null;
+			return inRange;
+		}
+		if (inRange === this._speedGateCommitted) {
+			this._speedGateTransitionStart = null;
+			return inRange;
+		}
+		if (this._speedGateTransitionStart === null) {
+			this._speedGateTransitionStart = nowMs;
+		}
+		if (nowMs - this._speedGateTransitionStart >= hold) {
+			this._speedGateCommitted = inRange;
+			this._speedGateTransitionStart = null;
+			return inRange;
+		}
+		return this._speedGateCommitted;
 	}
 
 	updatePosition(lat, lon) {
@@ -191,7 +226,9 @@ export class DistanceSequencer {
 		const timeDelta = (currentPos.timestamp - this.lastPosition.timestamp) / 1000;
 		const speed = timeDelta > 0 ? smoothedDistance / timeDelta : 0;
 
-		if (speed < this.speedThreshold) {
+		const gateOpen = this._evaluateSpeedGate(speed, currentPos.timestamp);
+
+		if (!gateOpen) {
 			if (this._isMovingFastEnough && this.releaseOnStop) {
 				if (this.releaseDelay === 0) {
 					this._releaseAllNotes();
@@ -730,31 +767,51 @@ export class DistanceSequencer {
 		const allNotesToTrigger = new Set([...notesToStart, ...notesToRetrigger]);
 
 		const userSpeed = context.getUserMovementSpeed();
+		const nowMs = performance.now();
+		if (!track._noteHoldState) track._noteHoldState = {};
 
-		const getNoteSpeedGate = (note, fromStepIndex) => {
+		const isNoteGateOpen = (note, fromStepIndex) => {
 			const originStep = this._findNoteOriginStep(track, fromStepIndex, note);
-			const sgMin = track.steps[originStep]?.speedGateMin;
-			const sgMax = track.steps[originStep]?.speedGateMax;
-			const gateMin = sgMin?.[note] ?? CONSTANTS.SEQUENCER_SPEED_GATE_MIN;
-			const gateMax = sgMax?.[note] ?? CONSTANTS.SEQUENCER_SPEED_GATE_MAX;
-			return { gateMin, gateMax };
-		};
-
-		const isSpeedGated = (note, fromStepIndex) => {
-			const { gateMin, gateMax } = getNoteSpeedGate(note, fromStepIndex);
-			if (gateMin === CONSTANTS.SEQUENCER_SPEED_GATE_MIN && gateMax === CONSTANTS.SEQUENCER_SPEED_GATE_MAX) return false;
-			return userSpeed < gateMin || userSpeed > gateMax;
+			const step = track.steps[originStep];
+			const gateMin = step?.speedGateMin?.[note] ?? CONSTANTS.SEQUENCER_SPEED_GATE_MIN;
+			const gateMax = step?.speedGateMax?.[note] ?? CONSTANTS.SEQUENCER_SPEED_GATE_MAX;
+			if (gateMin === CONSTANTS.SEQUENCER_SPEED_GATE_MIN && gateMax === CONSTANTS.SEQUENCER_SPEED_GATE_MAX) return true;
+			const inRange = userSpeed >= gateMin && userSpeed <= gateMax;
+			const holdSec = step?.speedGateHold?.[note] ?? this.speedGateHold ?? 0;
+			const holdMs = holdSec * 1000;
+			if (holdMs === 0) return inRange;
+			if (!track._noteHoldState[note]) {
+				track._noteHoldState[note] = { committed: inRange, transitionStart: null };
+				return inRange;
+			}
+			const state = track._noteHoldState[note];
+			if (!inRange && userSpeed < CONSTANTS.ZERO_SPEED_THRESHOLD) {
+				state.committed = false;
+				state.transitionStart = null;
+				return false;
+			}
+			if (inRange === state.committed) {
+				state.transitionStart = null;
+				return inRange;
+			}
+			if (state.transitionStart === null) state.transitionStart = nowMs;
+			if (nowMs - state.transitionStart >= holdMs) {
+				state.committed = inRange;
+				state.transitionStart = null;
+				return inRange;
+			}
+			return state.committed;
 		};
 
 		for (const note of [...allNotesToTrigger]) {
-			if (isSpeedGated(note, stepIndex)) {
+			if (!isNoteGateOpen(note, stepIndex)) {
 				allNotesToTrigger.delete(note);
 				notesForThisStep.delete(note);
 			}
 		}
 
 		for (const note of [...sustainedNotes]) {
-			if (isSpeedGated(note, stepIndex)) {
+			if (!isNoteGateOpen(note, stepIndex)) {
 				notesForThisStep.delete(note);
 				sustainedNotes.delete(note);
 				await this._triggerRelease(track, note, notesForThisStep.size > 0);
@@ -763,7 +820,7 @@ export class DistanceSequencer {
 
 		track.steps[stepIndex].sustains.forEach(note => {
 			if (sustainedNotes.has(note) || allNotesToTrigger.has(note)) return;
-			if (!isSpeedGated(note, stepIndex)) {
+			if (isNoteGateOpen(note, stepIndex)) {
 				allNotesToTrigger.add(note);
 				notesForThisStep.add(note);
 			}
@@ -1003,10 +1060,13 @@ export class DistanceSequencer {
 		this.currentStep = -1;
 		this.lastPosition = null;
 		this.positionHistory = [];
+		this._speedGateCommitted = undefined;
+		this._speedGateTransitionStart = null;
 		this._releaseAllNotes();
 
 		this.tracks.forEach(track => {
 			track.currentStep = -1;
+			delete track._noteHoldState;
 		});
 
 		this.dispatchEvent('stateChange');
@@ -1045,7 +1105,8 @@ export class DistanceSequencer {
 			sustains: [],
 			velocity: 0.8,
 			speedGateMin: {},
-			speedGateMax: {}
+			speedGateMax: {},
+			speedGateHold: {}
 		}));
 
 		const activeSceneId = this.scenes[this.activeSceneIndex].id;
@@ -1173,7 +1234,7 @@ export class DistanceSequencer {
 				for (const sceneId of Object.keys(track.sceneSteps)) {
 					const steps = track.sceneSteps[sceneId];
 					for (let i = oldCount; i < this.numSteps; i++) {
-						steps.push({ notes: [], sustains: [], velocity: 0.8 });
+						steps.push({ notes: [], sustains: [], velocity: 0.8, speedGateMin: {}, speedGateMax: {}, speedGateHold: {} });
 					}
 				}
 			}
@@ -1262,7 +1323,7 @@ export class DistanceSequencer {
 				track.sceneSteps[newId] = deepClone(track.steps);
 			} else {
 				track.sceneSteps[newId] = Array(numSteps).fill(null).map(() => ({
-					notes: [], sustains: [], velocity: 0.8
+					notes: [], sustains: [], velocity: 0.8, speedGateMin: {}, speedGateMax: {}, speedGateHold: {}
 				}));
 			}
 		});

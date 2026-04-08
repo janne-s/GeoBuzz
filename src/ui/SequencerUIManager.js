@@ -7,11 +7,11 @@ import { getUserMovementSpeed } from '../core/audio/AudioEngine.js';
 import { destroySound } from '../core/audio/SoundLifecycle.js';
 import { setSequencerControl } from '../core/audio/SoundCreation.js';
 import { DistanceSequencer } from '../core/audio/DistanceSequencer.js';
-import { createElement, createButton, createSelect, createDualRangeSlider } from './domHelpers.js';
+import { createElement, createButton, createSelect, createDualRangeSlider, makeValueEditable } from './domHelpers.js';
 import { ModalSystem } from './ModalSystem.js';
 import { MenuManager } from './controllers/MenuManager.js';
 import { createDraggableHeader, createElementNavigationDropdown } from './controllers/HeaderBuilder.js';
-import { createMenuStructure } from './controllers/UIBuilder.js';
+import { createMenuStructure, createCollapsibleSection } from './controllers/UIBuilder.js';
 import { hasKeyboard } from '../core/utils/typeChecks.js';
 import { deepClone } from '../core/utils/math.js';
 
@@ -235,209 +235,242 @@ export class SequencerUIManager {
 		menu.appendChild(spatialTabContent);
 		menu.appendChild(tracksTabContent);
 
-		const row1Container = createElement('div', 'sequencer-controls-row');
+		const settingsSection = createCollapsibleSection('Settings', 'fa-cog', () => {
+			const content = createElement('div', 'sequencer-settings-content');
 
-		const enableGroup = createElement('div', 'parameter-control');
-		const enableLabel = createElement('label');
-		enableLabel.textContent = 'Enabled';
-		const enableToggle = createElement('input');
-		enableToggle.type = 'checkbox';
-		enableToggle.checked = sequencer.enabled;
-		enableToggle.onchange = () => {
-			sequencer.enabled = enableToggle.checked;
-			if (!sequencer.enabled) {
-				sequencer.reset();
-			}
-		};
-		enableGroup.appendChild(enableLabel);
-		enableGroup.appendChild(enableToggle);
-		row1Container.appendChild(enableGroup);
+			const row1Container = createElement('div', 'sequencer-controls-row');
 
-		const loopGroup = createElement('div', 'parameter-control');
-		const loopLabel = createElement('label');
-		loopLabel.textContent = 'Loop';
-		const loopToggle = createElement('input');
-		loopToggle.type = 'checkbox';
-		loopToggle.checked = sequencer.loop;
-		loopToggle.onchange = () => {
-			sequencer.loop = loopToggle.checked;
-		};
-		loopGroup.appendChild(loopLabel);
-		loopGroup.appendChild(loopToggle);
-		row1Container.appendChild(loopGroup);
+			const enableGroup = createElement('div', 'parameter-control');
+			const enableLabel = createElement('label');
+			enableLabel.textContent = 'Enabled';
+			const enableToggle = createElement('input');
+			enableToggle.type = 'checkbox';
+			enableToggle.checked = sequencer.enabled;
+			enableToggle.onchange = () => {
+				sequencer.enabled = enableToggle.checked;
+				if (!sequencer.enabled) {
+					sequencer.reset();
+				}
+			};
+			enableGroup.appendChild(enableLabel);
+			enableGroup.appendChild(enableToggle);
+			row1Container.appendChild(enableGroup);
 
-		const stepsGroup = createElement('div', 'parameter-control');
-		const stepsLabel = createElement('label');
-		stepsLabel.textContent = 'Steps';
-		const stepsInput = createElement('input');
-		stepsInput.type = 'number';
-		stepsInput.min = CONSTANTS.SEQUENCER_MIN_STEPS;
-		stepsInput.max = CONSTANTS.SEQUENCER_MAX_STEPS;
-		stepsInput.value = sequencer.numSteps;
-		stepsInput.style.width = '60px';
-		stepsInput.oninput = () => {
-			let newCount = parseInt(stepsInput.value);
-			if (isNaN(newCount) || newCount < CONSTANTS.SEQUENCER_MIN_STEPS) {
-				newCount = CONSTANTS.SEQUENCER_MIN_STEPS;
-				stepsInput.value = newCount;
-			}
-			if (newCount > CONSTANTS.SEQUENCER_MAX_STEPS) {
-				newCount = CONSTANTS.SEQUENCER_MAX_STEPS;
-				stepsInput.value = newCount;
-			}
+			const loopGroup = createElement('div', 'parameter-control');
+			const loopLabel = createElement('label');
+			loopLabel.textContent = 'Loop';
+			const loopToggle = createElement('input');
+			loopToggle.type = 'checkbox';
+			loopToggle.checked = sequencer.loop;
+			loopToggle.onchange = () => {
+				sequencer.loop = loopToggle.checked;
+			};
+			loopGroup.appendChild(loopLabel);
+			loopGroup.appendChild(loopToggle);
+			row1Container.appendChild(loopGroup);
 
-			const oldCount = sequencer.numSteps;
-			sequencer.numSteps = newCount;
+			const stepsGroup = createElement('div', 'parameter-control');
+			const stepsLabel = createElement('label');
+			stepsLabel.textContent = 'Steps';
+			const stepsInput = createElement('input');
+			stepsInput.type = 'number';
+			stepsInput.min = CONSTANTS.SEQUENCER_MIN_STEPS;
+			stepsInput.max = CONSTANTS.SEQUENCER_MAX_STEPS;
+			stepsInput.value = sequencer.numSteps;
+			stepsInput.style.width = '60px';
+			stepsInput.oninput = () => {
+				let newCount = parseInt(stepsInput.value);
+				if (isNaN(newCount) || newCount < CONSTANTS.SEQUENCER_MIN_STEPS) {
+					newCount = CONSTANTS.SEQUENCER_MIN_STEPS;
+					stepsInput.value = newCount;
+				}
+				if (newCount > CONSTANTS.SEQUENCER_MAX_STEPS) {
+					newCount = CONSTANTS.SEQUENCER_MAX_STEPS;
+					stepsInput.value = newCount;
+				}
 
-			sequencer.tracks.forEach(track => {
-				delete track.numSteps;
+				const oldCount = sequencer.numSteps;
+				sequencer.numSteps = newCount;
 
-				if (newCount > oldCount) {
-					for (let i = oldCount; i < newCount; i++) {
-						track.steps.push({ notes: [], sustains: [], velocity: 0.8 });
+				sequencer.tracks.forEach(track => {
+					delete track.numSteps;
+
+					if (newCount > oldCount) {
+						for (let i = oldCount; i < newCount; i++) {
+							track.steps.push({ notes: [], sustains: [], velocity: 0.8 });
+						}
+					}
+
+					if (track.currentStep >= newCount) {
+						track.currentStep = newCount - 1;
+					}
+				});
+
+				this.refreshSequencerPanel(menu, sequencer);
+			};
+			stepsGroup.appendChild(stepsLabel);
+			stepsGroup.appendChild(stepsInput);
+			row1Container.appendChild(stepsGroup);
+
+			content.appendChild(row1Container);
+
+			const row2Container = createElement('div', 'sequencer-slider-row');
+
+			const lengthLabel = createElement('label');
+			lengthLabel.textContent = 'Step Length';
+			const lengthSlider = createElement('input');
+			lengthSlider.type = 'range';
+			lengthSlider.min = 5;
+			lengthSlider.max = 100;
+			lengthSlider.value = sequencer.stepLength;
+			const lengthDisplay = createElement('span', 'value-display');
+			lengthDisplay.textContent = `${sequencer.stepLength}m`;
+			lengthSlider.oninput = () => {
+				sequencer.stepLength = parseInt(lengthSlider.value);
+				lengthDisplay.textContent = `${sequencer.stepLength}m`;
+
+				sequencer.lastStepDistance = Math.floor(sequencer.totalDistance / sequencer.stepLength) * sequencer.stepLength;
+				sequencer.currentStep = sequencer.loop
+					? (Math.floor(sequencer.totalDistance / sequencer.stepLength) % sequencer.numSteps)
+					: Math.min(Math.floor(sequencer.totalDistance / sequencer.stepLength), sequencer.numSteps - 1);
+
+				sequencer.tracks.forEach(track => {
+					if (track.offsetMode === 'division' && track.offsetFraction !== undefined) {
+						track.offset = track.offsetFraction * sequencer.stepLength;
+					} else if (track.offsetMode === 'steps' && track.offsetSteps !== undefined) {
+						track.offset = track.offsetSteps * sequencer.stepLength;
+					}
+
+					const effectiveDistance = sequencer.totalDistance - track.offset;
+					if (effectiveDistance >= 0) {
+						const trackSteps = Math.min(
+							track.steps.length,
+							track.numSteps !== undefined ? track.numSteps : sequencer.numSteps
+						);
+						const absoluteStepCount = Math.floor(effectiveDistance / sequencer.stepLength);
+						track.currentStep = sequencer.loop
+							? (absoluteStepCount % trackSteps)
+							: Math.min(absoluteStepCount, trackSteps - 1);
+					}
+				});
+
+				this.refreshTracksUI(tracksContainer, sequencer);
+			};
+
+			row2Container.appendChild(lengthLabel);
+			row2Container.appendChild(lengthSlider);
+			row2Container.appendChild(lengthDisplay);
+
+			content.appendChild(row2Container);
+
+			const speedGateSlider = createDualRangeSlider({
+				label: 'Speed Gate',
+				min: CONSTANTS.SEQUENCER_SPEED_GATE_MIN,
+				max: CONSTANTS.SEQUENCER_SPEED_GATE_MAX,
+				step: CONSTANTS.SEQUENCER_SPEED_GATE_STEP,
+				valueLow: sequencer.speedGateMin,
+				valueHigh: sequencer.speedGateMax,
+				unit: ' m/s',
+				modalSystem: ModalSystem,
+				onChange: (low, high) => {
+					sequencer.speedGateMin = low;
+					sequencer.speedGateMax = high;
+					if (sequencer.releaseOnStop) {
+						const currentSpeed = getUserMovementSpeed();
+						if (currentSpeed < low || currentSpeed > high) {
+							sequencer._releaseAllNotes();
+						}
+					}
+				},
+				onCommit: () => {
+					AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+				}
+			});
+			content.appendChild(speedGateSlider);
+
+			const holdSection = createElement('div', 'parameter-control');
+			const holdLabel = createElement('label');
+			holdLabel.textContent = 'Speed Gate Hold';
+			const holdSlider = createElement('input');
+			holdSlider.type = 'range';
+			holdSlider.min = 0;
+			holdSlider.max = CONSTANTS.SEQUENCER_SPEED_GATE_HOLD_MAX;
+			holdSlider.step = CONSTANTS.SEQUENCER_SPEED_GATE_HOLD_STEP;
+			holdSlider.value = sequencer.speedGateHold;
+			const holdDisplay = createElement('span', 'value-display');
+			holdDisplay.textContent = parseFloat(holdSlider.value).toFixed(1) + ' s';
+			holdSlider.oninput = () => {
+				sequencer.speedGateHold = parseFloat(holdSlider.value);
+				holdDisplay.textContent = sequencer.speedGateHold.toFixed(1) + ' s';
+			};
+			holdSlider.onchange = () => {
+				AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+			};
+			makeValueEditable(holdDisplay, holdSlider, {
+				modalSystem: ModalSystem,
+				formatValue: (val) => parseFloat(val).toFixed(1) + ' s',
+				onUpdate: (val) => {
+					sequencer.speedGateHold = val;
+					holdSlider.value = val;
+					holdDisplay.textContent = val.toFixed(1) + ' s';
+					AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+				}
+			});
+			holdSection.appendChild(holdLabel);
+			holdSection.appendChild(holdSlider);
+			holdSection.appendChild(holdDisplay);
+			content.appendChild(holdSection);
+
+			const row4Container = createElement('div', 'sequencer-slider-row');
+
+			const releaseGroup = createElement('div', 'parameter-control');
+			const releaseLabel = createElement('label');
+			releaseLabel.textContent = 'Release on Stop';
+			const releaseToggle = createElement('input');
+			releaseToggle.type = 'checkbox';
+			releaseToggle.checked = sequencer.releaseOnStop;
+			releaseToggle.onchange = () => {
+				sequencer.releaseOnStop = releaseToggle.checked;
+
+				if (releaseToggle.checked) {
+					const currentSpeed = getUserMovementSpeed();
+					if (currentSpeed < sequencer.speedGateMin || currentSpeed > sequencer.speedGateMax) {
+						sequencer._releaseAllNotes();
 					}
 				}
+			};
+			releaseGroup.appendChild(releaseLabel);
+			releaseGroup.appendChild(releaseToggle);
+			row4Container.appendChild(releaseGroup);
 
-				if (track.currentStep >= newCount) {
-					track.currentStep = newCount - 1;
-				}
-			});
-
-			this.refreshSequencerPanel(menu, sequencer);
-		};
-		stepsGroup.appendChild(stepsLabel);
-		stepsGroup.appendChild(stepsInput);
-		row1Container.appendChild(stepsGroup);
-
-		tracksTabContent.appendChild(row1Container);
-
-		const row2Container = createElement('div', 'sequencer-slider-row');
-
-		const lengthLabel = createElement('label');
-		lengthLabel.textContent = 'Step Length';
-		const lengthSlider = createElement('input');
-		lengthSlider.type = 'range';
-		lengthSlider.min = 5;
-		lengthSlider.max = 100;
-		lengthSlider.value = sequencer.stepLength;
-		const lengthDisplay = createElement('span', 'value-display');
-		lengthDisplay.textContent = `${sequencer.stepLength}m`;
-		lengthSlider.oninput = () => {
-			sequencer.stepLength = parseInt(lengthSlider.value);
-			lengthDisplay.textContent = `${sequencer.stepLength}m`;
-
-			sequencer.lastStepDistance = Math.floor(sequencer.totalDistance / sequencer.stepLength) * sequencer.stepLength;
-			sequencer.currentStep = sequencer.loop
-				? (Math.floor(sequencer.totalDistance / sequencer.stepLength) % sequencer.numSteps)
-				: Math.min(Math.floor(sequencer.totalDistance / sequencer.stepLength), sequencer.numSteps - 1);
-
-			sequencer.tracks.forEach(track => {
-				if (track.offsetMode === 'division' && track.offsetFraction !== undefined) {
-					track.offset = track.offsetFraction * sequencer.stepLength;
-				} else if (track.offsetMode === 'steps' && track.offsetSteps !== undefined) {
-					track.offset = track.offsetSteps * sequencer.stepLength;
-				}
-
-				const effectiveDistance = sequencer.totalDistance - track.offset;
-				if (effectiveDistance >= 0) {
-					const trackSteps = Math.min(
-						track.steps.length,
-						track.numSteps !== undefined ? track.numSteps : sequencer.numSteps
-					);
-					const absoluteStepCount = Math.floor(effectiveDistance / sequencer.stepLength);
-					track.currentStep = sequencer.loop
-						? (absoluteStepCount % trackSteps)
-						: Math.min(absoluteStepCount, trackSteps - 1);
-				}
-			});
-
-			this.refreshTracksUI(tracksContainer, sequencer);
-		};
-
-		row2Container.appendChild(lengthLabel);
-		row2Container.appendChild(lengthSlider);
-		row2Container.appendChild(lengthDisplay);
-
-		tracksTabContent.appendChild(row2Container);
-
-		const row3Container = createElement('div', 'sequencer-slider-row');
-
-		const thresholdLabel = createElement('label');
-		thresholdLabel.textContent = 'Speed Threshold';
-		const thresholdSlider = createElement('input');
-		thresholdSlider.type = 'range';
-		thresholdSlider.min = 0;
-		thresholdSlider.max = 5;
-		thresholdSlider.step = 0.1;
-		thresholdSlider.value = sequencer.speedThreshold;
-		const thresholdDisplay = createElement('span', 'value-display');
-		thresholdDisplay.textContent = `${sequencer.speedThreshold.toFixed(1)}m/s`;
-		thresholdSlider.oninput = () => {
-			const oldThreshold = sequencer.speedThreshold;
-			const newThreshold = parseFloat(thresholdSlider.value);
-			sequencer.speedThreshold = newThreshold;
-			thresholdDisplay.textContent = `${sequencer.speedThreshold.toFixed(1)}m/s`;
-
-			if (newThreshold > oldThreshold && sequencer.releaseOnStop) {
-				const currentSpeed = getUserMovementSpeed();
-				if (currentSpeed < newThreshold) {
-					sequencer._releaseAllNotes();
-				}
-			}
-		};
-
-		row3Container.appendChild(thresholdLabel);
-		row3Container.appendChild(thresholdSlider);
-		row3Container.appendChild(thresholdDisplay);
-
-		tracksTabContent.appendChild(row3Container);
-
-		const row4Container = createElement('div', 'sequencer-slider-row');
-
-		const releaseGroup = createElement('div', 'parameter-control');
-		const releaseLabel = createElement('label');
-		releaseLabel.textContent = 'Release on Stop';
-		const releaseToggle = createElement('input');
-		releaseToggle.type = 'checkbox';
-		releaseToggle.checked = sequencer.releaseOnStop;
-		releaseToggle.onchange = () => {
-			sequencer.releaseOnStop = releaseToggle.checked;
-
-			if (releaseToggle.checked) {
-				const currentSpeed = getUserMovementSpeed();
-				if (currentSpeed < sequencer.speedThreshold) {
-					sequencer._releaseAllNotes();
-				}
-			}
-		};
-		releaseGroup.appendChild(releaseLabel);
-		releaseGroup.appendChild(releaseToggle);
-		row4Container.appendChild(releaseGroup);
-
-		const releaseDelayGroup = createElement('div', 'parameter-control');
-		releaseDelayGroup.style.flex = '1';
-		releaseDelayGroup.style.marginLeft = '20px';
-		const releaseDelayLabel = createElement('label');
-		releaseDelayLabel.textContent = 'R. Delay';
-		const releaseDelaySlider = createElement('input');
-		releaseDelaySlider.type = 'range';
-		releaseDelaySlider.min = '0';
-		releaseDelaySlider.max = '60';
-		releaseDelaySlider.step = '0.5';
-		releaseDelaySlider.value = sequencer.releaseDelay;
-		releaseDelaySlider.style.flex = '1';
-		const releaseDelayDisplay = createElement('span', 'value-display');
-		releaseDelayDisplay.textContent = `${sequencer.releaseDelay.toFixed(1)}s`;
-		releaseDelaySlider.oninput = () => {
-			sequencer.releaseDelay = parseFloat(releaseDelaySlider.value);
+			const releaseDelayGroup = createElement('div', 'parameter-control');
+			releaseDelayGroup.style.flex = '1';
+			releaseDelayGroup.style.marginLeft = '20px';
+			const releaseDelayLabel = createElement('label');
+			releaseDelayLabel.textContent = 'R. Delay';
+			const releaseDelaySlider = createElement('input');
+			releaseDelaySlider.type = 'range';
+			releaseDelaySlider.min = '0';
+			releaseDelaySlider.max = '60';
+			releaseDelaySlider.step = '0.5';
+			releaseDelaySlider.value = sequencer.releaseDelay;
+			releaseDelaySlider.style.flex = '1';
+			const releaseDelayDisplay = createElement('span', 'value-display');
 			releaseDelayDisplay.textContent = `${sequencer.releaseDelay.toFixed(1)}s`;
-		};
-		releaseDelayGroup.appendChild(releaseDelayLabel);
-		releaseDelayGroup.appendChild(releaseDelaySlider);
-		releaseDelayGroup.appendChild(releaseDelayDisplay);
-		row4Container.appendChild(releaseDelayGroup);
+			releaseDelaySlider.oninput = () => {
+				sequencer.releaseDelay = parseFloat(releaseDelaySlider.value);
+				releaseDelayDisplay.textContent = `${sequencer.releaseDelay.toFixed(1)}s`;
+			};
+			releaseDelayGroup.appendChild(releaseDelayLabel);
+			releaseDelayGroup.appendChild(releaseDelaySlider);
+			releaseDelayGroup.appendChild(releaseDelayDisplay);
+			row4Container.appendChild(releaseDelayGroup);
 
-		tracksTabContent.appendChild(row4Container);
+			content.appendChild(row4Container);
+
+			return content;
+		}, true);
+		tracksTabContent.appendChild(settingsSection);
 
 		const tracksHeader = createElement('h3', 'section-title');
 		tracksHeader.innerHTML = '<i class="fas fa-bars"></i> Tracks';
@@ -742,7 +775,7 @@ export class SequencerUIManager {
 				for (let s = 0; s < stepsInRow; s++) {
 					const stepIndex = rowStartStep + s;
 					if (!track.steps[stepIndex]) {
-						track.steps[stepIndex] = { notes: [], sustains: [], velocities: {}, speedGateMin: {}, speedGateMax: {} };
+						track.steps[stepIndex] = { notes: [], sustains: [], velocities: {}, speedGateMin: {}, speedGateMax: {}, speedGateHold: {} };
 					}
 					if (!track.steps[stepIndex].velocities) {
 						track.steps[stepIndex].velocities = {};
@@ -809,7 +842,7 @@ export class SequencerUIManager {
 					if (this._sustainDrag?.didDrag) return;
 						const currentStep = track.steps[stepIndex];
 						if (!currentStep) {
-							track.steps[stepIndex] = { notes: [], sustains: [], velocities: {}, speedGateMin: {}, speedGateMax: {} };
+							track.steps[stepIndex] = { notes: [], sustains: [], velocities: {}, speedGateMin: {}, speedGateMax: {}, speedGateHold: {} };
 						}
 						if (!track.steps[stepIndex].velocities) {
 							track.steps[stepIndex].velocities = {};
@@ -924,6 +957,23 @@ export class SequencerUIManager {
 			});
 			speedGatePanel.appendChild(slider);
 
+			const holdSection = createElement('div', 'parameter-control speed-gate-hold-row');
+			const holdLabel = createElement('label');
+			holdLabel.textContent = 'Speed Gate Hold';
+			const holdSlider = createElement('input');
+			holdSlider.type = 'range';
+			holdSlider.min = 0;
+			holdSlider.max = CONSTANTS.SEQUENCER_SPEED_GATE_HOLD_MAX;
+			holdSlider.step = CONSTANTS.SEQUENCER_SPEED_GATE_HOLD_STEP;
+			holdSlider.value = 0;
+			holdSlider.disabled = true;
+			const holdDisplay = createElement('span', 'value-display');
+			holdDisplay.textContent = '--';
+			holdSection.appendChild(holdLabel);
+			holdSection.appendChild(holdSlider);
+			holdSection.appendChild(holdDisplay);
+			speedGatePanel.appendChild(holdSection);
+
 			trackDiv.appendChild(speedGatePanel);
 		}
 	}
@@ -1031,9 +1081,11 @@ export class SequencerUIManager {
 
 		if (!track.steps[stepIndex].speedGateMin) track.steps[stepIndex].speedGateMin = {};
 		if (!track.steps[stepIndex].speedGateMax) track.steps[stepIndex].speedGateMax = {};
+		if (!track.steps[stepIndex].speedGateHold) track.steps[stepIndex].speedGateHold = {};
 
 		const currentMin = track.steps[stepIndex].speedGateMin[midiNote] ?? CONSTANTS.SEQUENCER_SPEED_GATE_MIN;
 		const currentMax = track.steps[stepIndex].speedGateMax[midiNote] ?? CONSTANTS.SEQUENCER_SPEED_GATE_MAX;
+		const currentHold = track.steps[stepIndex].speedGateHold[midiNote] ?? sequencer.speedGateHold ?? 0;
 
 		panel.innerHTML = '';
 
@@ -1055,8 +1107,44 @@ export class SequencerUIManager {
 				AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
 			}
 		});
-
 		panel.appendChild(slider);
+
+		let holdTouched = false;
+		const holdSection = createElement('div', 'parameter-control speed-gate-hold-row');
+		const holdLabel = createElement('label');
+		holdLabel.textContent = 'Speed Gate Hold';
+		const holdSlider = createElement('input');
+		holdSlider.type = 'range';
+		holdSlider.min = 0;
+		holdSlider.max = CONSTANTS.SEQUENCER_SPEED_GATE_HOLD_MAX;
+		holdSlider.step = CONSTANTS.SEQUENCER_SPEED_GATE_HOLD_STEP;
+		holdSlider.value = currentHold;
+		const holdDisplay = createElement('span', 'value-display');
+		holdDisplay.textContent = parseFloat(holdSlider.value).toFixed(1) + ' s';
+		holdSlider.oninput = () => {
+			holdTouched = true;
+			const val = parseFloat(holdSlider.value);
+			holdDisplay.textContent = val.toFixed(1) + ' s';
+			track.steps[stepIndex].speedGateHold[midiNote] = val;
+		};
+		holdSlider.onchange = () => {
+			AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+		};
+		makeValueEditable(holdDisplay, holdSlider, {
+			modalSystem: ModalSystem,
+			formatValue: (val) => parseFloat(val).toFixed(1) + ' s',
+			onUpdate: (val) => {
+				holdTouched = true;
+				holdSlider.value = val;
+				holdDisplay.textContent = val.toFixed(1) + ' s';
+				track.steps[stepIndex].speedGateHold[midiNote] = val;
+				AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+			}
+		});
+		holdSection.appendChild(holdLabel);
+		holdSection.appendChild(holdSlider);
+		holdSection.appendChild(holdDisplay);
+		panel.appendChild(holdSection);
 	}
 
 	updateSpeedGateVisuals(track, trackDiv, stepIndex, midiNote) {
@@ -1772,7 +1860,7 @@ export class SequencerUIManager {
 	cleanOrphanedSustains(track, stepIndex, midiNote) {
 		for (let i = stepIndex + 1; i < track.steps.length; i++) {
 			if (!track.steps[i]) {
-				track.steps[i] = { notes: [], sustains: [], velocity: 0.8 };
+				track.steps[i] = { notes: [], sustains: [], velocity: 0.8, speedGateMin: {}, speedGateMax: {}, speedGateHold: {} };
 			}
 			const idx = track.steps[i].sustains.indexOf(midiNote);
 			if (idx > -1) {
@@ -1786,7 +1874,7 @@ export class SequencerUIManager {
 	_applyDragSustain(stepIndex) {
 		const { midiNote, mode, track, trackDiv, sequencer, tracksContainer } = this._sustainDrag;
 		if (!track.steps[stepIndex]) {
-			track.steps[stepIndex] = { notes: [], sustains: [], velocities: {} };
+			track.steps[stepIndex] = { notes: [], sustains: [], velocities: {}, speedGateMin: {}, speedGateMax: {}, speedGateHold: {} };
 		}
 		const step = track.steps[stepIndex];
 		if (mode === 'erase') {

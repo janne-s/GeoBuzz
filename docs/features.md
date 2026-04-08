@@ -198,7 +198,8 @@ For keyboard-triggered sounds.
 | **Clear Selection** | Remove all selected notes |
 | **Grid Edit/Play Mode** | Toggle between sample assignment and preview (Sampler in Grid mode) |
 | **Clear All Samples** | Remove all grid samples (Sampler in Grid mode) |
-| **Speed Range** | Per-key speed range in grid mode individual key edit dialog (Sampler in Grid mode only) |
+| **Speed Gate** | Per-key speed range (min/max m/s) in the grid key edit dialog. The spatial tab Speed Gate acts as a hard clip: each key's effective range is clamped to the spatial min/max. Keys at defaults inherit the spatial range entirely. (Sampler in Grid mode only) |
+| **Speed Gate Hold** | Per-key hold duration in the grid key edit dialog. Falls back to the spatial tab Speed Gate Hold if not set per-key. (Sampler in Grid mode only) |
 
 ---
 
@@ -536,27 +537,17 @@ Click the edit button on a sequencer in the Sequencing side menu to open its edi
 
 ### Tracks Tab
 
-#### General Settings
+#### Settings (collapsible)
 
 | Parameter | Description |
 |-----------|-------------|
-| **Label** | Display name for sequencer |
 | **Enabled** | Toggle sequencer on/off |
 | **Loop** | Enable sequence looping |
-
-#### Step Settings
-
-| Parameter | Description |
-|-----------|-------------|
 | **Steps** | Number of steps in sequence |
 | **Step Length** | Distance per step |
-| **Speed Threshold** | Minimum speed to advance steps |
-
-#### Release Settings
-
-| Parameter | Description |
-|-----------|-------------|
-| **Release on Stop** | Release notes when user stops |
+| **Speed Gate** | Movement speed range (min/max m/s) for step advancement. Default min 0.5 m/s |
+| **Speed Gate Hold** | Hold duration (seconds) before gate state changes |
+| **Release on Stop** | Release notes when sequencer is gated |
 | **Release Delay** | Time before release triggers |
 
 ### Track Settings
@@ -577,7 +568,8 @@ Each track has:
 | Control | Description |
 |---------|-------------|
 | **Step Grid** | Click cells to toggle triggers |
-| **Velocity** | Per-step volume |
+| **Velocity** | Per-note volume (Vel mode) |
+| **Speed Gate** | Per-note speed range and hold (Spd mode). Independent of the sequencer-level speed gate. Hold falls back to sequencer-level hold |
 | **Note Selection** | MIDI note for keyboard instruments |
 
 ---

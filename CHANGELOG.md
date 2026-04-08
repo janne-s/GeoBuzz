@@ -1,10 +1,19 @@
 # Changelog
 
+## 2026-04-08
+
+### Added
+
+- Per-note speed gate hold in distance sequencer, falling back to sequencer-level hold
+- Sequencer-level speed gate (min/max range with hold) replacing the single speed threshold
+- Collapsible Settings section in the sequencer Tracks tab
+
 ## 2026-04-07
 
 ### Added
 
-- Speed gate hold parameter: configurable hysteresis (0–10 s) preventing rapid gate toggling from momentary speed fluctuations. Applies to the sound-level speed gate on the Spatial tab
+- Speed gate hold for sampler grid mode per-key speed ranges, falling back to sound-level hold
+- Speed gate hold parameter on the Spatial tab for all sound types
 
 ## 2026-04-06
 

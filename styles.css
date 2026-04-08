@@ -2821,6 +2821,14 @@ input:checked+.slider:before {
 	border-color: var(--color-success-base);
 }
 
+.sequencer-settings-content .dual-range-container {
+	margin-bottom: var(--spacing-sm);
+}
+
+.sequencer-settings-content .parameter-control {
+	margin-bottom: var(--spacing-sm);
+}
+
 .sequencer-controls-row {
 	display: grid;
 	grid-template-columns: auto auto auto;
@@ -2905,7 +2913,7 @@ input:checked+.slider:before {
 }
 
 .tracks-container {
-	max-height: 310px;
+	max-height: 420px;
 	overflow-y: auto;
 	margin-bottom: var(--spacing-xs);
 }
@@ -3216,7 +3224,7 @@ input:checked+.slider:before {
 
 .speed-gate-panel {
 	display: flex;
-	align-items: center;
+	flex-direction: column;
 	gap: var(--spacing-sm);
 	padding: var(--spacing-sm);
 	background: var(--color-bg-medium);
@@ -3226,8 +3234,11 @@ input:checked+.slider:before {
 }
 
 .speed-gate-panel .dual-range-container {
-	flex: 1;
 	margin: 0;
+}
+
+.speed-gate-hold-row {
+	margin-bottom: 0;
 }
 
 .mode-box.spd-mode {

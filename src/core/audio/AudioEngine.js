@@ -28,6 +28,32 @@ export function setContext(ctx) {
 	context = ctx;
 }
 
+function evaluateGridKeySpeedGate(s, midi, inRange, nowMs, holdMs, userSpeed) {
+	if (holdMs === 0) return inRange;
+	if (!s._gridKeyHoldState) s._gridKeyHoldState = {};
+	if (!s._gridKeyHoldState[midi]) {
+		s._gridKeyHoldState[midi] = { committed: inRange, transitionStart: null };
+		return inRange;
+	}
+	const key = s._gridKeyHoldState[midi];
+	if (!inRange && userSpeed < CONSTANTS.ZERO_SPEED_THRESHOLD) {
+		key.committed = false;
+		key.transitionStart = null;
+		return false;
+	}
+	if (inRange === key.committed) {
+		key.transitionStart = null;
+		return inRange;
+	}
+	if (key.transitionStart === null) key.transitionStart = nowMs;
+	if (nowMs - key.transitionStart >= holdMs) {
+		key.committed = inRange;
+		key.transitionStart = null;
+		return inRange;
+	}
+	return key.committed;
+}
+
 function evaluateSpeedGateWithHold(s, inRange, nowMs, userSpeed) {
 	const hold = (s.params.speedGateHold ?? 0) * 1000;
 	if (hold === 0) return inRange;
@@ -396,26 +422,37 @@ export function updateAudio(userPos, now) {
 					NoteManager.release(s);
 				} else if (isInside && s.isPlaying && s.type === 'Sampler' && s.params.samplerMode === 'grid') {
 					const gridSamples = s.params.gridSamples;
-					const hasGridSpeedRanges = gridSamples && Object.values(gridSamples).some(
+					const spatialGateActive = (s.params.speedGateMin ?? 0) > 0 || (s.params.speedGateMax ?? 10) < 10;
+					const hasGridSpeedRanges = gridSamples && (spatialGateActive || Object.values(gridSamples).some(
 						gs => (gs.speedMin ?? 0) > 0 || (gs.speedMax ?? 10) < 10
-					);
+					));
 					s._hasGridSpeedRanges = hasGridSpeedRanges;
 					if (hasGridSpeedRanges) {
 						const userSpeed = getUserMovementSpeed();
+						const spatialMin = s.params.speedGateMin ?? 0;
+						const spatialMax = s.params.speedGateMax ?? 10;
+						const nowMs = performance.now();
 						const eligibleKeys = new Set();
 						for (const [midi, gs] of Object.entries(gridSamples)) {
 							if (!gs.fileName) continue;
-							const sMin = gs.speedMin ?? 0;
-							const sMax = gs.speedMax ?? 10;
-							if (userSpeed >= sMin && userSpeed <= sMax) {
+							const sMin = Math.max(gs.speedMin ?? 0, spatialMin);
+							const sMax = Math.min(gs.speedMax ?? 10, spatialMax);
+							const holdMs = (gs.speedGateHold ?? s.params.speedGateHold ?? 0) * 1000;
+							const rawInRange = userSpeed >= sMin && userSpeed <= sMax;
+							if (evaluateGridKeySpeedGate(s, midi, rawInRange, nowMs, holdMs, userSpeed)) {
 								eligibleKeys.add(midi);
 							}
 						}
+						if (!s._eligibleGridKeys) {
+							s._eligibleGridKeys = new Set();
+							for (const [midi, gs] of Object.entries(gridSamples)) {
+								if (gs.fileName) s._eligibleGridKeys.add(midi);
+							}
+						}
 						const prevKeys = s._eligibleGridKeys;
-						const changed = !prevKeys ||
-							eligibleKeys.size !== prevKeys.size ||
+						const changed = eligibleKeys.size !== prevKeys.size ||
 							[...eligibleKeys].some(k => !prevKeys.has(k));
-						if (changed && prevKeys) {
+						if (changed) {
 							const added = [...eligibleKeys].filter(k => !prevKeys.has(k));
 							const removed = [...prevKeys].filter(k => !eligibleKeys.has(k));
 							if (removed.length > 0) {
@@ -426,16 +463,12 @@ export function updateAudio(userPos, now) {
 								const addedMidi = added.map(k => parseInt(k));
 								NoteManager.triggerPolyphonic(s.synth, addedMidi, true, s);
 							}
-						} else if (changed) {
-							s._skipEnvelope = true;
-							NoteManager.release(s);
-							NoteManager.trigger(s);
-							s._skipEnvelope = false;
 						}
 						s._eligibleGridKeys = eligibleKeys;
 					} else if (s._eligibleGridKeys) {
 						const prevKeys = s._eligibleGridKeys;
 						delete s._eligibleGridKeys;
+						delete s._gridKeyHoldState;
 						const allKeys = new Set();
 						for (const [midi, gs] of Object.entries(gridSamples)) {
 							if (gs.fileName) allKeys.add(midi);
@@ -527,6 +560,16 @@ export function audioUpdateLoop() {
 		if (s._speedGateTransitionStart !== null && s._speedGateTransitionStart !== undefined) {
 			positionsMayHaveChanged = true;
 			break;
+		}
+		if (s._gridKeyHoldState) {
+			const keyStates = Object.values(s._gridKeyHoldState);
+			for (let j = 0; j < keyStates.length; j++) {
+				if (keyStates[j].transitionStart !== null) {
+					positionsMayHaveChanged = true;
+					break;
+				}
+			}
+			if (positionsMayHaveChanged) break;
 		}
 		const lfo = s.params?.lfo;
 		if (lfo) {
