@@ -2,6 +2,10 @@
 
 ## 2026-04-08
 
+### Note
+
+All the features that I've had in my mind have been implemented. The work is focused on testing and possible bug fixing.
+
 ### Added
 
 - Per-note speed gate hold in distance sequencer, falling back to sequencer-level hold
