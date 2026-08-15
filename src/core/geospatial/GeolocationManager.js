@@ -21,6 +21,7 @@ class GeolocationManagerClass {
 		this._positionUpdateCount = 0;
 		this._minSamplesForStability = 3;
 		this._maxAccuracyForStability = 30;
+		this._indicatorRotation = null;
 	}
 
 	setContext(context) {
@@ -150,8 +151,18 @@ class GeolocationManagerClass {
 		const indicator = this.userMarker.getElement().querySelector('.userDirectionIndicator');
 		if (!indicator) return;
 
+		if (this._indicatorRotation === null) {
+			this._indicatorRotation = heading;
+		} else {
+			const current = ((this._indicatorRotation % 360) + 360) % 360;
+			let delta = heading - current;
+			if (delta > 180) delta -= 360;
+			else if (delta < -180) delta += 360;
+			this._indicatorRotation += delta;
+		}
+
 		indicator.style.display = 'block';
-		indicator.style.transform = `rotate(${heading}deg)`;
+		indicator.style.transform = `rotate(${this._indicatorRotation}deg)`;
 	}
 
 	showStatusMessage(text, duration = CONSTANTS.STATUS_MEDIUM_MS) {
@@ -396,6 +407,8 @@ class GeolocationManagerClass {
 	}
 
 	createUserMarker(latlng) {
+		this._indicatorRotation = null;
+
 		const userIcon = L.divIcon({
 			html: `<div class="userIcon geolocation-status-${this.status}">
 				<i class="fas fa-user icon-white icon-md"></i>
