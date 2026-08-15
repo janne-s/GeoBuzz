@@ -480,9 +480,19 @@ export function showUserMenu(point) {
 			}
 		});
 
+		const sourceNote = document.createElement("span");
+		sourceNote.className = "orientation-source-note";
+		sourceNote.style.fontSize = "10px";
+		sourceNote.style.color = "#888";
+		sourceNote.style.marginLeft = "4px";
+		sourceNote.textContent = orientationStatus.source === 'relative'
+			? '(Relative orientation — compass unavailable)'
+			: '';
+
 		const labelWrapper = document.createElement("div");
 		labelWrapper.appendChild(orientationLabel);
 		labelWrapper.appendChild(permissionNote);
+		labelWrapper.appendChild(sourceNote);
 
 		orientationToggleContainer.appendChild(labelWrapper);
 		orientationToggleContainer.appendChild(orientationToggle);

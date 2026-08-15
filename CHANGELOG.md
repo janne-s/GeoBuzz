@@ -14,6 +14,10 @@
 - `watchPosition` no longer requests `enableHighAccuracy` on non-touch (desktop/laptop) devices, since there is no GPS hardware to benefit from it and the request may otherwise wait longer for a fix it can't get
 - A user-position icon now always appears at the fallback location (0,0) once geolocation fails or is unsupported, instead of never appearing until the page is reloaded
 
+### Fixed
+
+- `DeviceOrientationManager` no longer picks a single orientation event type up front based on feature detection alone (`'absolute' in DeviceOrientationEvent.prototype`), which some Android devices report as supported without ever firing it, leaving the app with no heading data. It now listens for `deviceorientationabsolute` and `deviceorientation` simultaneously, validates readings with `Number.isFinite` instead of `!== null` (preventing `NaN` from a bad reading permanently poisoning `OrientationKalmanFilter`), and deterministically prefers the best available source (iOS compass → absolute → relative) via rank comparison, without ever letting a worse source that arrives later displace an already-active better one. `getStatus()` now also reports `source` so the UI can surface a relative-fallback notice.
+
 ## 2026-04-08
 
 ### Note

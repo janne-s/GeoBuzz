@@ -11,6 +11,8 @@ class DeviceOrientationManagerClass {
 		this._handleOrientation = this._handleOrientation.bind(this);
 		this._lastRawHeading = null;
 		this._lastFilteredHeading = null;
+		this._activeSourceRank = Infinity;
+		this._activeSource = null;
 	}
 
 	setContext(context) {
@@ -78,24 +80,29 @@ class DeviceOrientationManagerClass {
 
 		this.orientationFilter = new OrientationKalmanFilter();
 		this.enabled = true;
+		this._activeSourceRank = Infinity;
+		this._activeSource = null;
 
-		if (window.DeviceOrientationEvent && 'absolute' in DeviceOrientationEvent.prototype) {
-			window.addEventListener('deviceorientationabsolute', this._handleOrientation, true);
-		} else {
-			window.addEventListener('deviceorientation', this._handleOrientation, true);
-		}
+		// Listen for both event types: some Android/browser combinations report
+		// 'deviceorientationabsolute' as supported but never actually fire it
+		// (no working magnetometer fusion), so a single up-front choice can
+		// leave the app silently stuck with no heading data at all.
+		window.addEventListener('deviceorientationabsolute', this._handleOrientation, true);
+		window.addEventListener('deviceorientation', this._handleOrientation, true);
 
 		return true;
 	}
 
 	stop() {
 		this.enabled = false;
+		this._activeSourceRank = Infinity;
+		this._activeSource = null;
 
-		if (window.DeviceOrientationEvent && 'absolute' in DeviceOrientationEvent.prototype) {
-			window.removeEventListener('deviceorientationabsolute', this._handleOrientation, true);
-		} else {
-			window.removeEventListener('deviceorientation', this._handleOrientation, true);
-		}
+		window.removeEventListener('deviceorientationabsolute', this._handleOrientation, true);
+		window.removeEventListener('deviceorientation', this._handleOrientation, true);
+
+		const sourceNote = document.querySelector('.orientation-source-note');
+		if (sourceNote) sourceNote.textContent = '';
 	}
 
 	_handleOrientation(event) {
@@ -103,19 +110,30 @@ class DeviceOrientationManagerClass {
 
 		let heading = null;
 		let accuracy = CONSTANTS.ORIENTATION_DEFAULT_ACCURACY;
+		let source = null;
+		let rank = null;
 
-		if (event.webkitCompassHeading !== undefined) {
+		if (Number.isFinite(event.webkitCompassHeading)) {
+			// iOS true-north compass heading: always the most reliable source.
 			heading = event.webkitCompassHeading;
 			accuracy = event.webkitCompassAccuracy || accuracy;
-		} else if (event.alpha !== null) {
-			if (event.absolute) {
-				heading = 360 - event.alpha;
-			} else {
-				heading = 360 - event.alpha;
-			}
+			source = 'compass';
+			rank = 0;
+		} else if (Number.isFinite(event.alpha) && Number.isFinite(event.beta) && Number.isFinite(event.gamma)) {
+			heading = 360 - event.alpha;
+			const isAbsolute = event.type === 'deviceorientationabsolute' || event.absolute === true;
+			source = isAbsolute ? 'absolute' : 'relative';
+			rank = isAbsolute ? 1 : 2;
 		}
 
-		if (heading === null) return;
+		// Reject events with no usable numeric reading, and reject a worse
+		// source than the one already active. Rank comparison (not a timer)
+		// keeps this deterministic: whichever valid source arrives with the
+		// best rank wins, and a later, worse source can never displace it.
+		if (heading === null || rank > this._activeSourceRank) return;
+
+		this._activeSourceRank = rank;
+		this._activeSource = source;
 
 		while (heading >= 360) heading -= 360;
 		while (heading < 0) heading += 360;
@@ -141,6 +159,13 @@ class DeviceOrientationManagerClass {
 				const degreeDisplay = document.querySelector('.degree-display');
 				if (arrow) arrow.style.transform = `rotate(${filtered.heading - 45}deg)`;
 				if (degreeDisplay) degreeDisplay.textContent = `${filtered.heading}°`;
+
+				const sourceNote = document.querySelector('.orientation-source-note');
+				if (sourceNote) {
+					sourceNote.textContent = this._activeSource === 'relative'
+						? '(Relative orientation — compass unavailable)'
+						: '';
+				}
 			}
 
 			if (this.context.AppState.dispatch) {
@@ -154,7 +179,8 @@ class DeviceOrientationManagerClass {
 			enabled: this.enabled,
 			available: this.available,
 			permission: this.permission,
-			currentHeading: this._lastFilteredHeading?.heading ?? null
+			currentHeading: this._lastFilteredHeading?.heading ?? null,
+			source: this._activeSource
 		};
 	}
 
