@@ -109,6 +109,67 @@ export const ModalSystem = {
 		});
 	},
 
+	async alertWithCheckbox(message, title, checkboxLabel, { priority = false } = {}) {
+		const overlay = document.createElement('div');
+		overlay.className = priority ? 'modal-overlay modal-priority' : 'modal-overlay';
+
+		const modal = document.createElement('div');
+		modal.className = priority ? 'modal-dialog modal-priority' : 'modal-dialog';
+
+		const paragraphs = message.split('\n\n').map(p => `<p>${p}</p>`).join('');
+
+		modal.innerHTML = `
+			<div class="modal-header">
+				<h3>${title}</h3>
+			</div>
+			<div class="modal-body">
+				${paragraphs}
+				<label class="checkbox-label">
+					<input type="checkbox" class="modal-checkbox-input">
+					${checkboxLabel}
+				</label>
+			</div>
+			<div class="modal-footer">
+				<button class="modal-btn btn-primary" data-result="ok">OK</button>
+			</div>
+		`;
+
+		document.body.appendChild(overlay);
+		document.body.appendChild(modal);
+
+		const checkboxEl = modal.querySelector('.modal-checkbox-input');
+
+		return new Promise((resolve) => {
+			const handleClick = (e) => {
+				if ((modal.contains(e.target) && e.target.classList.contains('modal-btn')) || e.target === overlay) {
+					const checked = checkboxEl.checked;
+					cleanup();
+					resolve(checked);
+				}
+			};
+
+			const handleKeydown = (e) => {
+				if (!this._isTopModal(modal)) return;
+				if (e.key === 'Enter' || e.key === 'Escape') {
+					e.stopImmediatePropagation();
+					const checked = checkboxEl.checked;
+					cleanup();
+					resolve(checked);
+				}
+			};
+
+			const cleanup = () => {
+				overlay.remove();
+				modal.remove();
+				document.removeEventListener('click', handleClick);
+				document.removeEventListener('keydown', handleKeydown);
+			};
+
+			document.addEventListener('click', handleClick);
+			document.addEventListener('keydown', handleKeydown);
+		});
+	},
+
 	async prompt(message, defaultValue = '', title = 'Input') {
 		const result = await this.show({
 			title,

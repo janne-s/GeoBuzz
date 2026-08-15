@@ -35,7 +35,6 @@ class GeolocationManagerClass {
 		this._locationReadyPromise = new Promise((resolve) => {
 			this._resolveLocationReady = resolve;
 		});
-		this.setupGeolocation();
 	}
 
 	stopWatching() {

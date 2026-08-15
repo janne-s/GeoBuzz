@@ -325,6 +325,7 @@ export class RuntimeEngine {
 			setEchoManagerContext(engineContext);
 			GeolocationManager.setContext(engineContext);
 			GeolocationManager.init();
+			GeolocationManager.setupGeolocation();
 
 			AppState.subscribe((action) => {
 				switch (action.type) {

@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-15
+
+### Added
+
+- "Don't show this again" checkbox on the welcome/info modal (`ModalSystem.alertWithCheckbox`)
+
+### Changed
+
+- Geolocation permission is now requested after the welcome modal resolves instead of racing it on page load (`GeolocationManager.setupGeolocation()` is no longer called automatically from `init()`)
+- Fixed server-kit's `WorkspaceManager.js` template missing the welcome-modal/GPS-sequencing call present in the standalone version
+
 ## 2026-04-08
 
 ### Note

@@ -3,6 +3,7 @@ import { SettingsManager } from './SettingsManager.js';
 import { StorageAdapter } from './StorageAdapter.js';
 import { ModalSystem } from '../ui/ModalSystem.js';
 import { checkSplashMessage } from '../ui/SplashMessage.js';
+import { GeolocationManager } from '../core/geospatial/GeolocationManager.js';
 
 export class WorkspaceManager {
 	static context = null;
@@ -15,7 +16,7 @@ export class WorkspaceManager {
 		this.context.AppState.workspace.id = null;
 		this.context.AppState.workspace.isInitializing = true;
 
-		checkSplashMessage();
+		checkSplashMessage().then(() => GeolocationManager.setupGeolocation());
 
 		this.context.AppState.setSaveCallback(this.saveWorkspaceSettings.bind(this));
 
