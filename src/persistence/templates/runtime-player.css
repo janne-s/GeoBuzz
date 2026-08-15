@@ -348,8 +348,8 @@ body {
 
 /* User Marker Icon */
 .userIcon {
-	width: 30px !important;
-	height: 30px !important;
+	width: 26px !important;
+	height: 26px !important;
 	background: #4285f4 !important;
 	border: 3px solid white !important;
 	border-radius: 50% !important;
@@ -359,6 +359,11 @@ body {
 	justify-content: center !important;
 	position: relative !important;
 	z-index: 1000 !important;
+}
+
+.userIcon .fa-user {
+	font-size: 10px !important;
+	color: white !important;
 }
 
 .custom-div-icon {
@@ -371,8 +376,8 @@ body {
 	position: absolute;
 	top: 0;
 	left: 0;
-	width: 30px;
-	height: 30px;
+	width: 26px;
+	height: 26px;
 	transform-origin: center center;
 	transition: transform 0.1s linear;
 	pointer-events: none;
@@ -382,14 +387,14 @@ body {
 .userDirectionIndicator::before {
 	content: '';
 	position: absolute;
-	top: -4.5px;
+	top: -4px;
 	left: 50%;
 	transform: translateX(-50%);
 	width: 0;
 	height: 0;
-	border-left: 5px solid transparent;
-	border-right: 5px solid transparent;
-	border-bottom: 9px solid white;
+	border-left: 4px solid transparent;
+	border-right: 4px solid transparent;
+	border-bottom: 7px solid white;
 	filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.6));
 }
 
