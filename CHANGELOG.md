@@ -6,6 +6,8 @@
 
 - "Don't show this again" checkbox on the welcome/info modal
 - Heading indicator on the user marker, following GPS heading or device orientation
+- "Go to Buzz" in the user menu, fitting the composition in view with the user marker at its centre
+- Offer to go to the Buzz after loading or importing one that is far from your current location
 
 ### Changed
 
@@ -18,6 +20,7 @@
 ### Fixed
 
 - Device orientation not working on some Android devices
+- Map snapping back to the GPS position while working elsewhere
 - Server-kit's `WorkspaceManager.js` template missing the welcome-modal/GPS-sequencing call
 
 ## 2026-04-08

@@ -224,7 +224,7 @@ class GeolocationManagerClass {
 
 	onLocationRecovered() {
 		try {
-			if (this.userMarker && this.context?.map) {
+			if (this.followGPS && this.userMarker && this.context?.map) {
 				const userPos = this.userMarker.getLatLng();
 				this.context.map.setView(userPos, CONSTANTS.DEFAULT_USER_ZOOM);
 			}
@@ -235,7 +235,7 @@ class GeolocationManagerClass {
 
 	onLocationAcquired() {
 		try {
-			if (this.userMarker && this.context?.map) {
+			if (this.followGPS && this.userMarker && this.context?.map) {
 				const userPos = this.userMarker.getLatLng();
 				this.context.map.setView(userPos, CONSTANTS.DEFAULT_USER_ZOOM);
 			}
@@ -247,7 +247,7 @@ class GeolocationManagerClass {
 	onLocationError() {
 		try {
 			console.warn('Geolocation failed, using fallback location');
-			if (this.context?.map) {
+			if (this.followGPS && this.context?.map) {
 				const userPos = this.getUserPosition();
 				if (!userPos || (userPos.lat === 0 && userPos.lng === 0)) {
 					this.context.map.setView([0, 0], CONSTANTS.DEFAULT_FALLBACK_ZOOM);
@@ -260,7 +260,7 @@ class GeolocationManagerClass {
 
 	setupFallback() {
 		try {
-			if (this.context?.map) {
+			if (this.followGPS && this.context?.map) {
 				this.context.map.setView([0, 0], CONSTANTS.DEFAULT_FALLBACK_ZOOM);
 				if (!this.userMarker) {
 					this.createUserMarker(L.latLng(0, 0));
@@ -319,7 +319,9 @@ class GeolocationManagerClass {
 	handlePositionSuccess(pos) {
 		this.setStatus(CONSTANTS.GEOLOCATION_STATUS.ACTIVE);
 		this.handlePositionUpdate(pos);
-		this.context?.map.setView(this.userMarker.getLatLng(), CONSTANTS.DEFAULT_USER_ZOOM);
+		if (this.followGPS) {
+			this.context?.map.setView(this.userMarker.getLatLng(), CONSTANTS.DEFAULT_USER_ZOOM);
+		}
 	}
 
 	handlePositionUpdate(pos) {
@@ -479,6 +481,35 @@ class GeolocationManagerClass {
 		}
 
 		return this.followGPS;
+	}
+
+	goToBuzz() {
+		const bounds = this.context?.mapManager?.getContentBounds();
+		if (!bounds || !this.context?.map) return false;
+
+		const center = bounds.getCenter();
+
+		if (this.userMarker) {
+			this.userMarker.setLatLng(center);
+		} else {
+			this.createUserMarker(center);
+		}
+
+		this.stopWatching();
+		this.toggleFollowGPS(false);
+
+		this.context.map.fitBounds(bounds, {
+			padding: CONSTANTS.CONTENT_FIT_PADDING,
+			maxZoom: CONSTANTS.DEFAULT_USER_ZOOM
+		});
+
+		this.context.AppState?.dispatch({
+			type: 'USER_POSITION_CHANGED',
+			payload: { position: center }
+		});
+		this.context.audioFunctions?.resetAreaTracking?.(center);
+
+		return true;
 	}
 
 	getStatusInfo() {

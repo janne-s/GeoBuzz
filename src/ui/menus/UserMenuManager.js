@@ -60,6 +60,16 @@ export function showUserMenu(point) {
 	}, "menu-btn");
 	menu.appendChild(devBtn);
 
+	if (Selectors.getSounds().length > 0 || Selectors.getPaths().length > 0) {
+		const goToBuzzBtn = createButton('<i class="fas fa-crosshairs"></i> Go to Buzz', async () => {
+			await ensureAudioContext();
+			detachUserFromPath();
+			GeolocationManager.goToBuzz();
+			closeAllMenus();
+		}, "menu-btn");
+		menu.appendChild(goToBuzzBtn);
+	}
+
 	const simulateBtn = createButton('<i class="fas fa-route"></i> Simulate Point-to-Point', async () => {
 		await ensureAudioContext();
 		detachUserFromPath();

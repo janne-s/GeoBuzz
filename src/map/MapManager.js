@@ -1,6 +1,7 @@
 import { CONSTANTS } from '../core/constants.js';
 import { tileLayers } from '../config/registries.js';
 import { AppState } from '../core/state/StateManager.js';
+import { Selectors } from '../core/state/selectors.js';
 
 export class MapManager {
 	constructor() {
@@ -75,6 +76,33 @@ export class MapManager {
 			type: 'PARAMETER_CHANGED',
 			payload: { paramKey: 'mapStyle', value: styleName }
 		});
+	}
+
+	getContentBounds() {
+		const bounds = L.latLngBounds([]);
+
+		const extend = (layer) => {
+			if (!layer) return;
+			if (typeof layer.getBounds === 'function') {
+				bounds.extend(layer.getBounds());
+			} else if (typeof layer.getLatLng === 'function') {
+				bounds.extend(layer.getLatLng());
+			}
+		};
+
+		Selectors.getSounds().forEach(sound => {
+			extend(sound.marker);
+			extend(sound.circle);
+			extend(sound.polygon);
+		});
+
+		Selectors.getPaths().forEach(path => {
+			extend(path.pathLine);
+			extend(path.pathCircle);
+			extend(path.polygon);
+		});
+
+		return bounds.isValid() ? bounds : null;
 	}
 
 	getMap() {

@@ -873,7 +873,12 @@ Click the user marker on the map to access.
 |------|-------------|
 | **Follow GPS** | Track real device location |
 | **Dev Mode (Draggable)** | Manually drag user position |
+| **Go to Buzz** | Fit all elements in view, move the user position to their centre, and switch to Dev Mode. Only shown when the composition has elements |
 | **Simulate Point-to-Point** | Animated movement simulation (see below) |
+
+After loading a workspace, opening a saved file, or importing a package, GeoBuzz
+offers to do the same automatically if the loaded elements are more than 2 km
+from your current location. Declining leaves you where you are.
 
 ### Simulation Controls
 
