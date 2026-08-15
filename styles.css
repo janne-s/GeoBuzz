@@ -930,9 +930,6 @@ button {
 	z-index: 5;
 }
 
-/* Small heading/orientation indicator riding the rim of the user marker.
-   Hidden until a real direction source (GPS heading or device orientation)
-   reports a reading; see GeolocationManager.updateDirectionIndicator. */
 .userDirectionIndicator {
 	position: absolute;
 	top: 0;

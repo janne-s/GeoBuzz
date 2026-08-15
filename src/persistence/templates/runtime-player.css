@@ -367,9 +367,6 @@ body {
 	box-shadow: none !important;
 }
 
-/* Small heading indicator riding the rim of the user marker. Hidden until
-   GPS course-over-ground heading reports a reading; see
-   GeolocationManager.updateDirectionIndicator. */
 .userDirectionIndicator {
 	position: absolute;
 	top: 0;

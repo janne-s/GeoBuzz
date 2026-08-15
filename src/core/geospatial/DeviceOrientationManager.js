@@ -83,10 +83,6 @@ class DeviceOrientationManagerClass {
 		this._activeSourceRank = Infinity;
 		this._activeSource = null;
 
-		// Listen for both event types: some Android/browser combinations report
-		// 'deviceorientationabsolute' as supported but never actually fire it
-		// (no working magnetometer fusion), so a single up-front choice can
-		// leave the app silently stuck with no heading data at all.
 		window.addEventListener('deviceorientationabsolute', this._handleOrientation, true);
 		window.addEventListener('deviceorientation', this._handleOrientation, true);
 
@@ -114,7 +110,6 @@ class DeviceOrientationManagerClass {
 		let rank = null;
 
 		if (Number.isFinite(event.webkitCompassHeading)) {
-			// iOS true-north compass heading: always the most reliable source.
 			heading = event.webkitCompassHeading;
 			accuracy = event.webkitCompassAccuracy || accuracy;
 			source = 'compass';
@@ -126,10 +121,6 @@ class DeviceOrientationManagerClass {
 			rank = isAbsolute ? 1 : 2;
 		}
 
-		// Reject events with no usable numeric reading, and reject a worse
-		// source than the one already active. Rank comparison (not a timer)
-		// keeps this deterministic: whichever valid source arrives with the
-		// best rank wins, and a later, worse source can never displace it.
 		if (heading === null || rank > this._activeSourceRank) return;
 
 		this._activeSourceRank = rank;

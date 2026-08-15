@@ -144,10 +144,6 @@ class GeolocationManagerClass {
 		}
 	}
 
-	// Shown once a real heading source (GPS course-over-ground or device
-	// orientation) has produced a reading; stays visible with the last known
-	// heading afterward rather than flickering off when a source briefly
-	// stops reporting (e.g. GPS heading is null while stationary).
 	updateDirectionIndicator(heading) {
 		if (!this.userMarker || !this.userMarker.getElement()) return;
 
