@@ -142,6 +142,7 @@ class DeviceOrientationManagerClass {
 
 		if (this.context?.AppState) {
 			this.context.AppState.audio.userDirection = filtered.heading;
+			this.context.GeolocationManager?.updateDirectionIndicator(filtered.heading);
 
 			const directionSlider = document.querySelector('.direction-slider');
 			if (directionSlider) {
@@ -150,8 +151,6 @@ class DeviceOrientationManagerClass {
 				const degreeDisplay = document.querySelector('.degree-display');
 				if (arrow) arrow.style.transform = `rotate(${filtered.heading - 45}deg)`;
 				if (degreeDisplay) degreeDisplay.textContent = `${filtered.heading}°`;
-
-				this.context.GeolocationManager?.updateDirectionIndicator(filtered.heading);
 
 				const sourceNote = document.querySelector('.orientation-source-note');
 				if (sourceNote) {
