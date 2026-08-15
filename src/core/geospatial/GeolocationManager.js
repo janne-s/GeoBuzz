@@ -1,6 +1,7 @@
 import { CONSTANTS } from '../constants.js';
 import { KalmanFilter } from './KalmanFilter.js';
 import { GpsInstabilityTracker } from './GpsInstabilityTracker.js';
+import { isTouchDevice } from '../utils/typeChecks.js';
 
 class GeolocationManagerClass {
 	constructor() {
@@ -240,6 +241,9 @@ class GeolocationManagerClass {
 		try {
 			if (this.context?.map) {
 				this.context.map.setView([0, 0], CONSTANTS.DEFAULT_FALLBACK_ZOOM);
+				if (!this.userMarker) {
+					this.createUserMarker(L.latLng(0, 0));
+				}
 			}
 		} catch (error) {
 			console.warn('Error setting up fallback map view:', error);
@@ -283,7 +287,7 @@ class GeolocationManagerClass {
 		this.watchId = navigator.geolocation.watchPosition(
 			(pos) => this.handlePositionUpdate(pos),
 			(error) => this.handlePositionError(error), {
-				enableHighAccuracy: true,
+				enableHighAccuracy: isTouchDevice(),
 				timeout: CONSTANTS.WATCH_POSITION_TIMEOUT_MS,
 				maximumAge: 0
 			}

@@ -11,6 +11,8 @@
 - Geolocation permission is now requested after the welcome modal resolves instead of racing it on page load (`GeolocationManager.setupGeolocation()` is no longer called automatically from `init()`)
 - Fixed server-kit's `WorkspaceManager.js` template missing the welcome-modal/GPS-sequencing call present in the standalone version
 - Increased maximum map zoom by one level (18 → 19, via tile overzoom) for closer precision work, in both the editor and the exported RuntimeEngine player
+- `watchPosition` no longer requests `enableHighAccuracy` on non-touch (desktop/laptop) devices, since there is no GPS hardware to benefit from it and the request may otherwise wait longer for a fix it can't get
+- A user-position icon now always appears at the fallback location (0,0) once geolocation fails or is unsupported, instead of never appearing until the page is reloaded
 
 ## 2026-04-08
 
