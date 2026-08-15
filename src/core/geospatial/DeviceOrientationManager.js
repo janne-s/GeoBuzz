@@ -160,6 +160,8 @@ class DeviceOrientationManagerClass {
 				if (arrow) arrow.style.transform = `rotate(${filtered.heading - 45}deg)`;
 				if (degreeDisplay) degreeDisplay.textContent = `${filtered.heading}°`;
 
+				this.context.GeolocationManager?.updateDirectionIndicator(filtered.heading);
+
 				const sourceNote = document.querySelector('.orientation-source-note');
 				if (sourceNote) {
 					sourceNote.textContent = this._activeSource === 'relative'

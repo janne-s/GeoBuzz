@@ -367,5 +367,31 @@ body {
 	box-shadow: none !important;
 }
 
+/* Small heading indicator riding the rim of the user marker. Hidden until
+   GPS course-over-ground heading reports a reading; see
+   GeolocationManager.updateDirectionIndicator. */
+.userDirectionIndicator {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 30px;
+	height: 30px;
+	transform-origin: center center;
+	transition: transform 0.1s linear;
+	pointer-events: none;
+	z-index: 1001;
+}
+
+.userDirectionIndicator i {
+	position: absolute;
+	top: -4px;
+	left: 50%;
+	transform: translateX(-50%);
+	font-size: 10px;
+	color: white;
+	opacity: 0.85;
+	text-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+}
+
 /* Optional: Add your custom styles below */
 /* ---------------------------------------- */

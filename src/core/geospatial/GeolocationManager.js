@@ -144,6 +144,20 @@ class GeolocationManagerClass {
 		}
 	}
 
+	// Shown once a real heading source (GPS course-over-ground or device
+	// orientation) has produced a reading; stays visible with the last known
+	// heading afterward rather than flickering off when a source briefly
+	// stops reporting (e.g. GPS heading is null while stationary).
+	updateDirectionIndicator(heading) {
+		if (!this.userMarker || !this.userMarker.getElement()) return;
+
+		const indicator = this.userMarker.getElement().querySelector('.userDirectionIndicator');
+		if (!indicator) return;
+
+		indicator.style.display = 'block';
+		indicator.style.transform = `rotate(${heading}deg)`;
+	}
+
 	showStatusMessage(text, duration = CONSTANTS.STATUS_MEDIUM_MS) {
 		if (!this.statusElement) return;
 
@@ -343,6 +357,8 @@ class GeolocationManagerClass {
 					this.context.AppState.audio.userDirection = newHeading;
 				}
 
+				this.updateDirectionIndicator(newHeading);
+
 				const directionSlider = document.querySelector('.direction-slider');
 				if (directionSlider) {
 					directionSlider.value = newHeading;
@@ -387,6 +403,9 @@ class GeolocationManagerClass {
 		const userIcon = L.divIcon({
 			html: `<div class="userIcon geolocation-status-${this.status}">
 				<i class="fas fa-user icon-white icon-md"></i>
+			</div>
+			<div class="userDirectionIndicator" style="display: none;">
+				<i class="fas fa-caret-up"></i>
 			</div>`,
 			className: 'custom-div-icon',
 			iconSize: CONSTANTS.USER_ICON_SIZE,
