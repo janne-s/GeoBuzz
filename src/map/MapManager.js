@@ -11,7 +11,8 @@ export class MapManager {
 
 	initialize() {
 		this.map = L.map('map', {
-			doubleClickZoom: false
+			doubleClickZoom: false,
+			maxZoom: CONSTANTS.MAX_MAP_ZOOM
 		}).setView([0, 0], CONSTANTS.DEFAULT_FALLBACK_ZOOM);
 
 		this.map.createPane('soundArea');
@@ -21,7 +22,9 @@ export class MapManager {
 		this.map.createPane('userMarker');
 
 		this.currentTileLayer = L.tileLayer(tileLayers[this.currentMapStyle].url, {
-			attribution: tileLayers[this.currentMapStyle].attribution
+			attribution: tileLayers[this.currentMapStyle].attribution,
+			maxZoom: CONSTANTS.MAX_MAP_ZOOM,
+			maxNativeZoom: CONSTANTS.MAX_TILE_NATIVE_ZOOM
 		}).addTo(this.map);
 
 		this.populateStyleDropdown();
@@ -58,7 +61,9 @@ export class MapManager {
 
 		this.currentMapStyle = styleName;
 		this.currentTileLayer = L.tileLayer(tileLayers[styleName].url, {
-			attribution: tileLayers[styleName].attribution
+			attribution: tileLayers[styleName].attribution,
+			maxZoom: CONSTANTS.MAX_MAP_ZOOM,
+			maxNativeZoom: CONSTANTS.MAX_TILE_NATIVE_ZOOM
 		}).addTo(this.map);
 
 		const mapStyleSelect = document.getElementById('mapStyleSelect');

@@ -10,6 +10,7 @@
 
 - Geolocation permission is now requested after the welcome modal resolves instead of racing it on page load (`GeolocationManager.setupGeolocation()` is no longer called automatically from `init()`)
 - Fixed server-kit's `WorkspaceManager.js` template missing the welcome-modal/GPS-sequencing call present in the standalone version
+- Increased maximum map zoom by one level (18 → 19, via tile overzoom) for closer precision work, in both the editor and the exported RuntimeEngine player
 
 ## 2026-04-08
 

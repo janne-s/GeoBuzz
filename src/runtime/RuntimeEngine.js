@@ -199,6 +199,7 @@ export class RuntimeEngine {
 				zoomControl: true,
 				preferCanvas: true,
 				renderer: L.canvas({ padding: 0.5 }),
+				maxZoom: CONSTANTS.MAX_MAP_ZOOM,
 				...options.mapConfig
 			};
 
@@ -207,7 +208,9 @@ export class RuntimeEngine {
 			Geometry.setMap(this.map);
 
 			const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-				attribution: '© OpenStreetMap contributors'
+				attribution: '© OpenStreetMap contributors',
+				maxZoom: CONSTANTS.MAX_MAP_ZOOM,
+				maxNativeZoom: CONSTANTS.MAX_TILE_NATIVE_ZOOM
 			}).addTo(this.map);
 
 			this.map.createPane('soundArea');
