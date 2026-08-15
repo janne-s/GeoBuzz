@@ -270,7 +270,7 @@ export const MenuTabs = {
 			const octaveLabel = createElement('span', 'keyboard-octave-label');
 			octaveLabel.textContent = 'Octave:';
 
-			const octaveDown = createButton('◀', () => {
+			const octaveDown = createButton('<i class="fas fa-caret-left"></i>', () => {
 				if (obj.params.keyboardOctave > 0) {
 					obj.params.keyboardOctave--;
 					MenuTabs.keyboard.render(obj, container);
@@ -280,7 +280,7 @@ export const MenuTabs = {
 			const octaveDisplay = createElement('span', 'octave-display');
 			octaveDisplay.textContent = obj.params.keyboardOctave;
 
-			const octaveUp = createButton('▶', () => {
+			const octaveUp = createButton('<i class="fas fa-caret-right"></i>', () => {
 				if (obj.params.keyboardOctave < 8) {
 					obj.params.keyboardOctave++;
 					MenuTabs.keyboard.render(obj, container);

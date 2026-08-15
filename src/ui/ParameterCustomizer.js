@@ -301,7 +301,7 @@ export class ParameterCustomizer {
 		header.className = 'category-header';
 		header.innerHTML = `
 			<span class="category-toggle ${isCollapsed ? 'collapsed' : ''}" data-category="${category}">
-				${isCollapsed ? '▶' : '▼'}
+				${isCollapsed ? '<i class="fas fa-caret-right"></i>' : '<i class="fas fa-caret-down"></i>'}
 			</span>
 			<span class="category-title">${CATEGORY_LABELS[category] || category}</span>
 		`;

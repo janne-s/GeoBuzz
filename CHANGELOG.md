@@ -16,12 +16,16 @@
 - `watchPosition` no longer requests `enableHighAccuracy` on non-touch devices
 - A user-position icon now always appears at the fallback location (0,0) once geolocation fails or is unsupported
 - User marker in the exported player now matches the editor's
+- Speed gate dual slider is now grey, matching the sliders around it
 
 ### Fixed
 
 - Device orientation not working on some Android devices
 - Map snapping back to the GPS position while working elsewhere
 - Server-kit's `WorkspaceManager.js` template missing the welcome-modal/GPS-sequencing call
+- Sliders and checkboxes taking the system accent colour, turning them blue on iOS
+- Menu buttons and toolbar icons taking the system button colour, turning them blue on iOS
+- Collapsible section and octave arrows rendering as emoji on iOS
 
 ## 2026-04-08
 

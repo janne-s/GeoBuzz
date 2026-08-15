@@ -253,7 +253,7 @@ export const SelectionController = {
 
 			const expandEl = document.createElement('span');
 			expandEl.className = 'selection-layer-expand';
-			expandEl.textContent = '▶';
+			expandEl.innerHTML = '<i class="fas fa-caret-right"></i>';
 
 			header.appendChild(colorEl);
 			header.appendChild(nameEl);

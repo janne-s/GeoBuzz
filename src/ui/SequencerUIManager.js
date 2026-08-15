@@ -1567,7 +1567,7 @@ export class SequencerUIManager {
 			const octaveControls = createElement('div', 'track-octave-controls');
 
 			const octaveDown = createElement('button', 'btn-icon');
-			octaveDown.textContent = '⬇';
+			octaveDown.innerHTML = '<i class="fas fa-arrow-down"></i>';
 			octaveDown.onclick = () => {
 				if (track.octave > 0) {
 					track.octave--;
@@ -1580,7 +1580,7 @@ export class SequencerUIManager {
 			octaveLabel.textContent = `C${track.octave !== undefined ? track.octave : 4}`;
 
 			const octaveUp = createElement('button', 'btn-icon');
-			octaveUp.textContent = '⬆';
+			octaveUp.innerHTML = '<i class="fas fa-arrow-up"></i>';
 			octaveUp.onclick = () => {
 				if (track.octave < 8) {
 					track.octave++;

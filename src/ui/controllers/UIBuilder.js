@@ -20,7 +20,7 @@ export function createCollapsibleSection(title, icon, content, startExpanded = f
 	titleEl.innerHTML = `<i class="fas ${icon}"></i> ${title}`;
 
 	const toggle = createElement('span', 'collapsible-section-toggle');
-	toggle.innerHTML = '▶';
+	toggle.innerHTML = '<i class="fas fa-caret-right"></i>';
 
 	header.appendChild(titleEl);
 	header.appendChild(toggle);
@@ -909,7 +909,7 @@ export const UIBuilder = {
 		const titleEl = createElement('div', 'collapsible-section-title');
 		titleEl.innerHTML = `<i class="fas ${icon}"></i> ${title}`;
 		const toggle = createElement('span', 'collapsible-section-toggle');
-		toggle.innerHTML = '▶';
+		toggle.innerHTML = '<i class="fas fa-caret-right"></i>';
 
 		header.appendChild(titleEl);
 		header.appendChild(toggle);
