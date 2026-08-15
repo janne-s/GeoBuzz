@@ -400,9 +400,7 @@ class GeolocationManagerClass {
 			html: `<div class="userIcon geolocation-status-${this.status}">
 				<i class="fas fa-user icon-white icon-md"></i>
 			</div>
-			<div class="userDirectionIndicator" style="display: none;">
-				<i class="fas fa-caret-up"></i>
-			</div>`,
+			<div class="userDirectionIndicator" style="display: none;"></div>`,
 			className: 'custom-div-icon',
 			iconSize: CONSTANTS.USER_ICON_SIZE,
 			iconAnchor: CONSTANTS.USER_ICON_ANCHOR

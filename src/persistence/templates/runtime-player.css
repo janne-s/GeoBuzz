@@ -379,15 +379,18 @@ body {
 	z-index: 1001;
 }
 
-.userDirectionIndicator i {
+.userDirectionIndicator::before {
+	content: '';
 	position: absolute;
-	top: -4px;
+	top: -7.5px;
 	left: 50%;
 	transform: translateX(-50%);
-	font-size: 10px;
-	color: white;
-	opacity: 0.85;
-	text-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+	width: 0;
+	height: 0;
+	border-left: 5px solid transparent;
+	border-right: 5px solid transparent;
+	border-bottom: 9px solid white;
+	filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.7));
 }
 
 /* Optional: Add your custom styles below */
