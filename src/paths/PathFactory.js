@@ -7,7 +7,10 @@ import { DEFAULT_LFO_STRUCTURE } from '../config/defaults.js';
 
 export function createControlPath(type, data = {}, options = {}) {
 	const { renderPath, refreshList, updateCounts } = options;
-	const pathId = `path_${AppState.drawing.pathCount++}`;
+	let pathId = `path_${AppState.drawing.pathCount++}`;
+	while (AppState.getPath(pathId)) {
+		pathId = `path_${AppState.drawing.pathCount++}`;
+	}
 	const color = data.color || PATH_COLORS[Selectors.getPaths().length % PATH_COLORS.length];
 
 	let center = data.center || null;

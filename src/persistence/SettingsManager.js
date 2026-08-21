@@ -451,6 +451,14 @@ export class SettingsManager {
 		});
 
 		this.context.AppState.rebuildIndexes();
+		this.syncPathCount();
+	}
+
+	static syncPathCount() {
+		const numericIds = this.context.Selectors.getPaths()
+			.map(p => parseInt(String(p.id).replace('path_', ''), 10))
+			.filter(Number.isFinite);
+		this.context.AppState.drawing.pathCount = numericIds.length ? Math.max(...numericIds) + 1 : 0;
 	}
 
 	static restoreSequencers(sequencersData) {
