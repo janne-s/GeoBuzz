@@ -1,6 +1,7 @@
 import { CONSTANTS } from '../constants.js';
 import { Selectors } from '../state/selectors.js';
 import { isCircularPath } from '../utils/math.js';
+import { calculateSilencingGain } from './audioUtils.js';
 
 let context = null;
 
@@ -16,6 +17,7 @@ class EchoManagerClass {
 		}
 
 		const soundAreaGain = context.Geometry.isPointInShape(userPos, sound) ? context.calcGain(userPos, sound) : 0;
+		const silencingGain = calculateSilencingGain(userPos);
 
 		if (!sound.echoNodes) sound.echoNodes = new Map();
 
@@ -58,7 +60,7 @@ class EchoManagerClass {
 			const distanceAttenuation = Math.max(0, 1 - (totalDist / maxAudibleDistance));
 			const echoLevel = path.params.echo.level !== undefined ? path.params.echo.level : 0.1;
 
-			const gainValue = distanceAttenuation * echoLevel * soundAreaGain;
+			const gainValue = Math.min(distanceAttenuation * echoLevel * soundAreaGain, silencingGain);
 
 			let nodeData = sound.echoNodes.get(path.id);
 

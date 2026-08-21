@@ -587,6 +587,8 @@ Each track has:
 | **Resume on Re-enter** | Continue from last step when re-entering the active area |
 | **Restart on Re-enter** | Reset to step 0 when re-entering the active area |
 
+A silencer sets an absolute ceiling inside its area: nothing plays louder than the silencer allows, including echo taps.
+
 #### Zone Types
 
 Zone types apply to paths. A sound has a single zone, **Area**, covering the sound's own shape.

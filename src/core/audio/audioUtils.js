@@ -1,5 +1,6 @@
 import { CONSTANTS } from '../constants.js';
 import { toRadians, toDegrees } from '../utils/math.js';
+import { Selectors } from '../state/selectors.js';
 
 let context = null;
 
@@ -55,6 +56,20 @@ export function calcGain(userPos, obj) {
 
 	const volume = obj._modulatedVolume !== undefined ? obj._modulatedVolume : obj.params.volume;
 	return volumeScalar * volume;
+}
+
+export function calculateSilencingGain(userPos) {
+	let silencingGain = 1;
+	if (!userPos) return silencingGain;
+
+	const paths = Selectors.getPaths();
+	for (let i = 0; i < paths.length; i++) {
+		const path = paths[i];
+		if (path.params.silencer && context.Geometry.isPointInControlPath(userPos, path)) {
+			silencingGain = Math.min(silencingGain, 1 - calculatePathGain(userPos, path));
+		}
+	}
+	return silencingGain;
 }
 
 export function calculatePathGain(userPos, path) {

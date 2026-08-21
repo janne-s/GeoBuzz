@@ -3,7 +3,7 @@ import { AppState } from '../state/StateManager.js';
 import { Selectors } from '../state/selectors.js';
 import { Geometry } from '../geospatial/Geometry.js';
 import { EchoManager } from './EchoManager.js';
-import { calcGain, calculateRelativePosition, calculateBearingPan, calculatePathGain } from './audioUtils.js';
+import { calcGain, calculateRelativePosition, calculateBearingPan, calculateSilencingGain } from './audioUtils.js';
 import { startLoopedPlayback, stopLoopedPlayback } from './SoundLifecycle.js';
 import {
 	updateSmoothedPosition,
@@ -160,15 +160,7 @@ export function updateAudio(userPos, now) {
 	}
 	lastUserPosition = userPos ? { lat: userPos.lat, lng: userPos.lng } : null;
 
-	let silencingGain = 1;
-	const paths = Selectors.getPaths();
-	for (let i = 0; i < paths.length; i++) {
-		const path = paths[i];
-		if (path.params.silencer && Geometry.isPointInControlPath(audioPos, path)) {
-			const pathGain = calculatePathGain(audioPos, path);
-			silencingGain = Math.min(silencingGain, 1 - pathGain);
-		}
-	}
+	const silencingGain = calculateSilencingGain(audioPos);
 
 	const sequencers = Selectors.getSequencers();
 	for (let i = 0; i < sequencers.length; i++) {
@@ -295,7 +287,7 @@ export function updateAudio(userPos, now) {
 		}
 
 		const clampedGain = clampGainDelta(targetGain, s.id);
-		const effectiveGain = (clampedGain > 0 ? clampedGain : 0) * silencingGain;
+		const effectiveGain = Math.min(clampedGain > 0 ? clampedGain : 0, silencingGain);
 
 		if (s.type === "StreamPlayer") {
 			if (!isControlledBySequencer) {
