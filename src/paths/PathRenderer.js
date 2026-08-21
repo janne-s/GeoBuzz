@@ -225,8 +225,7 @@ export function renderLineOrPolygonPath(path, options = {}) {
 				path.polygon.setLatLngs(path.points);
 			}
 			if (path.labelMarker) {
-				const offset = CONSTANTS.LABEL_OFFSET_M / CONSTANTS.METERS_PER_LAT;
-				path.labelMarker.setLatLng(L.latLng(path.points[0].lat - offset, path.points[0].lng));
+				path.labelMarker.setLatLng(path.points[0]);
 			}
 			AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 		});
@@ -269,9 +268,7 @@ export function renderLineOrPolygonPath(path, options = {}) {
 		path.pointMarkers.push(marker);
 	});
 
-	const labelOffset = CONSTANTS.LABEL_OFFSET_M / CONSTANTS.METERS_PER_LAT;
-	const labelPos = L.latLng(path.points[0].lat - labelOffset, path.points[0].lng);
-	createPathLabel(path, labelPos);
+	createPathLabel(path, path.points[0]);
 }
 
 export function renderCirclePath(path, options = {}) {
@@ -383,9 +380,7 @@ export function addCirclePathMarkers(path, options = {}) {
 		const radiusHandle = path.pointMarkers[1];
 		if (radiusHandle) radiusHandle.setLatLng(Geometry.computeEdgeLatLng(path.center, path.radius));
 		if (path.labelMarker) {
-			const edgePos = Geometry.computeEdgeLatLng(path.center, path.radius, 'label');
-			const offset = CONSTANTS.LABEL_OFFSET_M / CONSTANTS.METERS_PER_LAT;
-			path.labelMarker.setLatLng(L.latLng(edgePos.lat - offset, edgePos.lng));
+			path.labelMarker.setLatLng(Geometry.computeEdgeLatLng(path.center, path.radius, 'label'));
 		}
 		AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 	});
@@ -452,9 +447,7 @@ export function addCirclePathMarkers(path, options = {}) {
 		if (path.toleranceLayer) path.toleranceLayer.setRadius(path.radius + path.tolerance);
 		if (path.toleranceInner) path.toleranceInner.setRadius(Math.max(0, path.radius - path.tolerance));
 		if (path.labelMarker) {
-			const edgePos = Geometry.computeEdgeLatLng(path.center, path.radius, 'label');
-			const offset = CONSTANTS.LABEL_OFFSET_M / CONSTANTS.METERS_PER_LAT;
-			path.labelMarker.setLatLng(L.latLng(edgePos.lat - offset, edgePos.lng));
+			path.labelMarker.setLatLng(Geometry.computeEdgeLatLng(path.center, path.radius, 'label'));
 		}
 		AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 	});
@@ -475,10 +468,7 @@ export function addCirclePathMarkers(path, options = {}) {
 
 	path.pointMarkers.push(radiusHandle);
 
-	const labelOffset = CONSTANTS.LABEL_OFFSET_M / CONSTANTS.METERS_PER_LAT;
-	const edgePos = Geometry.computeEdgeLatLng(path.center, path.radius, 'label');
-	const labelPos = L.latLng(edgePos.lat - labelOffset, edgePos.lng);
-	createPathLabel(path, labelPos);
+	createPathLabel(path, Geometry.computeEdgeLatLng(path.center, path.radius, 'label'));
 }
 
 export function addOvalPathMarkers(path, options = {}) {
@@ -532,8 +522,7 @@ export function addOvalPathMarkers(path, options = {}) {
 			);
 			yHandle.setLatLng(yEdgeLatLng);
 			if (path.labelMarker) {
-				const offset = CONSTANTS.LABEL_OFFSET_M / CONSTANTS.METERS_PER_LAT;
-				path.labelMarker.setLatLng(L.latLng(yEdgeLatLng.lat - offset, yEdgeLatLng.lng));
+				path.labelMarker.setLatLng(yEdgeLatLng);
 			}
 		}
 		AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
@@ -628,7 +617,6 @@ export function addOvalPathMarkers(path, options = {}) {
 
 	path.pointMarkers.push(xHandle);
 
-	const labelOffset = CONSTANTS.LABEL_OFFSET_M / CONSTANTS.METERS_PER_LAT;
 	const yEdgeLatLng = L.latLng(
 		path.center.lat + (path.radiusY / CONSTANTS.METERS_PER_LAT),
 		path.center.lng
@@ -667,7 +655,7 @@ export function addOvalPathMarkers(path, options = {}) {
 			path.toleranceInner.setLatLngs(innerPoints);
 		}
 		if (path.labelMarker) {
-			path.labelMarker.setLatLng(L.latLng(constrainedPos.lat - labelOffset, constrainedPos.lng));
+			path.labelMarker.setLatLng(constrainedPos);
 		}
 		AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 	});
@@ -688,8 +676,7 @@ export function addOvalPathMarkers(path, options = {}) {
 
 	path.pointMarkers.push(yHandle);
 
-	const labelPos = L.latLng(yEdgeLatLng.lat - labelOffset, yEdgeLatLng.lng);
-	createPathLabel(path, labelPos);
+	createPathLabel(path, yEdgeLatLng);
 }
 
 export function updateControlPathPosition(path, deltaLat, deltaLng, options = {}) {

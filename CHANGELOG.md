@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-22
+
+### Fixed
+
+- Path labels sitting away from the shape instead of on its edge like sound labels
+
 ## 2026-08-21
 
 ### Changed
