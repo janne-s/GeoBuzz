@@ -178,6 +178,20 @@ export class DistanceSequencer {
 		return this._speedGateCommitted;
 	}
 
+	_handleGateClosed() {
+		if (this._isMovingFastEnough && this.releaseOnStop) {
+			if (this.releaseDelay === 0) {
+				this._releaseAllNotes();
+			} else if (!this._releaseTimeoutId) {
+				this._releaseTimeoutId = setTimeout(() => {
+					this._releaseAllNotes();
+					this._releaseTimeoutId = null;
+				}, this.releaseDelay * 1000);
+			}
+		}
+		this._isMovingFastEnough = false;
+	}
+
 	updatePosition(lat, lon) {
 		if (!this.enabled) return;
 
@@ -222,7 +236,14 @@ export class DistanceSequencer {
 			return;
 		}
 
+		const elapsed = (currentPos.timestamp - this.lastPosition.timestamp) / 1000;
+
 		if (distance < CONSTANTS.SEQUENCER_MIN_DELTA) {
+			if (elapsed >= CONSTANTS.SEQUENCER_IDLE_SAMPLE_SECONDS) {
+				if (!this._evaluateSpeedGate(distance / elapsed, currentPos.timestamp)) {
+					this._handleGateClosed();
+				}
+			}
 			return;
 		}
 
@@ -232,23 +253,12 @@ export class DistanceSequencer {
 		}
 
 		const smoothedDistance = this.calculateSmoothedDistance();
-		const timeDelta = (currentPos.timestamp - this.lastPosition.timestamp) / 1000;
-		const speed = timeDelta > 0 ? smoothedDistance / timeDelta : 0;
+		const speed = elapsed > 0 ? smoothedDistance / elapsed : 0;
 
 		const gateOpen = this._evaluateSpeedGate(speed, currentPos.timestamp);
 
 		if (!gateOpen) {
-			if (this._isMovingFastEnough && this.releaseOnStop) {
-				if (this.releaseDelay === 0) {
-					this._releaseAllNotes();
-				} else if (!this._releaseTimeoutId) {
-					this._releaseTimeoutId = setTimeout(() => {
-						this._releaseAllNotes();
-						this._releaseTimeoutId = null;
-					}, this.releaseDelay * 1000);
-				}
-			}
-			this._isMovingFastEnough = false;
+			this._handleGateClosed();
 			this.lastPosition = currentPos;
 			return;
 		}

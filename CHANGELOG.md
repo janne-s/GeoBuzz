@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-21
+
+### Fixed
+
+- Release on Stop not firing when movement stopped
+- Cancel in point-to-point simulation leaving sequencer notes sounding
+- Cancel detaching from a path instead of stopping the running simulation
+
 ## 2026-08-20
 
 ### Changed

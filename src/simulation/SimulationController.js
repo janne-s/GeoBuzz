@@ -32,7 +32,17 @@ export const SimulationController = {
 		}
 	},
 
+	releaseSequencers() {
+		Selectors.getSequencers().forEach(seq => {
+			if (seq.enabled && seq.releaseOnStop) {
+				seq._releaseAllNotes();
+			}
+		});
+	},
+
 	startPlacement(map, placeTargetHandler) {
+		this.releaseSequencers();
+		AppState.simulation.userAttachedPathId = null;
 		AppState.dispatch({ type: 'SIMULATION_PLACEMENT_STARTED' });
 		GeolocationManager.toggleFollowGPS(false);
 		GeolocationManager.stopWatching();
@@ -44,11 +54,7 @@ export const SimulationController = {
 	},
 
 	stop(map, placeTargetHandler) {
-		Selectors.getSequencers().forEach(seq => {
-			if (seq.enabled && seq.releaseOnStop) {
-				seq._releaseAllNotes();
-			}
-		});
+		this.releaseSequencers();
 		AppState.dispatch({ type: 'SIMULATION_STOPPED' });
 		AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 		if (AppState.simulation.animationState.frameId) {

@@ -280,6 +280,7 @@ function attachUserToPath(pathId) {
 }
 
 function detachUserFromPath() {
+	SimulationController.releaseSequencers();
 	return PathFactory.detachUserFromPath(showSimulationControls);
 }
 
