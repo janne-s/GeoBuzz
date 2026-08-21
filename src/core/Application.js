@@ -1247,8 +1247,8 @@ function reconnectSoundToLayers(sound) {
 	if (assignedLayers.length > 0) {
 		assignedLayers.forEach(layerId => {
 			const layer = LayerManager.getUserLayer(layerId);
-			if (layer && layer.fxNodes) {
-				if (!layer.fxNodes.input) {
+			if (layer) {
+				if (!layer.fxNodes || !layer.fxNodes.input) {
 					createLayerFXNodes(layer);
 				}
 				sound.gain.connect(layer.fxNodes.input);

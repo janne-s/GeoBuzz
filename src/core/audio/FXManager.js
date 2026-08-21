@@ -45,7 +45,7 @@ export function createLayerFXNodes(layer) {
 			fx2: null,
 			fx3: null,
 			eq: null,
-			gain: new Tone.Gain(layer.gain || CONSTANTS.DEFAULT_LAYER_GAIN),
+			gain: new Tone.Gain(layer.muted ? 0 : (layer.gain || CONSTANTS.DEFAULT_LAYER_GAIN)),
 			output: new Tone.Gain(1).toDestination()
 		};
 

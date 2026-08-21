@@ -213,12 +213,34 @@ class LayerManagerClass {
 		}
 	}
 
+	applyLayerGains() {
+		const anySoloed = this.userLayers.some(l => l.soloed);
+		this.userLayers.forEach(l => {
+			if (!l.fxNodes) return;
+			const target = anySoloed ? (l.soloed ? l.gain : 0) : (l.muted ? 0 : l.gain);
+			l.fxNodes.gain.gain.rampTo(target, CONSTANTS.LAYER_SWITCH_RAMP_TIME);
+		});
+	}
+
+	applyLayerStateChange() {
+		this.applyLayerGains();
+
+		Selectors.getSounds().forEach(sound => {
+			if (sound.layers) {
+				context.reconnectSoundToLayers(sound);
+			}
+		});
+
+		this.refreshUserLayersUI();
+		this.updateAllElements();
+		AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
+	}
+
 	toggleUserLayerMute(layerId) {
 		const layer = this.getUserLayer(layerId);
-		if (layer && layer.fxNodes) {
+		if (layer) {
 			layer.muted = !layer.muted;
-			layer.fxNodes.gain.gain.rampTo(layer.muted ? 0 : layer.gain, CONSTANTS.LAYER_SWITCH_RAMP_TIME);
-			this.refreshUserLayersUI();
+			this.applyLayerStateChange();
 		}
 	}
 
@@ -226,28 +248,7 @@ class LayerManagerClass {
 		const layer = this.getUserLayer(layerId);
 		if (layer) {
 			layer.soloed = !layer.soloed;
-
-			const anySoloed = this.userLayers.some(l => l.soloed);
-
-			this.userLayers.forEach(l => {
-				if (l.fxNodes) {
-					if (anySoloed) {
-						l.fxNodes.gain.gain.rampTo(l.soloed ? l.gain : 0, CONSTANTS.LAYER_SWITCH_RAMP_TIME);
-					} else {
-						l.fxNodes.gain.gain.rampTo(l.muted ? 0 : l.gain, CONSTANTS.LAYER_SWITCH_RAMP_TIME);
-					}
-				}
-			});
-
-			Selectors.getSounds().forEach(sound => {
-				if (sound.layers) {
-					context.reconnectSoundToLayers(sound);
-				}
-			});
-
-			this.refreshUserLayersUI();
-			this.updateAllElements();
-			AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
+			this.applyLayerStateChange();
 		}
 	}
 
@@ -364,31 +365,6 @@ class LayerManagerClass {
 		context.updateMenuCounts();
 	}
 
-	shouldSoundPlayBasedOnLayers(sound) {
-		const soundUserLayers = (sound.layers || []).filter(layerId =>
-			this._userLayersMap.has(layerId)
-		);
-
-		const anySoloed = this.userLayers.some(l => l.soloed);
-
-		if (soundUserLayers.length === 0) {
-			return !anySoloed;
-		}
-
-		if (anySoloed) {
-			const isOnSoloedLayer = soundUserLayers.some(layerId => {
-				const layer = this.getUserLayer(layerId);
-				return layer && layer.soloed;
-			});
-			return isOnSoloedLayer;
-		} else {
-			const isOnMutedLayer = soundUserLayers.every(layerId => {
-				const layer = this.getUserLayer(layerId);
-				return layer && layer.muted;
-			});
-			return !isOnMutedLayer;
-		}
-	}
 
 	cleanupOrphanedLayerAssignments() {
 		Selectors.getSounds().forEach(sound => {

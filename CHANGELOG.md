@@ -24,6 +24,7 @@
 - Duplicated paths sharing the original's silencer
 - Duplicated paths losing their tolerance, layers and speed
 - Path labels sitting away from the shape instead of on its edge like sound labels
+- Muting a layer not silencing or dimming its elements
 
 ## 2026-08-20
 
