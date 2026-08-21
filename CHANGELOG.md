@@ -2,11 +2,18 @@
 
 ## 2026-08-21
 
+### Changed
+
+- Sequencer attack now runs per note on the synth voice instead of a shared track gain
+- Sequencer release is no longer applied twice, so the set release time is what you hear
+
 ### Fixed
 
 - Release on Stop not firing when movement stopped
 - Cancel in point-to-point simulation leaving sequencer notes sounding
 - Cancel detaching from a path instead of stopping the running simulation
+- Sequencer notes cutting out instead of releasing from the level the attack reached
+- Sequencer notes after the first playing with no attack
 
 ## 2026-08-20
 

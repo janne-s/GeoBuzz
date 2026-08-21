@@ -350,14 +350,14 @@ export class DistanceSequencer {
 				const gainValue = soundObj.params.volume * CONSTANTS.SEQUENCER_SYNTH_GAIN;
 				soundObj.gain.gain.setValueAtTime(gainValue, Tone.now());
 
-				const neutralEnvelope = { attack: CONSTANTS.SEQUENCER_INTERNAL_ATTACK, decay: 0, sustain: 1 };
+				const neutralEnvelope = { decay: 0, sustain: 1 };
 				if (soundObj.synth instanceof Tone.PolySynth) {
 					soundObj.synth.set({ envelope: neutralEnvelope });
 				} else if (soundObj.synth?.envelope) {
 					Object.assign(soundObj.synth.envelope, neutralEnvelope);
 				}
 				if (soundObj.type === 'Sampler') {
-					soundObj.synth.attack = CONSTANTS.SEQUENCER_INTERNAL_ATTACK;
+					soundObj.synth.attack = soundObj.params.attack ?? 0;
 				}
 
 				if (track.synthType === 'SoundFile' && params.soundFile) {
@@ -404,9 +404,8 @@ export class DistanceSequencer {
 		if (soundObj && soundObj.gain) {
 			const gainValue = soundObj.params.volume * CONSTANTS.SEQUENCER_SYNTH_GAIN;
 			const now = Tone.now();
-			soundObj.gain.gain.cancelScheduledValues(now);
-			soundObj.gain.gain.setValueAtTime(soundObj.gain.gain.value, now);
-			soundObj.gain.gain.linearRampToValueAtTime(gainValue, now + 0.02);
+			soundObj.gain.gain.cancelAndHoldAtTime(now);
+			soundObj.gain.gain.linearRampToValueAtTime(gainValue, now + CONSTANTS.SEQUENCER_VELOCITY_RAMP);
 		}
 	}
 
@@ -775,9 +774,7 @@ export class DistanceSequencer {
 		const notesToRetrigger = new Set([...track.steps[stepIndex].notes].filter(note => previouslyActiveNotes.has(note) && !sustainedNotes.has(note)));
 		const notesToStart = new Set([...track.steps[stepIndex].notes].filter(note => !previouslyActiveNotes.has(note)));
 
-		const hasSustainedNotes = sustainedNotes.size > 0;
 		const willHaveActiveNotes = notesForThisStep.size > 0;
-		const hadActiveNotes = previouslyActiveNotes.size > 0;
 
 		for (const midiNote of notesToStop) {
 			await this._triggerRelease(track, midiNote, willHaveActiveNotes);
@@ -854,7 +851,7 @@ export class DistanceSequencer {
 				velocitiesNormalized[note] = midiVel / 127;
 			});
 			try {
-				await this._triggerAttackChord(track, notesArray, velocitiesNormalized, hasSustainedNotes || hadActiveNotes);
+				await this._triggerAttackChord(track, notesArray, velocitiesNormalized);
 			} catch (error) {
 				console.error(`Sequencer error on track ${track.id}:`, error.message);
 			}
@@ -863,7 +860,7 @@ export class DistanceSequencer {
 		this._activeNotes.set(track.id, notesForThisStep);
 	}
 
-	async _triggerAttackChord(track, midiNotes, velocity, hasActiveNotes = false) {
+	async _triggerAttackChord(track, midiNotes, velocity) {
 		const handleAttack = async (soundObj) => {
 			if (!soundObj || !soundObj.synth) {
 				return;
@@ -912,16 +909,8 @@ export class DistanceSequencer {
 			} else {
 				if (soundObj.envelopeGain) {
 					const now = Tone.now();
-					const attack = soundObj.params.attack || 0.01;
-					soundObj.envelopeGain.gain.cancelScheduledValues(now);
-
-					if (hasActiveNotes) {
-						soundObj.envelopeGain.gain.setValueAtTime(soundObj.envelopeGain.gain.value, now);
-						soundObj.envelopeGain.gain.linearRampToValueAtTime(avgVelocity, now + attack);
-					} else {
-						soundObj.envelopeGain.gain.setValueAtTime(0, now);
-						soundObj.envelopeGain.gain.linearRampToValueAtTime(avgVelocity, now + attack);
-					}
+					soundObj.envelopeGain.gain.cancelAndHoldAtTime(now);
+					soundObj.envelopeGain.gain.linearRampToValueAtTime(avgVelocity, now + CONSTANTS.SEQUENCER_VELOCITY_RAMP);
 				}
 				const useVelocity = soundObj.type === 'Sampler' ? velocity : null;
 				PolyphonyManager.triggerPolyphonic(soundObj.synth, midiNotes, true, soundObj, null, useVelocity);
@@ -952,10 +941,6 @@ export class DistanceSequencer {
 		return stepIndex;
 	}
 
-	async _triggerAttack(track, midiNote, velocity, hasActiveNotes = false) {
-		this._triggerAttackChord(track, [midiNote], velocity, hasActiveNotes);
-	}
-
 	async _triggerRelease(track, midiNote, willHaveActiveNotes = false) {
 		if (track.instrumentType === 'synth') {
 			const soundObj = this._synthPool.get(track.id);
@@ -970,10 +955,8 @@ export class DistanceSequencer {
 					context.StreamManager.stopStream(soundObj);
 				} else if (soundObj.synth instanceof Tone.NoiseSynth) {
 					soundObj.synth.triggerRelease();
-					if (!willHaveActiveNotes && soundObj.envelopeGain) {
-						const release = soundObj.params.release || 0.1;
-						this._exponentialRelease(soundObj.envelopeGain.gain, release);
-						track._releaseUntil = Tone.now() + release;
+					if (!willHaveActiveNotes) {
+						track._releaseUntil = Tone.now() + (soundObj.params.release || 0.1);
 					}
 				} else {
 					const note = Tone.Frequency(midiNote, 'midi').toNote();
@@ -1003,10 +986,8 @@ export class DistanceSequencer {
 						soundObj.synth.triggerRelease();
 					}
 
-					if (!willHaveActiveNotes && soundObj.envelopeGain) {
-						const release = soundObj.params.release || 0.1;
-						this._exponentialRelease(soundObj.envelopeGain.gain, release);
-						track._releaseUntil = Tone.now() + release;
+					if (!willHaveActiveNotes) {
+						track._releaseUntil = Tone.now() + (soundObj.params.release || 0.1);
 					}
 				}
 			}
@@ -1022,10 +1003,8 @@ export class DistanceSequencer {
 					soundEl.isPlaying = false;
 				} else if (soundEl.synth instanceof Tone.NoiseSynth) {
 					soundEl.synth.triggerRelease();
-					if (!willHaveActiveNotes && soundEl.envelopeGain) {
-						const release = soundEl.params.release || 0.1;
-						this._exponentialRelease(soundEl.envelopeGain.gain, release);
-						track._releaseUntil = Tone.now() + release;
+					if (!willHaveActiveNotes) {
+						track._releaseUntil = Tone.now() + (soundEl.params.release || 0.1);
 					}
 				} else {
 					const note = Tone.Frequency(midiNote, 'midi').toNote();
@@ -1045,10 +1024,8 @@ export class DistanceSequencer {
 						soundEl.synth.triggerRelease();
 					}
 
-					if (!willHaveActiveNotes && soundEl.envelopeGain) {
-						const release = soundEl.params.release || 0.1;
-						this._exponentialRelease(soundEl.envelopeGain.gain, release);
-						track._releaseUntil = Tone.now() + release;
+					if (!willHaveActiveNotes) {
+						track._releaseUntil = Tone.now() + (soundEl.params.release || 0.1);
 					}
 				}
 			}
@@ -1267,15 +1244,6 @@ export class DistanceSequencer {
 			this.currentStep = this.numSteps - 1;
 		}
 		this.dispatchEvent('stateChange');
-	}
-
-	_exponentialRelease(gainParam, duration) {
-		const now = Tone.now();
-		const currentValue = Math.max(0.001, gainParam.value);
-		gainParam.cancelScheduledValues(now);
-		gainParam.setValueAtTime(currentValue, now);
-		gainParam.exponentialRampToValueAtTime(0.001, now + duration);
-		gainParam.setValueAtTime(0, now + duration);
 	}
 
 	_updateSceneChangePaths(userPos) {
