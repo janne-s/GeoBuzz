@@ -1,12 +1,18 @@
-import { CONSTANTS } from '../constants.js';
 import { getSmoothedModulationValue } from './AudioSmoother.js';
 
-export function applyModShaping(modConfig, lfoValue, smoothingKey, mod) {
+const lastTimes = new Map();
+
+export function applyModShaping(modConfig, lfoValue, smoothingKey, mod, now) {
 	let value = lfoValue;
 
 	const inertia = modConfig.inertia || 0;
 	if (inertia > 0) {
-		const alpha = Math.max(CONSTANTS.MODULATION_INERTIA_MIN_ALPHA, 1 - inertia);
+		const timeKey = `${smoothingKey}_${mod}`;
+		const last = lastTimes.get(timeKey);
+		lastTimes.set(timeKey, now);
+
+		const dt = last === undefined ? 0 : Math.max(0, now - last);
+		const alpha = dt > 0 ? 1 - Math.exp(-dt / inertia) : 1;
 		value = getSmoothedModulationValue(value, smoothingKey, `${mod}_inertia`, alpha);
 	}
 

@@ -712,7 +712,7 @@ export class DistanceSequencer {
 			totalModulationDepth = rangePercent * fullRange;
 		}
 
-		return applyModShaping(soundObj.params.lfo[mod], lfoValue, trackContext.trackId, mod) * (totalModulationDepth / 2);
+		return applyModShaping(soundObj.params.lfo[mod], lfoValue, trackContext.trackId, mod, t) * (totalModulationDepth / 2);
 	}
 
 	_processFXModulation(soundObj, target, offset) {

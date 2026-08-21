@@ -547,7 +547,7 @@ function processInternalModulation(s, mod, target, freq, range, source, t, userP
 		totalModulationDepth = rangePercent * fullRange;
 	}
 
-	return applyModShaping(s.params.lfo[mod], lfoValue, s.id, mod) * (totalModulationDepth / 2);
+	return applyModShaping(s.params.lfo[mod], lfoValue, s.id, mod, t) * (totalModulationDepth / 2);
 }
 
 function processFXModulation(s, target, offset) {

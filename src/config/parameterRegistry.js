@@ -97,7 +97,7 @@ function generateModParams(mod, category) {
 			max: CONSTANTS.MODULATION_INERTIA_MAX,
 			step: CONSTANTS.MODULATION_INERTIA_STEP,
 			defaultValue: 0,
-			unit: '',
+			unit: ' s',
 			category,
 			serialize: true,
 			ui: true
