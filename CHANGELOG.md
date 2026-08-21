@@ -5,7 +5,7 @@
 ### Added
 
 - Inertia and invert on modulation sources, for damping or reversing a modulation
-- Scale and Variability for point-to-point simulation, for speeds between the presets and a less mechanical pace
+- Scale and Variability for simulation, for speeds between the presets and a less mechanical pace
 - Speed Scale for distance sequencers, turning them into arpeggiators that keep pace with the listener
 - Sequencer tracks can be modulated from a sound element, like sound elements already could
 
@@ -16,6 +16,7 @@
 
 ### Fixed
 
+- Echo reflections updating every frame for sounds that are out of range
 - Release on Stop not firing when movement stopped
 - Cancel leaving sequencer notes sounding in point-to-point simulation
 - Cancel detaching from a path instead of stopping the simulation

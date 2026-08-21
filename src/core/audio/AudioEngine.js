@@ -234,6 +234,17 @@ export function updateAudio(userPos, now) {
 			});
 		}
 
+		if (!isControlledBySequencer && !isInside && !s.isPlaying) {
+			if (s.wasInsideArea && s.echoNodes && s.echoNodes.size > 0) {
+				AppState.dispatch({
+					type: 'AUDIO_ECHO_UPDATE_REQUESTED',
+					payload: { sound: s, userPos: audioPos }
+				});
+			}
+			s.wasInsideArea = false;
+			continue;
+		}
+
 		AppState.dispatch({
 			type: 'AUDIO_ECHO_UPDATE_REQUESTED',
 			payload: { sound: s, userPos: audioPos }
@@ -244,11 +255,6 @@ export function updateAudio(userPos, now) {
 					EchoManager.updateEchoPannerPosition(nodeData, nodeData.reflectionPoint, audioPos);
 				}
 			}
-		}
-
-		if (!isControlledBySequencer && !isInside && !s.isPlaying) {
-			s.wasInsideArea = false;
-			continue;
 		}
 
 		if (Selectors.getSpatialMode() === 'hrtf') {

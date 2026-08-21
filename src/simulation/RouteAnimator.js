@@ -5,6 +5,7 @@ import { updateAudio } from '../core/audio/AudioEngine.js';
 import { toRadians, toDegrees } from '../core/utils/math.js';
 import { CONSTANTS } from '../core/constants.js';
 import { Geometry } from '../core/geospatial/Geometry.js';
+import { simulationSpeedMs } from './SimulationSpeed.js';
 
 let roadGraph = null;
 let graphBBox = null;
@@ -190,26 +191,6 @@ export const RouteAnimator = {
 		return (bearingDeg + 360) % 360;
 	},
 
-	currentSimulationSpeed(dt) {
-		const baseMs = (Selectors.getSimulationSpeed() * 1000) / 3600 * Selectors.getSimulationSpeedScale();
-		const variability = Selectors.getSimulationVariability();
-		let speedMs = baseMs;
-
-		if (variability <= 0) {
-			AppState.simulation.animationState.speedOffset = 0;
-		} else {
-			const reversion = Math.min(1, CONSTANTS.SIMULATION_VARIABILITY_REVERSION * dt);
-			const step = (Math.random() * 2 - 1) * variability * reversion;
-			let offset = AppState.simulation.animationState.speedOffset * (1 - reversion) + step;
-			offset = Math.max(-1, Math.min(1, offset));
-			AppState.simulation.animationState.speedOffset = offset;
-			speedMs = Math.max(baseMs * CONSTANTS.SIMULATION_MIN_SPEED_FACTOR, baseMs * (1 + offset));
-		}
-
-		AppState.simulation.animationState.currentSpeedMs = speedMs;
-		return speedMs;
-	},
-
 	animateMovement(currentTime, stopSimulation) {
 		if (!Selectors.isSimulationActive()) return;
 
@@ -221,7 +202,7 @@ export const RouteAnimator = {
 		const dt = Math.max(0, delta / 1000);
 		AppState.simulation.animationState.lastUpdateTime = currentTime;
 
-		const speedMs = this.currentSimulationSpeed(dt);
+		const speedMs = simulationSpeedMs(dt);
 		AppState.simulation.animationState.distance += speedMs * dt;
 		const distanceTravelled = AppState.simulation.animationState.distance;
 

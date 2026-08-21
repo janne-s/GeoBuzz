@@ -5,6 +5,7 @@ import { CONSTANTS } from '../core/constants.js';
 import { isCircularPath } from '../core/utils/math.js';
 import { isLinearPath } from '../core/utils/typeChecks.js';
 import { calculateBearing } from '../core/audio/audioUtils.js';
+import { simulationSpeedMs } from '../simulation/SimulationSpeed.js';
 
 export function deleteControlPath(path, options = {}) {
 	const { map, refreshList, updateCounts } = options;
@@ -137,7 +138,7 @@ export function animateUserOnPath(currentTime, options = {}) {
 	}
 	AppState.simulation.userPathAnimationState.lastUpdateTime = currentTime;
 
-	const baseSpeedMs = (Selectors.getSimulationSpeed() * 1000) / 3600;
+	const baseSpeedMs = simulationSpeedMs(delta / 1000);
 	const effectiveSpeedMs = baseSpeedMs * (path.relativeSpeed ?? 1.0);
 
 	AppState.simulation.currentEffectiveSpeed = effectiveSpeedMs;
