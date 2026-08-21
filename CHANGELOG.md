@@ -16,6 +16,9 @@
 - Sequencer notes after the first playing with no attack
 - Duplicating a path could reuse another path's ID, hijacking the animated user marker
 - Silencer paths not silencing distance sequencers
+- Silencer on a line path silencing everything instead of fading from the centreline
+- Duplicated paths sharing one silencer, so editing its curve changed every copy
+- Duplicated paths losing their tolerance, layers and speed
 
 ## 2026-08-20
 

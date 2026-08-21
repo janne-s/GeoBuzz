@@ -71,6 +71,14 @@ export function calculatePathGain(userPos, path) {
 		const dy = (userPos.lat - path.center.lat) * CONSTANTS.METERS_PER_LAT;
 		const normalized = Math.sqrt((dx * dx) / (a * a) + (dy * dy) / (b * b));
 		rawGain = Math.max(0, 1 - normalized);
+	} else if (path.type === 'line' && path.points) {
+		let minDist = Infinity;
+		for (let i = 0; i < path.points.length - 1; i++) {
+			const dist = context.Geometry.distanceToLineSegment(userPos, path.points[i], path.points[i + 1]) * CONSTANTS.METERS_PER_LNG;
+			if (dist < minDist) minDist = dist;
+		}
+		const normalized = Math.min(1, minDist / CONSTANTS.LINE_PATH_BUFFER_M);
+		rawGain = 1 - normalized;
 	} else if (path.type === 'polygon') {
 		const centroid = context.Geometry.calculateCentroid(path.points);
 		const maxDist = context.Geometry.calculateMaxPolygonDistance(path.points);

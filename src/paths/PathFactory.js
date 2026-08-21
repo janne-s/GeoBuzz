@@ -46,9 +46,9 @@ export function createControlPath(type, data = {}, options = {}) {
 		labelMarker: null,
 		attachedSounds: [],
 		params: {
-			lfo: data.params?.lfo || deepClone(DEFAULT_LFO_STRUCTURE),
-			echo: data.params?.echo || undefined,
-			silencer: data.params?.silencer || undefined
+			lfo: deepClone(data.params?.lfo || DEFAULT_LFO_STRUCTURE),
+			echo: data.params?.echo ? deepClone(data.params.echo) : undefined,
+			silencer: data.params?.silencer ? deepClone(data.params.silencer) : undefined
 		}
 	};
 
@@ -202,15 +202,14 @@ export function duplicatePath(originalPath, createPath) {
 		center: originalPath.center ? L.latLng(originalPath.center.lat + offset, originalPath.center.lng + offset) : null,
 		radius: originalPath.radius,
 		radiusY: originalPath.radiusY,
+		speed: originalPath.speed,
 		relativeSpeed: originalPath.relativeSpeed,
 		smoothing: originalPath.smoothing,
+		tolerance: originalPath.tolerance,
+		layers: originalPath.layers ? [...originalPath.layers] : [],
 		loop: originalPath.loop,
 		direction: originalPath.direction,
-		params: {
-			lfo: deepClone(originalPath.params.lfo),
-			echo: originalPath.params.echo ? deepClone(originalPath.params.echo) : undefined,
-			silencer: originalPath.params?.silencer || undefined
-		}
+		params: originalPath.params
 	};
 	return createPath(originalPath.type, newData);
 }
