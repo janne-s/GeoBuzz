@@ -3,6 +3,7 @@ import { AppState } from '../state/StateManager.js';
 import { Selectors } from '../state/selectors.js';
 import { Geometry } from '../geospatial/Geometry.js';
 import { EchoManager } from './EchoManager.js';
+import { LayerManager } from '../../layers/LayerManager.js';
 import { calcGain, calculateRelativePosition, calculateBearingPan, calculateSilencingGain } from './audioUtils.js';
 import { startLoopedPlayback, stopLoopedPlayback } from './SoundLifecycle.js';
 import {
@@ -161,6 +162,7 @@ export function updateAudio(userPos, now) {
 	lastUserPosition = userPos ? { lat: userPos.lat, lng: userPos.lng } : null;
 
 	const silencingGain = calculateSilencingGain(audioPos);
+	LayerManager.applySilencingGain(silencingGain);
 
 	const sequencers = Selectors.getSequencers();
 	for (let i = 0; i < sequencers.length; i++) {
@@ -287,7 +289,7 @@ export function updateAudio(userPos, now) {
 		}
 
 		const clampedGain = clampGainDelta(targetGain, s.id);
-		const effectiveGain = Math.min(clampedGain > 0 ? clampedGain : 0, silencingGain);
+		const effectiveGain = (clampedGain > 0 ? clampedGain : 0) * silencingGain;
 
 		if (s.type === "StreamPlayer") {
 			if (!isControlledBySequencer) {

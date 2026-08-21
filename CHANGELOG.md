@@ -10,7 +10,6 @@
 ### Changed
 
 - Each sequencer note now gets its own attack
-- A silencer now sets an absolute ceiling instead of scaling what it covers
 - Sequencer release time now matches the value you set
 
 ### Fixed
@@ -30,6 +29,7 @@
 - Volume jumping back up when leaving a sound whose volume is modulated
 - Volume modulation having no effect on a sequencer track's internal synth
 - Echo taps ignoring silencer paths
+- Layer effects still audible inside a silencer
 
 ## 2026-08-20
 

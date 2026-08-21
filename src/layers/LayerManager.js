@@ -20,6 +20,7 @@ class LayerManagerClass {
 
 		this.userLayers = [];
 		this.nextLayerId = 1;
+		this._silencingGain = 1;
 	}
 
 	getUserLayer(id) {
@@ -218,8 +219,14 @@ class LayerManagerClass {
 		this.userLayers.forEach(l => {
 			if (!l.fxNodes) return;
 			const target = anySoloed ? (l.soloed ? l.gain : 0) : (l.muted ? 0 : l.gain);
-			l.fxNodes.gain.gain.rampTo(target, CONSTANTS.LAYER_SWITCH_RAMP_TIME);
+			l.fxNodes.gain.gain.rampTo(target * this._silencingGain, CONSTANTS.LAYER_SWITCH_RAMP_TIME);
 		});
+	}
+
+	applySilencingGain(silencingGain) {
+		if (silencingGain === this._silencingGain) return;
+		this._silencingGain = silencingGain;
+		this.applyLayerGains();
 	}
 
 	applyLayerStateChange() {

@@ -60,7 +60,7 @@ class EchoManagerClass {
 			const distanceAttenuation = Math.max(0, 1 - (totalDist / maxAudibleDistance));
 			const echoLevel = path.params.echo.level !== undefined ? path.params.echo.level : 0.1;
 
-			const gainValue = Math.min(distanceAttenuation * echoLevel * soundAreaGain, silencingGain);
+			const gainValue = distanceAttenuation * echoLevel * soundAreaGain * silencingGain;
 
 			let nodeData = sound.echoNodes.get(path.id);
 

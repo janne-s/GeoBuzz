@@ -587,7 +587,7 @@ Each track has:
 | **Resume on Re-enter** | Continue from last step when re-entering the active area |
 | **Restart on Re-enter** | Reset to step 0 when re-entering the active area |
 
-A silencer sets an absolute ceiling inside its area: nothing plays louder than the silencer allows, including echo taps.
+A silencer attenuates everything the listener can hear inside its area \u2014 direct sound, echo taps and layer effects alike.
 
 #### Zone Types
 
