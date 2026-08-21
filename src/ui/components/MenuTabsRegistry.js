@@ -834,7 +834,6 @@ export const MenuTabs = {
 			const renderInvert = () => {
 				const on = !!obj.params.lfo[mod].invert;
 				invertBtn.textContent = on ? '\u2212' : '+';
-				invertBtn.classList.toggle('active', on);
 				invertBtn.title = on ? 'Inverted' : 'Normal';
 			};
 			renderInvert();
@@ -1010,7 +1009,6 @@ export const MenuTabs = {
 			const renderInvert = () => {
 				const on = !!obj.params.lfo[mod].invert;
 				invertBtn.textContent = on ? '\u2212' : '+';
-				invertBtn.classList.toggle('active', on);
 				invertBtn.title = on ? 'Inverted' : 'Normal';
 			};
 			renderInvert();
