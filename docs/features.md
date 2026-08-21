@@ -547,8 +547,8 @@ Click the edit button on a sequencer in the Sequencing side menu to open its edi
 | **Loop** | Enable sequence looping |
 | **Steps** | Number of steps in sequence |
 | **Step Length** | Distance per step |
-| **Speed Scale** | Multiplies your movement for step advancement only (1\u201320\u00d7). At 1\u00d7 the sequencer advances a step per Step Length walked; higher values turn it into an arpeggiator that keeps pace with you. The Speed Gate still reads your real speed |
-| **Patch (per track)** | Modulate the track's internal synth from another sound element \u2014 distance, X, Y or gate, targeting any modulatable parameter |
+| **Speed Scale** | Multiplies your movement for step advancement only (1–20×). At 1× the sequencer advances a step per Step Length walked; higher values turn it into an arpeggiator that keeps pace with you. The Speed Gate still reads your real speed |
+| **Patch (per track)** | Modulate the track's internal synth from another sound element — distance, X, Y or gate, targeting any modulatable parameter |
 | **Speed Gate** | Movement speed range (min/max m/s) for step advancement. Default min 0.5 m/s |
 | **Speed Gate Hold** | Hold duration (seconds) before gate state changes |
 | **Release on Stop** | Release notes when sequencer is gated |
@@ -589,7 +589,7 @@ Each track has:
 | **Resume on Re-enter** | Continue from last step when re-entering the active area |
 | **Restart on Re-enter** | Reset to step 0 when re-entering the active area |
 
-A silencer attenuates everything the listener can hear inside its area \u2014 direct sound, echo taps and layer effects alike.
+A silencer attenuates everything the listener can hear inside its area — direct sound, echo taps and layer effects alike.
 
 #### Zone Types
 
@@ -903,7 +903,7 @@ The controls bar has a second row for tuning the movement:
 
 | Setting | Description |
 |---------|-------------|
-| **Scale** | Multiplies the selected speed (0.25\u20133\u00d7), for speeds between or beyond the presets |
+| **Scale** | Multiplies the selected speed (0.25–3×), for speeds between or beyond the presets. Applies to path simulation too |
 | **Variability** | Makes the speed wander around the selected value instead of holding it exactly, the way real walking does. The wander is pulled back towards the base speed, so the average pace and the arrival time stay put |
 
 #### Path Simulation
