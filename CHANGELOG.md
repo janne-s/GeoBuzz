@@ -1,11 +1,5 @@
 # Changelog
 
-## 2026-08-22
-
-### Fixed
-
-- Path labels sitting away from the shape instead of on its edge like sound labels
-
 ## 2026-08-21
 
 ### Changed
@@ -25,6 +19,7 @@
 - Silencer on a line path silencing its whole area
 - Duplicated paths sharing the original's silencer
 - Duplicated paths losing their tolerance, layers and speed
+- Path labels sitting away from the shape instead of on its edge like sound labels
 
 ## 2026-08-20
 
