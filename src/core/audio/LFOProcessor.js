@@ -4,6 +4,7 @@ import { isLinearPath } from '../utils/typeChecks.js';
 import { generateLFOWaveform, PARAMETER_REGISTRY } from '../../config/parameterRegistry.js';
 import { getSmoothedPosition, getSmoothedModulationValue } from './AudioSmoother.js';
 import { applySoundModulationPatches } from './SoundModulation.js';
+import { applyModShaping } from './ModShaping.js';
 import { GpsInstabilityTracker } from '../geospatial/GpsInstabilityTracker.js';
 
 let GeolocationManager = null;
@@ -546,7 +547,7 @@ function processInternalModulation(s, mod, target, freq, range, source, t, userP
 		totalModulationDepth = rangePercent * fullRange;
 	}
 
-	return lfoValue * (totalModulationDepth / 2);
+	return applyModShaping(s.params.lfo[mod], lfoValue, s.id, mod) * (totalModulationDepth / 2);
 }
 
 function processFXModulation(s, target, offset) {

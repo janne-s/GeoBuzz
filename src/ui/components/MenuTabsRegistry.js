@@ -830,9 +830,27 @@ export const MenuTabs = {
 			);
 			dropdownsContainer.appendChild(waveformSelect);
 
+			const invertBtn = createElement('button', 'mod-invert-btn');
+			const renderInvert = () => {
+				const on = !!obj.params.lfo[mod].invert;
+				invertBtn.textContent = on ? '\u2212' : '+';
+				invertBtn.classList.toggle('active', on);
+				invertBtn.title = on ? 'Inverted' : 'Normal';
+			};
+			renderInvert();
+			invertBtn.onclick = (e) => {
+				e.stopPropagation();
+				obj.params.lfo[mod].invert = !obj.params.lfo[mod].invert;
+				renderInvert();
+				AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
+				if (onUpdate) onUpdate();
+			};
+			dropdownsContainer.appendChild(invertBtn);
+
 			group.appendChild(dropdownsContainer);
 
 			group.appendChild(context.createParameterControl(context.PARAMETER_REGISTRY[`lfo_${mod}_range`], `lfo_${mod}_range`, obj, onUpdate, { small: true }));
+			group.appendChild(context.createParameterControl(context.PARAMETER_REGISTRY[`lfo_${mod}_inertia`], `lfo_${mod}_inertia`, obj, onUpdate, { small: true }));
 
 			const freqControl = context.createParameterControl(context.PARAMETER_REGISTRY[`lfo_${mod}_freq`], `lfo_${mod}_freq`, obj, onUpdate, { small: true });
 			const freqLabel = freqControl.querySelector('label');
@@ -988,9 +1006,27 @@ export const MenuTabs = {
 			);
 			dropdownsContainer.appendChild(waveformSelect);
 
+			const invertBtn = createElement('button', 'mod-invert-btn');
+			const renderInvert = () => {
+				const on = !!obj.params.lfo[mod].invert;
+				invertBtn.textContent = on ? '\u2212' : '+';
+				invertBtn.classList.toggle('active', on);
+				invertBtn.title = on ? 'Inverted' : 'Normal';
+			};
+			renderInvert();
+			invertBtn.onclick = (e) => {
+				e.stopPropagation();
+				obj.params.lfo[mod].invert = !obj.params.lfo[mod].invert;
+				renderInvert();
+				AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
+				if (onUpdate) onUpdate();
+			};
+			dropdownsContainer.appendChild(invertBtn);
+
 			group.appendChild(dropdownsContainer);
 
 			group.appendChild(context.createParameterControl(context.PARAMETER_REGISTRY[`lfo_${mod}_range`], `lfo_${mod}_range`, obj, onUpdate, { small: true }));
+			group.appendChild(context.createParameterControl(context.PARAMETER_REGISTRY[`lfo_${mod}_inertia`], `lfo_${mod}_inertia`, obj, onUpdate, { small: true }));
 
 			const freqControl = context.createParameterControl(context.PARAMETER_REGISTRY[`lfo_${mod}_freq`], `lfo_${mod}_freq`, obj, onUpdate, { small: true });
 			const freqLabel = freqControl.querySelector('label');

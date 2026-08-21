@@ -9,6 +9,7 @@ import { deepClone } from '../utils/math.js';
 import { generateLFOWaveform } from '../../config/parameterRegistry.js';
 import { GpsInstabilityTracker } from '../geospatial/GpsInstabilityTracker.js';
 import { applySoundModulationPatches } from './SoundModulation.js';
+import { applyModShaping } from './ModShaping.js';
 
 let context = null;
 let stateSubscriptionInitialized = false;
@@ -711,7 +712,7 @@ export class DistanceSequencer {
 			totalModulationDepth = rangePercent * fullRange;
 		}
 
-		return lfoValue * (totalModulationDepth / 2);
+		return applyModShaping(soundObj.params.lfo[mod], lfoValue, trackContext.trackId, mod) * (totalModulationDepth / 2);
 	}
 
 	_processFXModulation(soundObj, target, offset) {

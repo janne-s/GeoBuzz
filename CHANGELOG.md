@@ -4,6 +4,7 @@
 
 ### Added
 
+- Inertia and invert on modulation sources, for damping or reversing a modulation
 - Speed Scale for distance sequencers, turning them into arpeggiators that keep pace with the listener
 - Sequencer tracks can be modulated from a sound element, like sound elements already could
 

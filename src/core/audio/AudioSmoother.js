@@ -99,8 +99,8 @@ export function getSoundSmoothedDistance(userPos, soundPos, soundId, map) {
 	return getSmoothedDistance(rawDistance, soundId);
 }
 
-export function getSmoothedModulationValue(rawValue, soundId, modKey) {
-	const alpha = CONSTANTS.AUDIO_SMOOTHING_ALPHA;
+export function getSmoothedModulationValue(rawValue, soundId, modKey, alphaOverride) {
+	const alpha = alphaOverride !== undefined ? alphaOverride : CONSTANTS.AUDIO_SMOOTHING_ALPHA;
 	const cacheKey = `${soundId}_${modKey}`;
 
 	if (!lastGains.has(cacheKey)) {

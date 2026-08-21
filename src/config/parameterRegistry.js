@@ -90,6 +90,18 @@ function generateModParams(mod, category) {
 			serialize: true,
 			ui: true
 		},
+		[`lfo_${mod}_inertia`]: {
+			label: 'Inertia',
+			type: 'range',
+			min: CONSTANTS.MODULATION_INERTIA_MIN,
+			max: CONSTANTS.MODULATION_INERTIA_MAX,
+			step: CONSTANTS.MODULATION_INERTIA_STEP,
+			defaultValue: 0,
+			unit: '',
+			category,
+			serialize: true,
+			ui: true
+		},
 		[`lfo_${mod}_freq`]: {
 			label: 'Freq',
 			type: 'range',
