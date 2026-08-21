@@ -4,34 +4,34 @@
 
 ### Changed
 
-- Sequencer attack now runs per note on the synth voice instead of a shared track gain
-- Sequencer release is no longer applied twice, so the set release time is what you hear
+- Each sequencer note now gets its own attack
+- Sequencer release time now matches the value you set
 
 ### Fixed
 
 - Release on Stop not firing when movement stopped
-- Cancel in point-to-point simulation leaving sequencer notes sounding
-- Cancel detaching from a path instead of stopping the running simulation
-- Sequencer notes cutting out instead of releasing from the level the attack reached
+- Cancel leaving sequencer notes sounding in point-to-point simulation
+- Cancel detaching from a path instead of stopping the simulation
+- Sequencer notes cutting out instead of releasing
 - Sequencer notes after the first playing with no attack
-- Duplicating a path could reuse another path's ID, hijacking the animated user marker
+- New paths reusing an existing path ID
 - Silencer paths not silencing distance sequencers
-- Silencer on a line path silencing everything instead of fading from the centreline
-- Duplicated paths sharing one silencer, so editing its curve changed every copy
+- Silencer on a line path silencing its whole area
+- Duplicated paths sharing the original's silencer
 - Duplicated paths losing their tolerance, layers and speed
 
 ## 2026-08-20
 
 ### Changed
 
-- Server-kit replaces sound URL resolution instead of `Application.js` and `SynthRegistry.js`
+- Server-kit replaces sound URL resolution instead of two large files
 
 ### Fixed
 
 - Server-kit missing the grid sampler per-key speed gate hold
 - Server-kit restarting the route animation when simulation speed changed
-- Sequencer sound areas never triggering, so only path areas worked
-- Sequencer stuck outside its area after reload, with no way back to "Anywhere"
+- Sequencer sound areas never triggering
+- Sequencer stuck outside its area after reload
 - Duplicated sounds sharing the original's persistent ID
 
 ## 2026-08-15
