@@ -223,7 +223,7 @@ Delete `message.json` or remove it from the server. A missing file is handled si
 
 | Shortcut | Action |
 |----------|--------|
-| **Enter** | Finish drawing a line (path or sound) |
+| **Enter** | Finish drawing a line or polygon (path or sound) |
 | **Escape** | Cancel current drawing operation |
 | **Shift + Click** on sound marker or label | Delete sound (with confirmation) |
 | **Shift + Click** on path marker or label | Delete path (with confirmation) |
