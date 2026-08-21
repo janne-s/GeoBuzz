@@ -248,6 +248,8 @@ Motion controls (link playback to user movement):
 | **Target** | Sound parameter to modulate |
 | **Waveform** | Modulation shape: Sine, Triangle, Saw Up, Saw Down, Square, S&H (Sample & Hold with interpolation), S&H Hard (Sample & Hold, no interpolation) |
 | **Range** | Modulation depth |
+| **Inertia** | Damping for the modulation signal (0–1). 0 follows the source instantly; higher values smooth out jumps, useful for speed-driven modulation |
+| **Invert** | The +/− button on the modulation row flips the modulation's direction |
 | **Frequency** | Rate (Hz for LFO, cycles/m for Walkable) |
 | **Reference Speed** | Speed for 100% modulation (Speed source only) |
 | **Speed Threshold** | Minimum speed to activate (Walkable LFO only) |
