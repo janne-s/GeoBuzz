@@ -174,6 +174,7 @@ export function updateAudio(userPos, now) {
 	for (let i = 0; i < sequencers.length; i++) {
 		const seq = sequencers[i];
 		if (seq.enabled) {
+			seq.applySilencingGain(silencingGain);
 			seq.updatePosition(userPos.lat, userPos.lng);
 		}
 	}

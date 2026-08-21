@@ -119,6 +119,7 @@ export class DistanceSequencer {
 
 		this._activeNotes = new Map();
 		this._synthPool = new Map();
+		this._silencingGain = 1;
 		this._isMovingFastEnough = false;
 		this._releaseTimeoutId = null;
 		this._speedGateCommitted = undefined;
@@ -347,8 +348,7 @@ export class DistanceSequencer {
 			}, { onMap: false });
 
 			if (soundObj) {
-				const gainValue = soundObj.params.volume * CONSTANTS.SEQUENCER_SYNTH_GAIN;
-				soundObj.gain.gain.setValueAtTime(gainValue, Tone.now());
+				soundObj.gain.gain.setValueAtTime(this._trackGainValue(soundObj), Tone.now());
 
 				const neutralEnvelope = { decay: 0, sustain: 1 };
 				if (soundObj.synth instanceof Tone.PolySynth) {
@@ -399,13 +399,22 @@ export class DistanceSequencer {
 		return this._synthPool.get(track.id);
 	}
 
+	_trackGainValue(soundObj) {
+		return soundObj.params.volume * CONSTANTS.SEQUENCER_SYNTH_GAIN * this._silencingGain;
+	}
+
+	applySilencingGain(silencingGain) {
+		if (silencingGain === this._silencingGain) return;
+		this._silencingGain = silencingGain;
+		this.tracks.forEach(track => this.updateTrackVolume(track));
+	}
+
 	updateTrackVolume(track) {
 		const soundObj = this._synthPool.get(track.id);
 		if (soundObj && soundObj.gain) {
-			const gainValue = soundObj.params.volume * CONSTANTS.SEQUENCER_SYNTH_GAIN;
 			const now = Tone.now();
 			soundObj.gain.gain.cancelAndHoldAtTime(now);
-			soundObj.gain.gain.linearRampToValueAtTime(gainValue, now + CONSTANTS.SEQUENCER_VELOCITY_RAMP);
+			soundObj.gain.gain.linearRampToValueAtTime(this._trackGainValue(soundObj), now + CONSTANTS.SEQUENCER_VELOCITY_RAMP);
 		}
 	}
 

@@ -18,7 +18,6 @@ export const Selectors = {
 		return AppState.data.controlPaths.filter(p => paths.has(p.id));
 	},
 	getEchoPaths: () => AppState.data.controlPaths.filter(p => p.params.echo?.enabled),
-	getSilencerPaths: () => AppState.data.controlPaths.filter(p => p.params.silencer?.enabled),
 
 	getSequencers: () => AppState.data.sequencers,
 	getSequencer: (id) => AppState.getSequencer(id),

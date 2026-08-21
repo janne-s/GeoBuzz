@@ -15,6 +15,7 @@
 - Sequencer notes cutting out instead of releasing from the level the attack reached
 - Sequencer notes after the first playing with no attack
 - Duplicating a path could reuse another path's ID, hijacking the animated user marker
+- Silencer paths not silencing distance sequencers
 
 ## 2026-08-20
 
