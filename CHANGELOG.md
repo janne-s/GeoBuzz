@@ -26,6 +26,8 @@
 - Duplicated paths losing their tolerance, layers and speed
 - Path labels sitting away from the shape instead of on its edge like sound labels
 - Muting a layer not silencing or dimming its elements
+- Volume jumping back up when leaving a sound whose volume is modulated
+- Volume modulation having no effect on a sequencer track's internal synth
 
 ## 2026-08-20
 

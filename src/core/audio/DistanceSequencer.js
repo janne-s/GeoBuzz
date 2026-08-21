@@ -406,7 +406,8 @@ export class DistanceSequencer {
 	}
 
 	_trackGainValue(soundObj) {
-		return soundObj.params.volume * CONSTANTS.SEQUENCER_SYNTH_GAIN * this._silencingGain;
+		const volume = soundObj._modulatedVolume !== undefined ? soundObj._modulatedVolume : soundObj.params.volume;
+		return volume * CONSTANTS.SEQUENCER_SYNTH_GAIN * this._silencingGain;
 	}
 
 	applySilencingGain(silencingGain) {
@@ -558,9 +559,14 @@ export class DistanceSequencer {
 		const modulatedParams = new Set(modulationOffsets.keys());
 		const paramsToReset = new Set([...track._previouslyModulatedParams].filter(p => !modulatedParams.has(p)));
 
+		let volumeChanged = false;
+
 		paramsToReset.forEach(target => {
 			if (target === 'pitch' || target === 'frequency') {
 				context.updateSynthParam(soundObj, 'detune', soundObj.params.detune || 0, { isModulation: true });
+			} else if (target === 'volume') {
+				delete soundObj._modulatedVolume;
+				volumeChanged = true;
 			} else {
 				const baseValue = soundObj.params[target];
 				if (baseValue !== undefined) {
@@ -587,11 +593,22 @@ export class DistanceSequencer {
 				const paramMin = def.min !== undefined ? def.min : 0;
 				const paramMax = def.max !== undefined ? def.max : 1;
 				finalValue = Math.max(paramMin, Math.min(paramMax, baseValue + totalOffset));
-				context.updateSynthParam(soundObj, target, finalValue, { isModulation: true });
+				if (target === 'volume') {
+					if (soundObj._modulatedVolume !== finalValue) {
+						soundObj._modulatedVolume = finalValue;
+						volumeChanged = true;
+					}
+				} else {
+					context.updateSynthParam(soundObj, target, finalValue, { isModulation: true });
+				}
 			}
 
 			track._previouslyModulatedParams.add(target);
 		});
+
+		if (volumeChanged) {
+			this.updateTrackVolume(track);
+		}
 	}
 
 	_processTrackInternalModulation(soundObj, mod, target, freq, range, source, t, trackContext) {

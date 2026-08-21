@@ -210,11 +210,12 @@ export function processLFOs(s, now) {
 	const paramsToReset = new Set([...s._previouslyModulatedParams].filter(p => !modulatedParams.has(p)));
 
 	paramsToReset.forEach(target => {
-		const baseValue = s.params.originalValues[target] ?? s.params[target];
-		if (baseValue !== undefined) {
-			updateSynthParam(s, target, baseValue, { isModulation: true });
-			if (target === 'volume') {
-				delete s._modulatedVolume;
+		if (target === 'volume') {
+			delete s._modulatedVolume;
+		} else {
+			const baseValue = s.params.originalValues[target] ?? s.params[target];
+			if (baseValue !== undefined) {
+				updateSynthParam(s, target, baseValue, { isModulation: true });
 			}
 		}
 		s._previouslyModulatedParams.delete(target);
@@ -242,9 +243,10 @@ export function processLFOs(s, now) {
 			const paramMin = def.min !== undefined ? def.min : 0;
 			const paramMax = def.max !== undefined ? def.max : 1;
 			finalValue = Math.max(paramMin, Math.min(paramMax, baseValue + totalOffset));
-			updateSynthParam(s, target, finalValue, { isModulation: true });
 			if (target === 'volume') {
 				s._modulatedVolume = finalValue;
+			} else {
+				updateSynthParam(s, target, finalValue, { isModulation: true });
 			}
 		}
 
