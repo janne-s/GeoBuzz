@@ -1448,7 +1448,7 @@ export const MenuTabs = {
 
 					const addBtn = createButton('+ Add Reference', () => {
 						obj.pathRoles.soundModulation.push({
-							sourceId: otherSounds[0].id,
+							sourceId: otherSounds[0].persistentId,
 							output: 'proximity',
 							target: 'filterFreq',
 							range: 50,
@@ -1460,7 +1460,13 @@ export const MenuTabs = {
 					content.appendChild(addBtn);
 
 					obj.pathRoles.soundModulation.forEach((patch, index) => {
-						content.appendChild(this.createSoundPatchItem(patch, index, obj, otherSounds, container));
+						content.appendChild(this.createSoundPatchItem(patch, index, {
+							patches: obj.pathRoles.soundModulation,
+							otherSounds,
+							synthType: obj.type,
+							role: obj.role,
+							onChange: () => { container.innerHTML = ''; MenuTabs.patches.render(obj, container); }
+						}));
 					});
 
 					return content;
@@ -1468,19 +1474,19 @@ export const MenuTabs = {
 			});
 		},
 
-		createSoundPatchItem(patch, index, obj, otherSounds, container) {
+		createSoundPatchItem(patch, index, options) {
+			const { patches, otherSounds, synthType, role, onChange } = options;
 			const patchDiv = createElement('div', 'patch-item');
 			const patchTitle = createElement('div', 'patch-title');
 			patchTitle.textContent = `Reference ${index + 1}`;
 			patchDiv.appendChild(patchTitle);
 
 			const soundOptions = otherSounds.map(s => ({
-				value: String(s.id),
+				value: s.persistentId,
 				label: s.label
 			}));
-			const soundSelect = createSelect(soundOptions, String(patch.sourceId), (e) => {
-				const val = e.target.value;
-				patch.sourceId = isNaN(parseInt(val)) ? val : parseInt(val);
+			const soundSelect = createSelect(soundOptions, patch.sourceId, (e) => {
+				patch.sourceId = e.target.value;
 			});
 			soundSelect.className = 'patch-select';
 			patchDiv.appendChild(soundSelect);
@@ -1498,7 +1504,7 @@ export const MenuTabs = {
 			outputSelect.className = 'patch-select';
 			patchDiv.appendChild(outputSelect);
 
-			const availableTargets = context.getAvailableModulationTargets(obj.type, obj.role);
+			const availableTargets = context.getAvailableModulationTargets(synthType, role);
 			const paramOptions = availableTargets.map(t => ({
 				value: t,
 				label: context.PARAMETER_REGISTRY[t]?.label || t
@@ -1550,10 +1556,9 @@ export const MenuTabs = {
 			patchDiv.appendChild(polarityGroup);
 
 			const removeBtn = createButton('Remove', () => {
-				obj.pathRoles.soundModulation.splice(index, 1);
+				patches.splice(index, 1);
 				AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
-				container.innerHTML = '';
-				this.render(obj, container);
+				onChange();
 			}, 'delete-btn');
 			patchDiv.appendChild(removeBtn);
 

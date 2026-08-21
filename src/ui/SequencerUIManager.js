@@ -9,6 +9,7 @@ import { setSequencerControl } from '../core/audio/SoundCreation.js';
 import { DistanceSequencer } from '../core/audio/DistanceSequencer.js';
 import { createElement, createButton, createSelect, createDualRangeSlider, makeValueEditable } from './domHelpers.js';
 import { ModalSystem } from './ModalSystem.js';
+import { MenuTabs } from './components/MenuTabsRegistry.js';
 import { MenuManager } from './controllers/MenuManager.js';
 import { createDraggableHeader, createElementNavigationDropdown } from './controllers/HeaderBuilder.js';
 import { createMenuStructure, createCollapsibleSection } from './controllers/UIBuilder.js';
@@ -732,6 +733,7 @@ export class SequencerUIManager {
 		let tabs = [
 			{ id: 'sound', label: 'Sound' },
 			{ id: 'mod', label: 'Mod' },
+			{ id: 'patches', label: 'Patch' },
 			{ id: 'keyboard', label: 'Keys' },
 			{ id: 'fx', label: 'FX' },
 			{ id: 'eq', label: 'EQ' }
@@ -741,8 +743,18 @@ export class SequencerUIManager {
 			tabs = tabs.filter(tab => tab.id !== 'keyboard');
 		}
 
+		const showTab = (tabId) => {
+			if (tabId === 'patches') {
+				container.innerHTML = '';
+				tabBar.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.tabId === tabId));
+				this.renderTrackPatches(track, sequencer, container, showTab);
+				return;
+			}
+			this.appContext.showMenuTab(liveSoundObj, container, tabId, tabBar);
+		};
+
 		tabs.forEach(tab => {
-			const btn = createButton(tab.label, () => this.appContext.showMenuTab(liveSoundObj, container, tab.id, tabBar), '', { flex: 1 });
+			const btn = createButton(tab.label, () => showTab(tab.id), '', { flex: 1 });
 			btn.dataset.tabId = tab.id;
 			tabBar.appendChild(btn);
 		});
@@ -1940,6 +1952,44 @@ export class SequencerUIManager {
 		if (!prevStep) return false;
 
 		return prevStep.notes.includes(midiNote) || prevStep.sustains.includes(midiNote);
+	}
+
+	renderTrackPatches(track, sequencer, container, showTab) {
+		if (!track.soundModulation) track.soundModulation = [];
+
+		const sounds = Selectors.getSounds();
+		if (sounds.length === 0) {
+			const info = createElement('div', 'info-message');
+			info.textContent = 'No sounds available.';
+			container.appendChild(info);
+			return;
+		}
+
+		const addBtn = createButton('+ Add Reference', () => {
+			track.soundModulation.push({
+				sourceId: sounds[0].persistentId,
+				output: 'distance',
+				target: 'volume',
+				range: 50,
+				polarity: 1
+			});
+			AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+			showTab('patches');
+		}, 'btn-add');
+		container.appendChild(addBtn);
+
+		track.soundModulation.forEach((patch, index) => {
+			container.appendChild(MenuTabs.patches.createSoundPatchItem(patch, index, {
+				patches: track.soundModulation,
+				otherSounds: sounds,
+				synthType: track.synthType,
+				role: 'sound',
+				onChange: () => {
+					AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+					showTab('patches');
+				}
+			}));
+		});
 	}
 
 	refreshSequencersList() {

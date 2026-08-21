@@ -8,6 +8,7 @@ import { DEFAULT_LFO_STRUCTURE } from '../../config/defaults.js';
 import { deepClone } from '../utils/math.js';
 import { generateLFOWaveform } from '../../config/parameterRegistry.js';
 import { GpsInstabilityTracker } from '../geospatial/GpsInstabilityTracker.js';
+import { applySoundModulationPatches } from './SoundModulation.js';
 
 let context = null;
 let stateSubscriptionInitialized = false;
@@ -515,6 +516,18 @@ export class DistanceSequencer {
 			totalDistance: this.totalDistance,
 			trackId: track.id
 		};
+
+		if (track.soundModulation && track.soundModulation.length > 0) {
+			applySoundModulationPatches(track.soundModulation, {
+				userPos: context.GeolocationManager?.getUserPosition(),
+				selfPos: soundObj.marker ? soundObj.marker.getLatLng() : null,
+				params: soundObj.params,
+				smoothingKey: track.id,
+				Geometry: context.Geometry,
+				resolveSound: (id) => AppState.getSoundByPersistentId(id),
+				addOffset
+			});
+		}
 
 		const mods = ["mod1", "mod2", "mod3"];
 		for (let i = 0; i < mods.length; i++) {

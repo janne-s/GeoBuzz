@@ -91,6 +91,7 @@ export class SettingsManager {
 					steps: track.steps,
 					sceneSteps: track.sceneSteps,
 					paramTarget: track.paramTarget,
+					soundModulation: track.soundModulation || [],
 					editMode: track.editMode,
 					offsetMode: track.offsetMode,
 					offsetFraction: track.offsetFraction,

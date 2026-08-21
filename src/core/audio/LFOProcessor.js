@@ -3,6 +3,7 @@ import { isCircularPath } from '../utils/math.js';
 import { isLinearPath } from '../utils/typeChecks.js';
 import { generateLFOWaveform, PARAMETER_REGISTRY } from '../../config/parameterRegistry.js';
 import { getSmoothedPosition, getSmoothedModulationValue } from './AudioSmoother.js';
+import { applySoundModulationPatches } from './SoundModulation.js';
 import { GpsInstabilityTracker } from '../geospatial/GpsInstabilityTracker.js';
 
 let GeolocationManager = null;
@@ -428,67 +429,15 @@ function processPatchModulation(s, userPos, addOffset) {
 }
 
 function processSoundModulation(s, userPos, addOffset) {
-	const thisPos = s.marker.getLatLng();
-	const patches = s.pathRoles.soundModulation;
-
-	for (let i = 0; i < patches.length; i++) {
-		const patch = patches[i];
-		const refSound = AppState.getSound(patch.sourceId);
-		if (!refSound?.marker) continue;
-
-		const refPos = refSound.marker.getLatLng();
-		let modValue = 0;
-
-		if (patch.output === 'proximity') {
-			const distToThis = Geometry.calculateDistanceMeters(userPos,thisPos);
-			const distToRef = Geometry.calculateDistanceMeters(userPos,refPos);
-			const totalDist = distToThis + distToRef;
-			modValue = totalDist > 0 ? distToThis / totalDist : 0.5;
-		} else if (patch.output === 'distance') {
-			const dist = Geometry.calculateDistanceMeters(userPos,refPos);
-			const maxDist = refSound.maxDistance || CONSTANTS.DEFAULT_MOD_MAX_DISTANCE;
-			const rawValue = 1 - Math.min(1, dist / maxDist);
-			modValue = getSmoothedModulationValue(rawValue, s.id, `soundMod_${i}_distance`);
-		} else if (patch.output === 'x') {
-			const maxRange = refSound.maxDistance || CONSTANTS.DEFAULT_MOD_MAX_DISTANCE;
-			const lngDiff = (userPos.lng - refPos.lng) * CONSTANTS.METERS_PER_LNG * Math.cos(refPos.lat * Math.PI / 180);
-			const rawValue = Math.max(-1, Math.min(1, lngDiff / maxRange));
-			modValue = (getSmoothedModulationValue(rawValue, s.id, `soundMod_${i}_x`) + 1) / 2;
-		} else if (patch.output === 'y') {
-			const maxRange = refSound.maxDistance || CONSTANTS.DEFAULT_MOD_MAX_DISTANCE;
-			const latDiff = (userPos.lat - refPos.lat) * CONSTANTS.METERS_PER_LAT;
-			const rawValue = Math.max(-1, Math.min(1, latDiff / maxRange));
-			modValue = (getSmoothedModulationValue(rawValue, s.id, `soundMod_${i}_y`) + 1) / 2;
-		} else if (patch.output === 'gate') {
-			const dist = Geometry.calculateDistanceMeters(userPos,refPos);
-			modValue = dist <= (refSound.maxDistance || CONSTANTS.DEFAULT_MOD_MAX_DISTANCE) ? 1 : 0;
-		}
-
-		const polarity = patch.polarity !== undefined ? patch.polarity : 1;
-		modValue = 0.5 + (modValue - 0.5) * polarity;
-
-		const target = patch.target;
-		const def = PARAMETER_REGISTRY[target];
-		if (!def) continue;
-
-		const rangePercent = patch.range / 100;
-		if (rangePercent === 0) continue;
-
-		let offset;
-		if (target === 'pitch') {
-			const baseValue = s.params.originalValues[target] ?? s.params[target];
-			const modulatedValue = baseValue + (modValue - 0.5) * CONSTANTS.CENTS_PER_OCTAVE;
-			offset = (modulatedValue - baseValue) * rangePercent;
-		} else {
-			const paramMin = def.min !== undefined ? def.min : 0;
-			const paramMax = def.max !== undefined ? def.max : 1;
-			const baseValue = s.params.originalValues[target] ?? s.params[target];
-			const modulatedValue = paramMin + modValue * (paramMax - paramMin);
-			offset = (modulatedValue - baseValue) * rangePercent;
-		}
-
-		addOffset(target, offset);
-	}
+	applySoundModulationPatches(s.pathRoles.soundModulation, {
+		userPos,
+		selfPos: s.marker.getLatLng(),
+		params: s.params,
+		smoothingKey: s.id,
+		Geometry,
+		resolveSound: (id) => AppState.getSoundByPersistentId(id) || AppState.getSound(id),
+		addOffset
+	});
 }
 
 function processInternalModulation(s, mod, target, freq, range, source, t, userPos, userSpeed) {
