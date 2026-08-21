@@ -87,47 +87,40 @@ export const PathZoneChecker = {
 		return false;
 	},
 
+	resolveTarget(config) {
+		if (config.type === 'path') return AppState.getPath(config.id);
+		if (config.type === 'sound') return AppState.getSoundByPersistentId(config.id);
+		return null;
+	},
+
+	isTargetInZone(userPos, config) {
+		const target = this.resolveTarget(config);
+		if (!target) return false;
+		if (config.type === 'sound') return Geometry.isPointInShape(userPos, target);
+		return this.isPointInZone(userPos, target, config.zone || 'interior');
+	},
+
+	hasResolvableTargets(configs) {
+		if (!configs || configs.length === 0) return false;
+		return configs.some(config => !!this.resolveTarget(config));
+	},
+
 	checkIndividualPaths(userPos, pathConfigs) {
 		const results = new Map();
 		if (!pathConfigs || pathConfigs.length === 0) return results;
 
 		for (const config of pathConfigs) {
-			let shape;
-			if (config.type === 'path') {
-				shape = AppState.getPath(config.id);
-			} else if (config.type === 'sound') {
-				shape = AppState.getSound(config.id);
-			}
-			if (!shape) continue;
-			const zone = config.zone || 'interior';
-			results.set(config.id, this.isPointInZone(userPos, shape, zone));
+			if (!this.resolveTarget(config)) continue;
+			results.set(config.id, this.isTargetInZone(userPos, config));
 		}
 		return results;
 	},
 
 	checkActivePaths(userPos, activePaths) {
-		if (!activePaths || activePaths.length === 0) return true;
+		if (!this.hasResolvableTargets(activePaths)) return true;
 
-		for (const activeConfig of activePaths) {
-			let shape, zone;
-
-			if (activeConfig.type === 'path') {
-				const path = AppState.getPath(activeConfig.id);
-				if (!path) continue;
-				shape = path;
-				zone = activeConfig.zone || 'interior';
-			} else if (activeConfig.type === 'sound') {
-				const sound = AppState.getSound(activeConfig.id);
-				if (!sound) continue;
-				shape = sound;
-				zone = activeConfig.zone || 'interior';
-			} else {
-				continue;
-			}
-
-
-			const isInside = this.isPointInZone(userPos, shape, zone);
-			if (isInside) return true;
+		for (const config of activePaths) {
+			if (this.isTargetInZone(userPos, config)) return true;
 		}
 
 		return false;

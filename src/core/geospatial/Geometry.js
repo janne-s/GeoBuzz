@@ -30,6 +30,7 @@ export const Geometry = {
 
 	isPointInShape(point, obj) {
 		if (obj.shapeType === "circle") {
+			if (!obj.circle) return false;
 			const distance = _map.distance(point, obj.circle.getLatLng());
 			return distance < obj.circle.getRadius();
 		} else if (obj.shapeType === "polygon") {

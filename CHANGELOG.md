@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-20
+
+### Fixed
+
+- Sequencer sound areas never triggering, so only path areas worked
+- Sequencer stuck outside its area after reload, with no way back to "Anywhere"
+- Duplicated sounds sharing the original's persistent ID
+
 ## 2026-08-15
 
 ### Added

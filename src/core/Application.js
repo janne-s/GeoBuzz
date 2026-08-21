@@ -1535,6 +1535,7 @@ async function duplicateSound(originalObj) {
 	delete newData.fx2;
 	delete newData.fx3;
 	delete newData.id;
+	delete newData.persistentId;
 
 	const newSound = await loadSound(newData);
 

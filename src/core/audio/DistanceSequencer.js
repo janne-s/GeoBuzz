@@ -32,6 +32,15 @@ export function setContext(ctx) {
 	}
 }
 
+function dropStaleSoundRefs(configs) {
+	if (!configs || configs.length === 0) return [];
+	return configs.filter(config => {
+		if (config.type !== 'sound' || typeof config.id === 'string') return true;
+		console.warn(`Dropping stale sequencer sound reference (${config.id})`);
+		return false;
+	});
+}
+
 export class DistanceSequencer {
 	constructor(options = {}) {
 		this.id = options.id || `seq_${Date.now()}`;
@@ -54,8 +63,8 @@ export class DistanceSequencer {
 		this.soloed = options.soloed || false;
 		this.resumeOnReenter = options.resumeOnReenter !== undefined ? options.resumeOnReenter : false;
 		this.restartOnReenter = options.restartOnReenter !== undefined ? options.restartOnReenter : false;
-		this.activePaths = options.activePaths || [];
-		this.sceneChangePaths = options.sceneChangePaths || [];
+		this.activePaths = dropStaleSoundRefs(options.activePaths);
+		this.sceneChangePaths = dropStaleSoundRefs(options.sceneChangePaths);
 		this._sceneChangeInsideState = new Map();
 		this._sceneChangeEntryOrder = [];
 		this.baseSceneIndex = options.baseSceneIndex !== undefined ? options.baseSceneIndex : 0;

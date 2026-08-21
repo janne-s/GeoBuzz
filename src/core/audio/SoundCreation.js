@@ -325,7 +325,9 @@ async function _buildAndInitializeSound(data) {
 	}
 
 	obj.id = obj.marker._leaflet_id;
-	obj.persistentId = data.persistentId || generateUUID();
+	obj.persistentId = data.persistentId && !AppState.getSoundByPersistentId(data.persistentId)
+		? data.persistentId
+		: generateUUID();
 	AppState.dispatch({
 		type: 'SOUND_ADDED',
 		payload: { sound: obj }

@@ -587,6 +587,8 @@ Each track has:
 
 #### Zone Types
 
+Zone types apply to paths. A sound has a single zone, **Area**, covering the sound's own shape.
+
 | Zone | Description |
 |------|-------------|
 | **Interior** | Inside the shape boundary. Available for circles, ovals, and polygons. Lines have no interior |

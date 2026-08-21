@@ -114,7 +114,7 @@ export class SequencerUIManager {
 			const userPos = this.appContext.GeolocationManager.getUserPosition();
 			const wasInside = sequencer.insideArea;
 
-			if (userPos && sequencer.activePaths.length > 0) {
+			if (userPos) {
 				sequencer.insideArea = this.appContext.PathZoneChecker.checkActivePaths(userPos, sequencer.activePaths);
 			}
 
@@ -122,9 +122,9 @@ export class SequencerUIManager {
 				sequencer._releaseAllNotes();
 			}
 
-			const areaStatus = sequencer.activePaths.length === 0 ?
-				'Anywhere' :
-				(sequencer.insideArea ? 'Inside' : 'Outside');
+			const areaStatus = this.appContext.PathZoneChecker.hasResolvableTargets(sequencer.activePaths) ?
+				(sequencer.insideArea ? 'Inside' : 'Outside') :
+				'Anywhere';
 
 			const statusDiv = menu.querySelector('.sequencer-status');
 			if (statusDiv) {
@@ -566,9 +566,9 @@ export class SequencerUIManager {
 		let lastKnownSceneIndex = sequencer.activeSceneIndex;
 
 		const updateUI = () => {
-			const areaStatus = sequencer.activePaths.length === 0 ?
-				'Anywhere' :
-				(sequencer.insideArea ? 'Inside' : 'Outside');
+			const areaStatus = this.appContext.PathZoneChecker.hasResolvableTargets(sequencer.activePaths) ?
+				(sequencer.insideArea ? 'Inside' : 'Outside') :
+				'Anywhere';
 
 			statusDiv.innerHTML = `
 			<strong>Status:</strong> Step ${sequencer.currentStep + 1}/${sequencer.numSteps}
@@ -1728,9 +1728,35 @@ export class SequencerUIManager {
 		});
 	}
 
+	zoneRefId(item, type) {
+		return type === 'sound' ? item.persistentId : item.id;
+	}
+
+	createZoneSelect(item, type, existingConfig) {
+		const zoneSelect = createElement('select', 'path-zone-select');
+		if (type === 'sound') {
+			zoneSelect.innerHTML = '<option value="interior">Area</option>';
+			zoneSelect.value = 'interior';
+		} else {
+			if (item.type === 'line') {
+				zoneSelect.innerHTML = '<option value="corridor">Corridor</option>';
+			} else {
+				zoneSelect.innerHTML = `
+			<option value="interior">Interior</option>
+			<option value="corridor">Corridor</option>
+			<option value="both">Both</option>
+		`;
+			}
+			zoneSelect.value = existingConfig?.zone || (item.type === 'line' ? 'corridor' : 'interior');
+		}
+		zoneSelect.disabled = !existingConfig;
+		return zoneSelect;
+	}
+
 	createSelectionRow(item, sequencer, type, updateAreaStatus) {
+		const refId = this.zoneRefId(item, type);
 		const existingConfig = sequencer.activePaths.find(
-			ap => ap.type === type && ap.id === item.id
+			ap => ap.type === type && ap.id === refId
 		);
 
 		const row = createElement('div', 'path-selection-row');
@@ -1742,36 +1768,27 @@ export class SequencerUIManager {
 		const labelSpan = createElement('span', 'path-selection-label');
 		labelSpan.textContent = type === 'path' ? item.label : (item.label || item.name);
 
-		const zoneSelect = createElement('select', 'path-zone-select');
-		if (type === 'path' && item.type === 'line') {
-			zoneSelect.innerHTML = '<option value="corridor">Corridor</option>';
-		} else {
-			zoneSelect.innerHTML = `
-			<option value="interior">Interior</option>
-			<option value="corridor">Corridor</option>
-			<option value="both">Both</option>
-		`;
-		}
-		zoneSelect.value = existingConfig?.zone || (type === 'path' && item.type === 'line' ? 'corridor' : 'interior');
-		zoneSelect.disabled = !existingConfig;
+		const zoneSelect = this.createZoneSelect(item, type, existingConfig);
 
 		checkbox.onchange = () => {
 			if (checkbox.checked) {
-				sequencer.activePaths.push({ type, id: item.id, zone: zoneSelect.value });
+				sequencer.activePaths.push({ type, id: refId, zone: zoneSelect.value });
 				zoneSelect.disabled = false;
 			} else {
 				sequencer.activePaths = sequencer.activePaths.filter(
-					ap => !(ap.type === type && ap.id === item.id)
+					ap => !(ap.type === type && ap.id === refId)
 				);
 				zoneSelect.disabled = true;
 			}
 			updateAreaStatus();
+			AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
 		};
 
 		zoneSelect.onchange = () => {
-			const config = sequencer.activePaths.find(ap => ap.type === type && ap.id === item.id);
+			const config = sequencer.activePaths.find(ap => ap.type === type && ap.id === refId);
 			if (config) config.zone = zoneSelect.value;
 			updateAreaStatus();
+			AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
 		};
 
 		row.appendChild(checkbox);
@@ -1782,8 +1799,9 @@ export class SequencerUIManager {
 	}
 
 	createSceneChangeRow(item, sequencer, type) {
+		const refId = this.zoneRefId(item, type);
 		const existingConfig = sequencer.sceneChangePaths.find(
-			sc => sc.type === type && sc.id === item.id
+			sc => sc.type === type && sc.id === refId
 		);
 
 		const row = createElement('div', 'scene-change-row');
@@ -1795,24 +1813,13 @@ export class SequencerUIManager {
 		const labelSpan = createElement('span', 'path-selection-label');
 		labelSpan.textContent = type === 'path' ? item.label : (item.label || item.name);
 
-		const zoneSelect = createElement('select', 'path-zone-select');
-		if (type === 'path' && item.type === 'line') {
-			zoneSelect.innerHTML = '<option value="corridor">Corridor</option>';
-		} else {
-			zoneSelect.innerHTML = `
-			<option value="interior">Interior</option>
-			<option value="corridor">Corridor</option>
-			<option value="both">Both</option>
-		`;
-		}
-		zoneSelect.value = existingConfig?.zone || (type === 'path' && item.type === 'line' ? 'corridor' : 'interior');
-		zoneSelect.disabled = !existingConfig;
+		const zoneSelect = this.createZoneSelect(item, type, existingConfig);
 
 		const sceneSelect = createSelect(
 			sequencer.scenes.map((s, i) => ({ value: String(i), label: s.name })),
 			String(existingConfig?.sceneIndex ?? 0),
 			(e) => {
-				const config = sequencer.sceneChangePaths.find(sc => sc.type === type && sc.id === item.id);
+				const config = sequencer.sceneChangePaths.find(sc => sc.type === type && sc.id === refId);
 				if (config) config.sceneIndex = parseInt(e.target.value);
 				AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
 			}
@@ -1823,7 +1830,7 @@ export class SequencerUIManager {
 		const updateConfig = () => {
 			if (checkbox.checked) {
 				sequencer.sceneChangePaths.push({
-					type, id: item.id,
+					type, id: refId,
 					zone: zoneSelect.value,
 					sceneIndex: parseInt(sceneSelect.value)
 				});
@@ -1831,10 +1838,10 @@ export class SequencerUIManager {
 				sceneSelect.disabled = false;
 			} else {
 				sequencer.sceneChangePaths = sequencer.sceneChangePaths.filter(
-					sc => !(sc.type === type && sc.id === item.id)
+					sc => !(sc.type === type && sc.id === refId)
 				);
-				sequencer._sceneChangeInsideState.delete(item.id);
-				sequencer._sceneChangeEntryOrder = sequencer._sceneChangeEntryOrder.filter(id => id !== item.id);
+				sequencer._sceneChangeInsideState.delete(refId);
+				sequencer._sceneChangeEntryOrder = sequencer._sceneChangeEntryOrder.filter(id => id !== refId);
 				zoneSelect.disabled = true;
 				sceneSelect.disabled = true;
 			}
@@ -1844,7 +1851,7 @@ export class SequencerUIManager {
 		checkbox.onchange = updateConfig;
 
 		zoneSelect.onchange = () => {
-			const config = sequencer.sceneChangePaths.find(sc => sc.type === type && sc.id === item.id);
+			const config = sequencer.sceneChangePaths.find(sc => sc.type === type && sc.id === refId);
 			if (config) config.zone = zoneSelect.value;
 			AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
 		};
