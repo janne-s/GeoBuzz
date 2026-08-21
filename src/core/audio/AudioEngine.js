@@ -100,8 +100,7 @@ export function getUserMovementSpeed() {
 	}
 
 	if (Selectors.isSimulationActive()) {
-		const speedKmh = Selectors.getSimulationSpeed() || 0;
-		return (speedKmh * 1000) / 3600;
+		return Selectors.getSimulationCurrentSpeed() || 0;
 	}
 
 	return computedSpeed;

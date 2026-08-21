@@ -80,7 +80,8 @@ export class StateManager {
 				frameId: null,
 				lastUpdateTime: 0,
 				distance: 0,
-				speedOffset: 0
+				speedOffset: 0,
+				currentSpeedMs: 0
 			},
 			userAttachedPathId: null,
 			userPathAnimationState: {

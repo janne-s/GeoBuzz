@@ -193,19 +193,21 @@ export const RouteAnimator = {
 	currentSimulationSpeed(dt) {
 		const baseMs = (Selectors.getSimulationSpeed() * 1000) / 3600 * Selectors.getSimulationSpeedScale();
 		const variability = Selectors.getSimulationVariability();
+		let speedMs = baseMs;
 
 		if (variability <= 0) {
 			AppState.simulation.animationState.speedOffset = 0;
-			return baseMs;
+		} else {
+			const reversion = Math.min(1, CONSTANTS.SIMULATION_VARIABILITY_REVERSION * dt);
+			const step = (Math.random() * 2 - 1) * variability * reversion;
+			let offset = AppState.simulation.animationState.speedOffset * (1 - reversion) + step;
+			offset = Math.max(-1, Math.min(1, offset));
+			AppState.simulation.animationState.speedOffset = offset;
+			speedMs = Math.max(baseMs * CONSTANTS.SIMULATION_MIN_SPEED_FACTOR, baseMs * (1 + offset));
 		}
 
-		const reversion = Math.min(1, CONSTANTS.SIMULATION_VARIABILITY_REVERSION * dt);
-		const step = (Math.random() * 2 - 1) * variability * reversion;
-		let offset = AppState.simulation.animationState.speedOffset * (1 - reversion) + step;
-		offset = Math.max(-1, Math.min(1, offset));
-		AppState.simulation.animationState.speedOffset = offset;
-
-		return Math.max(baseMs * CONSTANTS.SIMULATION_MIN_SPEED_FACTOR, baseMs * (1 + offset));
+		AppState.simulation.animationState.currentSpeedMs = speedMs;
+		return speedMs;
 	},
 
 	animateMovement(currentTime, stopSimulation) {
