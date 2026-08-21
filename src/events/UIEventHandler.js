@@ -350,18 +350,19 @@ export function createUIEventHandlers({
 		},
 
 		'#speedSelect:change': (e) => {
-			if (Selectors.isSimulationActive()) {
-				const prevSpeedMs = (AppState.simulation.speedKmh * 1000) / 3600;
-				const now = performance.now();
-				const distanceTravelled = prevSpeedMs * ((now - AppState.simulation.animationState.startTime) / 1000);
-				AppState.simulation.speedKmh = parseFloat(e.target.value);
-				const newSpeedMs = (AppState.simulation.speedKmh * 1000) / 3600;
-				if (newSpeedMs > 0) {
-					AppState.simulation.animationState.startTime = now - (distanceTravelled / newSpeedMs) * 1000;
-				}
-			} else {
-				AppState.simulation.speedKmh = parseFloat(e.target.value);
-			}
+			AppState.simulation.speedKmh = parseFloat(e.target.value);
+		},
+
+		'#simSpeedScale:input': (e) => {
+			AppState.simulation.speedScale = parseFloat(e.target.value);
+			const display = document.getElementById('simSpeedScaleValue');
+			if (display) display.textContent = `${AppState.simulation.speedScale.toFixed(2)}\u00d7`;
+		},
+
+		'#simVariability:input': (e) => {
+			AppState.simulation.speedVariability = parseFloat(e.target.value);
+			const display = document.getElementById('simVariabilityValue');
+			if (display) display.textContent = AppState.simulation.speedVariability.toFixed(2);
 		},
 
 		'#calculateRouteBtn': () => {

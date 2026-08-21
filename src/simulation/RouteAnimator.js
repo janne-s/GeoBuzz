@@ -190,6 +190,24 @@ export const RouteAnimator = {
 		return (bearingDeg + 360) % 360;
 	},
 
+	currentSimulationSpeed(dt) {
+		const baseMs = (Selectors.getSimulationSpeed() * 1000) / 3600 * Selectors.getSimulationSpeedScale();
+		const variability = Selectors.getSimulationVariability();
+
+		if (variability <= 0) {
+			AppState.simulation.animationState.speedOffset = 0;
+			return baseMs;
+		}
+
+		const reversion = Math.min(1, CONSTANTS.SIMULATION_VARIABILITY_REVERSION * dt);
+		const step = (Math.random() * 2 - 1) * variability * reversion;
+		let offset = AppState.simulation.animationState.speedOffset * (1 - reversion) + step;
+		offset = Math.max(-1, Math.min(1, offset));
+		AppState.simulation.animationState.speedOffset = offset;
+
+		return Math.max(baseMs * CONSTANTS.SIMULATION_MIN_SPEED_FACTOR, baseMs * (1 + offset));
+	},
+
 	animateMovement(currentTime, stopSimulation) {
 		if (!Selectors.isSimulationActive()) return;
 
@@ -198,11 +216,12 @@ export const RouteAnimator = {
 			AppState.simulation.animationState.frameId = requestAnimationFrame((t) => this.animateMovement(t, stopSimulation));
 			return;
 		}
+		const dt = Math.max(0, delta / 1000);
 		AppState.simulation.animationState.lastUpdateTime = currentTime;
 
-		const speedMs = (Selectors.getSimulationSpeed() * 1000) / 3600;
-		const elapsedTime = (currentTime - AppState.simulation.animationState.startTime) / 1000;
-		const distanceTravelled = speedMs * elapsedTime;
+		const speedMs = this.currentSimulationSpeed(dt);
+		AppState.simulation.animationState.distance += speedMs * dt;
+		const distanceTravelled = AppState.simulation.animationState.distance;
 
 		const userMarker = GeolocationManager.getUserMarker();
 		if (distanceTravelled >= Selectors.getSimulationRoute().totalDistance) {
@@ -294,6 +313,8 @@ export const RouteAnimator = {
 			AppState.dispatch({ type: 'SIMULATION_STARTED' });
 			AppState.simulation.animationState.startTime = performance.now();
 			AppState.simulation.animationState.lastUpdateTime = AppState.simulation.animationState.startTime;
+			AppState.simulation.animationState.distance = 0;
+			AppState.simulation.animationState.speedOffset = 0;
 			AppState.simulation.animationState.frameId = requestAnimationFrame((t) => this.animateMovement(t, stopSimulation));
 
 		} catch (error) {
@@ -309,6 +330,8 @@ export const RouteAnimator = {
 			AppState.dispatch({ type: 'SIMULATION_STARTED' });
 			AppState.simulation.animationState.startTime = performance.now();
 			AppState.simulation.animationState.lastUpdateTime = AppState.simulation.animationState.startTime;
+			AppState.simulation.animationState.distance = 0;
+			AppState.simulation.animationState.speedOffset = 0;
 			AppState.simulation.animationState.frameId = requestAnimationFrame((t) => this.animateMovement(t, stopSimulation));
 		}
 	}

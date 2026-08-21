@@ -55,6 +55,8 @@ export const Selectors = {
 	getSimulationTarget: () => AppState.simulation.targetMarker,
 	getSimulationRoute: () => AppState.simulation.route,
 	getSimulationSpeed: () => AppState.simulation.speedKmh,
+	getSimulationSpeedScale: () => AppState.simulation.speedScale,
+	getSimulationVariability: () => AppState.simulation.speedVariability,
 	getUserAttachedPathId: () => AppState.simulation.userAttachedPathId,
 
 	getWorkspaceId: () => AppState.workspace.id,

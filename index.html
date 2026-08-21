@@ -354,6 +354,14 @@
 		</div>
 		<button id="calculateRouteBtn" class="simulation-go-btn">Go</button>
 		<button id="cancelSimulationBtn" class="simulation-cancel-btn">Cancel</button>
+		<div class="simulation-tuning">
+			<label for="simSpeedScale">Scale:</label>
+			<input type="range" id="simSpeedScale" min="0.25" max="3" step="0.05" value="1">
+			<span id="simSpeedScaleValue" class="simulation-value">1.00&times;</span>
+			<label for="simVariability">Variability:</label>
+			<input type="range" id="simVariability" min="0" max="1" step="0.05" value="0">
+			<span id="simVariabilityValue" class="simulation-value">0.00</span>
+		</div>
 	</div>
 
 	<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

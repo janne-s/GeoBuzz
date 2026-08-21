@@ -899,6 +899,13 @@ Selecting "Simulate Point-to-Point" or "Simulate Along Path" opens a controls ba
 3. Drag the target to adjust position, then press **Go**
 4. The app fetches local road data via Overpass API and routes the user along nearby streets. Try again after a while if the API can't be reached. The local road data needs to be loaded only once. For production use replace the route finding APi with something more robust.
 
+The controls bar has a second row for tuning the movement:
+
+| Setting | Description |
+|---------|-------------|
+| **Scale** | Multiplies the selected speed (0.25\u20133\u00d7), for speeds between or beyond the presets |
+| **Variability** | Makes the speed wander around the selected value instead of holding it exactly, the way real walking does. The wander is pulled back towards the base speed, so the average pace and the arrival time stay put |
+
 #### Path Simulation
 
 If paths exist in the composition, the user menu shows a "Simulate Along Path" dropdown:

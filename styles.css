@@ -3557,8 +3557,29 @@ input:checked+.slider:before {
 	z-index: var(--z-side-menu-toggle);
 	display: none;
 	align-items: center;
+	flex-wrap: wrap;
 	gap: 20px;
 	font-size: var(--font-base);
+}
+
+.simulation-tuning {
+	flex-basis: 100%;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding-top: var(--spacing-sm);
+	border-top: 1px solid var(--color-border);
+}
+
+.simulation-tuning input[type="range"] {
+	flex: 1;
+	min-width: 70px;
+}
+
+.simulation-value {
+	min-width: 46px;
+	text-align: right;
+	color: var(--color-text-muted);
 }
 
 /* SIMULATION CONTROL */

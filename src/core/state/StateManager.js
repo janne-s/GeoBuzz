@@ -73,10 +73,14 @@ export class StateManager {
 				totalDistance: 0
 			},
 			speedKmh: 5,
+			speedScale: 1,
+			speedVariability: 0,
 			animationState: {
 				startTime: 0,
 				frameId: null,
-				lastUpdateTime: 0
+				lastUpdateTime: 0,
+				distance: 0,
+				speedOffset: 0
 			},
 			userAttachedPathId: null,
 			userPathAnimationState: {
