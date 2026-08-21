@@ -34,13 +34,12 @@ This replaces the following files:
 | `src/api/SecurityManager.js` | CSRF token management via PHP endpoint |
 | `src/api/WorkspaceAPI.js` | PHP workspace CRUD endpoints |
 | `src/api/FilesAPI.js` | PHP file upload/list/delete endpoints |
+| `src/api/SoundUrlResolver.js` | Resolves sound file URLs to server workspace paths |
 | `src/persistence/StorageAdapter.js` | Uses Backend HTTP calls |
 | `src/persistence/WorkspaceManager.js` | Uses WorkspaceAPI, no blob URL pre-caching |
 | `src/persistence/PackageExporter.js` | Fetches sounds via HTTP, gets file list from PHP |
 | `src/persistence/PackageImporter.js` | Uploads sounds via PHP endpoints |
 | `src/events/UIEventHandler.js` | Adds workspace URL copy and export-to-workspace handlers |
-| `src/core/Application.js` | Uses server URL paths for sound files, passes updateWorkspaceUI |
-| `src/core/audio/SynthRegistry.js` | Uses server URL paths for grid sampler files |
 | `src/ui/menus/DialogManager.js` | Displays server-side file limits |
 
 ---

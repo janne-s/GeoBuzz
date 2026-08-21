@@ -2,8 +2,14 @@
 
 ## 2026-08-20
 
+### Changed
+
+- Server-kit replaces sound URL resolution instead of `Application.js` and `SynthRegistry.js`
+
 ### Fixed
 
+- Server-kit missing the grid sampler per-key speed gate hold
+- Server-kit restarting the route animation when simulation speed changed
 - Sequencer sound areas never triggering, so only path areas worked
 - Sequencer stuck outside its area after reload, with no way back to "Anywhere"
 - Duplicated sounds sharing the original's persistent ID
