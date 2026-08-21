@@ -545,6 +545,7 @@ Click the edit button on a sequencer in the Sequencing side menu to open its edi
 | **Loop** | Enable sequence looping |
 | **Steps** | Number of steps in sequence |
 | **Step Length** | Distance per step |
+| **Speed Scale** | Multiplies your movement for step advancement only (1\u201320\u00d7). At 1\u00d7 the sequencer advances a step per Step Length walked; higher values turn it into an arpeggiator that keeps pace with you. The Speed Gate still reads your real speed |
 | **Speed Gate** | Movement speed range (min/max m/s) for step advancement. Default min 0.5 m/s |
 | **Speed Gate Hold** | Hold duration (seconds) before gate state changes |
 | **Release on Stop** | Release notes when sequencer is gated |

@@ -63,6 +63,7 @@ export class SettingsManager {
 				enabled: seq.enabled,
 				numSteps: seq.numSteps,
 				stepLength: seq.stepLength,
+				speedScale: seq.speedScale,
 				speedGateMin: seq.speedGateMin,
 				speedGateMax: seq.speedGateMax,
 				speedGateHold: seq.speedGateHold,

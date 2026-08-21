@@ -593,6 +593,7 @@ export function audioUpdateLoop() {
 	const sequencers = Selectors.getSequencers();
 	for (let i = 0; i < sequencers.length; i++) {
 		if (sequencers[i].enabled) {
+			sequencers[i].processPendingSteps();
 			sequencers[i].processModulation();
 		}
 	}

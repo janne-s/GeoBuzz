@@ -2,6 +2,10 @@
 
 ## 2026-08-21
 
+### Added
+
+- Speed Scale for distance sequencers, turning them into arpeggiators that keep pace with the listener
+
 ### Changed
 
 - Each sequencer note now gets its own attack

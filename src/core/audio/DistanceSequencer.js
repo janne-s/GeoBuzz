@@ -53,6 +53,7 @@ export class DistanceSequencer {
 		this.enabled = options.enabled !== undefined ? options.enabled : true;
 		this.numSteps = options.numSteps || CONSTANTS.SEQUENCER_DEFAULT_STEPS;
 		this.stepLength = options.stepLength || CONSTANTS.SEQUENCER_DEFAULT_LENGTH;
+		this.speedScale = options.speedScale || CONSTANTS.SEQUENCER_SPEED_SCALE_MIN;
 		this.speedGateMin = options.speedGateMin !== undefined ? options.speedGateMin : CONSTANTS.SEQUENCER_SPEED_THRESHOLD;
 		this.speedGateMax = options.speedGateMax !== undefined ? options.speedGateMax : CONSTANTS.SEQUENCER_SPEED_GATE_MAX;
 		this.speedGateHold = options.speedGateHold !== undefined ? options.speedGateHold : CONSTANTS.SEQUENCER_SPEED_GATE_HOLD_DEFAULT;
@@ -270,7 +271,7 @@ export class DistanceSequencer {
 		}
 
 		this._isMovingFastEnough = true;
-		this.totalDistance += smoothedDistance;
+		this.totalDistance += smoothedDistance * this.speedScale;
 
 		const distanceSinceLastGlobalStep = this.totalDistance - this.lastStepDistance;
 		if (distanceSinceLastGlobalStep >= this.stepLength) {
@@ -307,9 +308,9 @@ export class DistanceSequencer {
 				this.dispatchEvent('stateChange');
 				this.onTrackStepTrigger(track, expectedStep);
 			} else {
-				const nextStep = (track.currentStep + 1) % trackSteps;
-				if (expectedStep === nextStep) {
-					this.advanceTrackStep(track);
+				const pending = (expectedStep - track.currentStep + trackSteps) % trackSteps;
+				if (pending > 0) {
+					this._scheduleTrackSteps(track, pending, elapsed);
 				}
 			}
 		});
@@ -444,6 +445,30 @@ export class DistanceSequencer {
 
 		this.dispatchEvent('stateChange');
 		this.onTrackStepTrigger(track, track.currentStep);
+	}
+
+	_scheduleTrackSteps(track, pending, elapsed) {
+		this.advanceTrackStep(track);
+		if (pending < 2) return;
+
+		const now = performance.now();
+		const interval = (elapsed * 1000) / pending;
+		track._pendingSteps = [];
+		for (let i = 1; i < pending; i++) {
+			track._pendingSteps.push(now + i * interval);
+		}
+	}
+
+	processPendingSteps() {
+		const now = performance.now();
+		this.tracks.forEach(track => {
+			const pending = track._pendingSteps;
+			if (!pending || pending.length === 0) return;
+			while (pending.length > 0 && pending[0] <= now) {
+				pending.shift();
+				this.advanceTrackStep(track);
+			}
+		});
 	}
 
 	processModulation() {
@@ -1042,6 +1067,7 @@ export class DistanceSequencer {
 	}
 
 	async _releaseAllNotes() {
+		this.tracks.forEach(track => { track._pendingSteps = null; });
 		const releasePromises = [];
 		this._activeNotes.forEach((notes, trackId) => {
 			const track = this._tracksMap.get(trackId);

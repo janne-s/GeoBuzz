@@ -314,6 +314,39 @@ export class SequencerUIManager {
 
 			content.appendChild(row1Container);
 
+			const scaleGroup = createElement('div', 'parameter-control');
+			const scaleLabel = createElement('label');
+			scaleLabel.textContent = 'Speed Scale';
+			const scaleSlider = createElement('input');
+			scaleSlider.type = 'range';
+			scaleSlider.min = CONSTANTS.SEQUENCER_SPEED_SCALE_MIN;
+			scaleSlider.max = CONSTANTS.SEQUENCER_SPEED_SCALE_MAX;
+			scaleSlider.step = CONSTANTS.SEQUENCER_SPEED_SCALE_STEP;
+			scaleSlider.value = sequencer.speedScale;
+			const scaleDisplay = createElement('span', 'value-display');
+			scaleDisplay.textContent = `${sequencer.speedScale}\u00d7`;
+			scaleSlider.oninput = () => {
+				sequencer.speedScale = parseFloat(scaleSlider.value);
+				scaleDisplay.textContent = `${sequencer.speedScale}\u00d7`;
+			};
+			scaleSlider.onchange = () => {
+				AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+			};
+			makeValueEditable(scaleDisplay, scaleSlider, {
+				modalSystem: ModalSystem,
+				formatValue: (val) => `${val}\u00d7`,
+				onUpdate: (val) => {
+					sequencer.speedScale = val;
+					scaleSlider.value = val;
+					scaleDisplay.textContent = `${val}\u00d7`;
+					AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+				}
+			});
+			scaleGroup.appendChild(scaleLabel);
+			scaleGroup.appendChild(scaleSlider);
+			scaleGroup.appendChild(scaleDisplay);
+			content.appendChild(scaleGroup);
+
 			const row2Container = createElement('div', 'sequencer-slider-row');
 
 			const lengthLabel = createElement('label');
