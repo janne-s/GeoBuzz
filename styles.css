@@ -1245,7 +1245,7 @@ button:disabled {
 }
 
 /* Buttons in context menu */
-.context-menu button:not(.tab-bar button):not(.collapsible-section-header):not(.step-button):not(.menu-close-btn):not(.btn-icon):not(.solo-btn):not(.mute-btn) {
+.context-menu button:not(.tab-bar button):not(.collapsible-section-header):not(.step-button):not(.menu-close-btn):not(.btn-icon):not(.solo-btn):not(.mute-btn):not(.mod-invert-btn) {
 	display: block;
 	width: 100%;
 	padding: var(--spacing-sm) var(--spacing-md);
@@ -1258,7 +1258,7 @@ button:disabled {
 	transition: all 0.2s;
 }
 
-.context-menu button:not(.tab-bar button):not(.collapsible-section-header):not(.step-button):not(.menu-close-btn):not(.btn-icon):not(.solo-btn):not(.mute-btn):hover {
+.context-menu button:not(.tab-bar button):not(.collapsible-section-header):not(.step-button):not(.menu-close-btn):not(.btn-icon):not(.solo-btn):not(.mute-btn):not(.mod-invert-btn):hover {
 	background: var(--color-bg-light);
 	border-color: var(--color-primary-base);
 }
