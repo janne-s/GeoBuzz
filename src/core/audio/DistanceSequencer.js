@@ -303,12 +303,16 @@ export class DistanceSequencer {
 			const absoluteStepCount = Math.floor(effectiveDistance / this.stepLength);
 			const expectedStep = this.loop ? (absoluteStepCount % trackSteps) : Math.min(absoluteStepCount, trackSteps - 1);
 
-			if (track.currentStep === -1) {
+			if (track.currentStep === -1 || track._lastAbsoluteStep === undefined) {
 				track.currentStep = expectedStep;
+				track._lastAbsoluteStep = absoluteStepCount;
 				this.dispatchEvent('stateChange');
 				this.onTrackStepTrigger(track, expectedStep);
 			} else {
-				const pending = (expectedStep - track.currentStep + trackSteps) % trackSteps;
+				const pending = this.loop
+					? absoluteStepCount - track._lastAbsoluteStep
+					: (expectedStep - track.currentStep + trackSteps) % trackSteps;
+				track._lastAbsoluteStep = absoluteStepCount;
 				if (pending > 0) {
 					this._scheduleTrackSteps(track, pending, elapsed);
 				}
@@ -1097,6 +1101,7 @@ export class DistanceSequencer {
 
 		this.tracks.forEach(track => {
 			track.currentStep = -1;
+			delete track._lastAbsoluteStep;
 			delete track._noteHoldState;
 		});
 

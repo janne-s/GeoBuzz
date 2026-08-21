@@ -368,6 +368,7 @@ export class SequencerUIManager {
 					: Math.min(Math.floor(sequencer.totalDistance / sequencer.stepLength), sequencer.numSteps - 1);
 
 				sequencer.tracks.forEach(track => {
+					delete track._lastAbsoluteStep;
 					if (track.offsetMode === 'division' && track.offsetFraction !== undefined) {
 						track.offset = track.offsetFraction * sequencer.stepLength;
 					} else if (track.offsetMode === 'steps' && track.offsetSteps !== undefined) {
