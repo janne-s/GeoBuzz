@@ -29,6 +29,10 @@
 - Go and Cancel dropping onto separate rows in the simulation panel
 - The direction readout searching the document and redrawing on every frame
 - Sound markers on a movement path redrawing when they had not moved
+- A sound jumping to full volume when first heard from very close to its icon
+- A duplicated layer losing its effects
+- Clearing all elements leaving stale layer references behind
+- The layer menu repeating the layer name in its title
 
 ## 2026-08-21
 
