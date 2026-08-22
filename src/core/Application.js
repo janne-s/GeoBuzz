@@ -930,7 +930,9 @@ function setupRecording(soundObj, refreshServerList) {
 
 function showFileManagerDialog(soundObj = null, onFileSelected = null) {
 	return DialogManager.showFileManagerDialog(soundObj, onFileSelected);
-}function duplicateLayer(originalLayer) {
+}
+
+async function duplicateLayer(originalLayer) {
 	const newLayer = {
 		id: `user_${LayerManager.nextLayerId++}`,
 		name: `Copy of ${originalLayer.name}`,
@@ -945,6 +947,12 @@ function showFileManagerDialog(soundObj = null, onFileSelected = null) {
 	LayerManager.userLayers.push(newLayer);
 	LayerManager._userLayersMap.set(newLayer.id, newLayer);
 	createLayerFXNodes(newLayer);
+
+	await FXManager.restoreChain(newLayer, { isLayer: true });
+	if (newLayer.eq?.enabled) {
+		createLayerEQNode(newLayer);
+	}
+
 	LayerManager.applyLayerGains();
 	LayerManager.refreshUserLayersUI();
 }
