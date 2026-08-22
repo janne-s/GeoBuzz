@@ -184,10 +184,6 @@ class LayerManagerClass {
 		Selectors.getSounds().forEach(sound => {
 			if (sound.layers && sound.layers.includes(layerId)) {
 				sound.layers = sound.layers.filter(id => id !== layerId);
-				if (sound._layerMixer) {
-					sound._layerMixer.dispose();
-					delete sound._layerMixer;
-				}
 				if (Selectors.getSpatialMode() === 'ambisonics' && sound.ambisonicSource) {
 					context.AmbisonicsManager.removeSource(sound);
 					context.AmbisonicsManager.createSource(sound);

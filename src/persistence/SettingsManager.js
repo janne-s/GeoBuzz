@@ -707,6 +707,7 @@ export class SettingsManager {
 			}
 		});
 		this.context.LayerManager.userLayers = [];
+		this.context.LayerManager._userLayersMap.clear();
 		this.context.LayerManager.nextLayerId = 1;
 		this.context.LayerManager.refreshUserLayersUI();
 
