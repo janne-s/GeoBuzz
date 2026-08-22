@@ -17,7 +17,6 @@
 ### Fixed
 
 - Duplicate audio loops starting on tab return and on assigning a movement path
-- Sequencer speed scale loading outside its allowed range
 - A sequencer sending UI updates while outside its area
 - Sequencer synths staying in the audio graph once a track had played
 - Clearing all elements leaving sequencer synths behind

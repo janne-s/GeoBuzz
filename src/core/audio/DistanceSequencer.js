@@ -57,10 +57,7 @@ export class DistanceSequencer {
 		this.enabled = options.enabled !== undefined ? options.enabled : true;
 		this.numSteps = options.numSteps || CONSTANTS.SEQUENCER_DEFAULT_STEPS;
 		this.stepLength = options.stepLength || CONSTANTS.SEQUENCER_DEFAULT_LENGTH;
-		this.speedScale = Math.max(
-			CONSTANTS.SEQUENCER_SPEED_SCALE_MIN,
-			Math.min(CONSTANTS.SEQUENCER_SPEED_SCALE_MAX, options.speedScale || CONSTANTS.SEQUENCER_SPEED_SCALE_MIN)
-		);
+		this.speedScale = options.speedScale || CONSTANTS.SEQUENCER_SPEED_SCALE_MIN;
 		this.speedGateMin = options.speedGateMin !== undefined ? options.speedGateMin : CONSTANTS.SEQUENCER_SPEED_THRESHOLD;
 		this.speedGateMax = options.speedGateMax !== undefined ? options.speedGateMax : CONSTANTS.SEQUENCER_SPEED_GATE_MAX;
 		this.speedGateHold = options.speedGateHold !== undefined ? options.speedGateHold : CONSTANTS.SEQUENCER_SPEED_GATE_HOLD_DEFAULT;
