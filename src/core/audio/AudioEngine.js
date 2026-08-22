@@ -21,6 +21,7 @@ let totalDistanceTraveled = 0;
 let lastUserPosition = null;
 let lastOSCUpdateTime = 0;
 const OSC_UPDATE_INTERVAL = 1000 / 30; // 30 updates per second
+let loopActive = false;
 let lastSpeedPosition = null;
 let lastSpeedTime = 0;
 let computedSpeed = 0;
@@ -162,6 +163,7 @@ export function updateAudio(userPos, now) {
 
 	const silencingGain = calculateSilencingGain(audioPos);
 	LayerManager.applySilencingGain(silencingGain);
+	LayerManager.beginActivityFrame();
 
 	const sequencers = Selectors.getSequencers();
 	for (let i = 0; i < sequencers.length; i++) {
@@ -169,6 +171,7 @@ export function updateAudio(userPos, now) {
 		if (seq.enabled) {
 			seq.applySilencingGain(silencingGain);
 			seq.updatePosition(userPos.lat, userPos.lng);
+			seq.reportLayerActivity();
 		}
 	}
 
@@ -238,7 +241,7 @@ export function updateAudio(userPos, now) {
 			if (s.wasInsideArea && s.echoNodes && s.echoNodes.size > 0) {
 				AppState.dispatch({
 					type: 'AUDIO_ECHO_UPDATE_REQUESTED',
-					payload: { sound: s, userPos: audioPos }
+					payload: { sound: s, userPos: audioPos, silencingGain }
 				});
 			}
 			s.wasInsideArea = false;
@@ -247,7 +250,7 @@ export function updateAudio(userPos, now) {
 
 		AppState.dispatch({
 			type: 'AUDIO_ECHO_UPDATE_REQUESTED',
-			payload: { sound: s, userPos: audioPos }
+			payload: { sound: s, userPos: audioPos, silencingGain }
 		});
 		if (s.echoNodes && s.echoNodes.size > 0) {
 			for (const [pathId, nodeData] of s.echoNodes.entries()) {
@@ -295,6 +298,7 @@ export function updateAudio(userPos, now) {
 
 		const clampedGain = clampGainDelta(targetGain, s.id);
 		const effectiveGain = (clampedGain > 0 ? clampedGain : 0) * silencingGain;
+		LayerManager.reportActivity(s.layers, effectiveGain);
 
 		if (s.type === "StreamPlayer") {
 			if (!isControlledBySequencer) {
@@ -504,6 +508,26 @@ export function updateAudio(userPos, now) {
 			s.gain.gain.rampTo(effectiveGain, gainRampTime);
 		}
 	}
+
+	LayerManager.commitActivityFrame();
+}
+
+function hasPendingAudioWork() {
+	if (Tone.context.state !== 'running') return true;
+	if (Selectors.isSimulationActive() || Selectors.getUserAttachedPathId()) return true;
+
+	const sounds = Selectors.getSounds();
+	for (let i = 0; i < sounds.length; i++) {
+		if (sounds[i].isPlaying) return true;
+	}
+
+	const sequencers = Selectors.getSequencers();
+	for (let i = 0; i < sequencers.length; i++) {
+		const seq = sequencers[i];
+		if (seq.enabled && (seq.insideArea || seq.hasPendingWork())) return true;
+	}
+
+	return false;
 }
 
 export function audioUpdateLoop() {
@@ -603,14 +627,23 @@ export function audioUpdateLoop() {
 			updateAudio(userPos, now);
 		}
 	}
-	AppState.intervals.audioUpdate = requestAnimationFrame(audioUpdateLoop);
+
+	if (positionsMayHaveChanged || hasPendingAudioWork()) {
+		AppState.intervals.audioUpdate = requestAnimationFrame(audioUpdateLoop);
+	} else {
+		loopActive = false;
+		AppState.intervals.audioUpdate = null;
+	}
 }
 
 export function startAudioLoop() {
-	audioUpdateLoop();
+	if (loopActive) return;
+	loopActive = true;
+	AppState.intervals.audioUpdate = requestAnimationFrame(audioUpdateLoop);
 }
 
 export function stopAudioLoop() {
+	loopActive = false;
 	if (AppState.intervals.audioUpdate) {
 		cancelAnimationFrame(AppState.intervals.audioUpdate);
 		AppState.intervals.audioUpdate = null;

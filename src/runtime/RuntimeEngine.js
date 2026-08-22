@@ -483,7 +483,7 @@ export class RuntimeEngine {
 					fx2: null,
 					fx3: null,
 					eq: null,
-					gain: new Tone.Gain(layer.gain || CONSTANTS.DEFAULT_LAYER_GAIN),
+					gain: new Tone.Gain(layer.muted ? 0 : (layer.gain || CONSTANTS.DEFAULT_LAYER_GAIN)),
 					output: new Tone.Gain(1).toDestination()
 				};
 
@@ -492,7 +492,7 @@ export class RuntimeEngine {
 			}
 
 			if (layer.fxNodes.gain) {
-				layer.fxNodes.gain.gain.value = layer.gain;
+				layer.fxNodes.gain.gain.value = layer.muted ? 0 : layer.gain;
 			}
 
 			await FXManager.restoreChain(layer, { isLayer: true });
@@ -953,6 +953,7 @@ export class RuntimeEngine {
 		});
 
 		const { DistanceSequencer } = await import('../core/audio/DistanceSequencer.js');
+		AppState.data.sequencers.forEach(seq => seq.dispose());
 		AppState.data.sequencers = sequencers.map(data => new DistanceSequencer(data));
 		AppState.rebuildIndexes();
 	}

@@ -1,7 +1,6 @@
 import { CONSTANTS } from '../constants.js';
 import { Selectors } from '../state/selectors.js';
 import { isCircularPath } from '../utils/math.js';
-import { calculateSilencingGain } from './audioUtils.js';
 
 let context = null;
 
@@ -10,14 +9,13 @@ export function setContext(ctx) {
 }
 
 class EchoManagerClass {
-	update(sound, userPos) {
+	update(sound, userPos, silencingGain = 1) {
 		if (!sound.params.reflections?.enabled) {
 			this.cleanup(sound);
 			return;
 		}
 
 		const soundAreaGain = context.Geometry.isPointInShape(userPos, sound) ? context.calcGain(userPos, sound) : 0;
-		const silencingGain = calculateSilencingGain(userPos);
 
 		if (!sound.echoNodes) sound.echoNodes = new Map();
 
@@ -71,8 +69,6 @@ class EchoManagerClass {
 					feedback: path.params.echo.reflectivity,
 					wet: 1.0
 				});
-				const gainNode = new Tone.Gain(gainValue);
-
 				let panner = null;
 				let ambisonicSource = null;
 

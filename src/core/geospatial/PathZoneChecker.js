@@ -96,6 +96,10 @@ export const PathZoneChecker = {
 	isTargetInZone(userPos, config) {
 		const target = this.resolveTarget(config);
 		if (!target) return false;
+		return this.isResolvedTargetInZone(userPos, config, target);
+	},
+
+	isResolvedTargetInZone(userPos, config, target) {
 		if (config.type === 'sound') return Geometry.isPointInShape(userPos, target);
 		return this.isPointInZone(userPos, target, config.zone || 'interior');
 	},
@@ -117,12 +121,16 @@ export const PathZoneChecker = {
 	},
 
 	checkActivePaths(userPos, activePaths) {
-		if (!this.hasResolvableTargets(activePaths)) return true;
+		if (!activePaths || activePaths.length === 0) return true;
 
+		let resolvedAny = false;
 		for (const config of activePaths) {
-			if (this.isTargetInZone(userPos, config)) return true;
+			const target = this.resolveTarget(config);
+			if (!target) continue;
+			resolvedAny = true;
+			if (this.isResolvedTargetInZone(userPos, config, target)) return true;
 		}
 
-		return false;
+		return resolvedAny ? false : true;
 	}
 };

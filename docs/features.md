@@ -277,7 +277,9 @@ Three collapsible effect slots. Effects process in series.
 | **Feedback Delay** | Echo/delay with feedback |
 | **Phaser** | Phase-shifting effect |
 | **Ping Pong Delay** | Stereo bouncing delay |
-| **Reverb** | Algorithmic reverb |
+| **Reverb (convolution)** | Convolution reverb. Costs CPU in proportion to its Decay length, whether or not anything is sounding |
+| **Freeverb** | Dense algorithmic reverb. Far cheaper than the convolution reverb, and its cost does not grow with tail length |
+| **JC Reverb** | Sparser, more metallic algorithmic reverb |
 | **Tremolo** | Volume modulation |
 
 #### Common Effect Parameter
@@ -343,12 +345,31 @@ Three collapsible effect slots. Effects process in series.
 | **Time** | Delay time (s) |
 | **Feedback** | Repeat amount |
 
-**Reverb:**
+**Reverb (convolution):**
 
 | Parameter | Description |
 |-----------|-------------|
 | **Decay** | Reverb tail length (s) |
 | **Pre-Delay** | Initial delay before reverb (s) |
+
+A sequencer track can be assigned to a user layer from the **Layers** tab of
+its Synth Settings. Every track on the same layer shares that layer's one
+effect chain, so a reverb common to several tracks costs the same as one.
+Layer mute, solo and gain then apply to those tracks as they do to sound
+elements.
+
+**Freeverb:**
+
+| Parameter | Description |
+|-----------|-------------|
+| **Room Size** | Tail length, as feedback rather than seconds |
+| **Dampening** | How quickly high frequencies decay (Hz) |
+
+**JC Reverb:**
+
+| Parameter | Description |
+|-----------|-------------|
+| **Room Size** | Tail length, as feedback rather than seconds |
 
 **Tremolo:**
 

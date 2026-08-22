@@ -58,7 +58,7 @@ export const Selectors = {
 	getSimulationSpeedScale: () => AppState.simulation.speedScale,
 	getSimulationVariability: () => AppState.simulation.speedVariability,
 	getSimulationCurrentSpeed: () => AppState.simulation.animationState.currentSpeedMs
-		|| (AppState.simulation.speedKmh * 1000) / 3600 * AppState.simulation.speedScale,
+		?? (AppState.simulation.speedKmh * 1000) / 3600 * AppState.simulation.speedScale,
 	getUserAttachedPathId: () => AppState.simulation.userAttachedPathId,
 
 	getWorkspaceId: () => AppState.workspace.id,

@@ -2510,7 +2510,6 @@ label.layer-item span {
 
 .userIcon.geolocation-status-searching {
 	background-color: var(--color-accent-orange);
-	animation: pulse-search 2s infinite;
 	transition: background-color 0.5s ease;
 }
 
@@ -2779,21 +2778,6 @@ input:checked+.slider:before {
 	border-radius: var(--border-radius);
 	color: var(--color-text-muted);
 	line-height: 1.4;
-}
-
-/* Pulsing animation for searching state */
-@keyframes pulse-search {
-	0% {
-		background-color: var(--color-accent-orange);
-	}
-
-	50% {
-		background-color: var(--color-accent-orange);
-	}
-
-	100% {
-		background-color: var(--color-accent-orange);
-	}
 }
 
 /* ========================================

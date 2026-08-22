@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-08-22
+
+### Added
+
+- Freeverb and JC Reverb effects, far cheaper than the convolution reverb
+- Sequencer tracks can be assigned to a user layer, sharing its effect chain
+
+### Changed
+
+- Tone.js and resonance-audio pinned to fixed versions
+- The audio loop now sleeps when there is nothing to update
+- Layer effects disconnect once the layer has been silent for longer than its tail
+- Sequencer track effects disconnect once the track has been silent for longer than its tail
+
+### Fixed
+
+- Duplicate audio loops starting on tab return and on assigning a movement path
+- Sequencer speed scale loading outside its allowed range
+- A sequencer sending UI updates while outside its area
+- Sequencer synths staying in the audio graph once a track had played
+- Clearing all elements leaving sequencer synths behind
+- A layer saved muted loading unmuted
+
 ## 2026-08-21
 
 ### Added

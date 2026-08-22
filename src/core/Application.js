@@ -2071,6 +2071,7 @@ appContext.initialize({
 	},
 	audioFunctions: {
 		updateAudio,
+		startAudioLoop,
 		resetAreaTracking,
 		attachDragHandlers,
 		destroySound,
@@ -2329,6 +2330,7 @@ appContext.setDependency('audioFunctions.refreshSequencersList', () => sequencer
 appContext.setDependency('soundFunctions.showSequencerPanel', (point, sequencer) => sequencerUIManager.showSequencerPanel(point, sequencer));
 
 appContext.setDependency('destroySound', destroySound);
+appContext.setDependency('reconnectSoundToLayers', reconnectSoundToLayers);
 appContext.setDependency('startLoopedPlayback', startLoopedPlayback);
 appContext.setDependency('stopLoopedPlayback', stopLoopedPlayback);
 appContext.setDependency('createFullSoundInstance', (data, options) => createFullSoundInstance(data, options));
@@ -2527,6 +2529,8 @@ if (mapStyleSelect) mapStyleSelect.value = mapManager.getCurrentStyle();
 GeolocationManager.init();
 DeviceOrientationManager.init();
 AppState.subscribe((action) => {
+	startAudioLoop();
+
 	switch (action.type) {
 		case 'SOUND_NOTE_SELECTED':
 		case 'SOUND_NOTE_DESELECTED': {
@@ -2655,8 +2659,8 @@ AppState.subscribe((action) => {
 		}
 
 		case 'AUDIO_ECHO_UPDATE_REQUESTED': {
-			const { sound, userPos } = action.payload;
-			EchoManager.update(sound, userPos);
+			const { sound, userPos, silencingGain } = action.payload;
+			EchoManager.update(sound, userPos, silencingGain);
 			break;
 		}
 

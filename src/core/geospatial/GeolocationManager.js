@@ -379,6 +379,7 @@ class GeolocationManagerClass {
 			}
 
 			this.context?.audioFunctions.updateAudio?.(this.userMarker.getLatLng());
+			this.context?.audioFunctions.startAudioLoop?.();
 			this.context?.audioFunctions.resetAreaTracking?.(this.userMarker.getLatLng());
 		}
 	}
@@ -477,6 +478,7 @@ class GeolocationManagerClass {
 				}
 				this.userMarker.dragging.enable();
 				this.context?.audioFunctions.updateAudio?.(this.userMarker.getLatLng());
+				this.context?.audioFunctions.startAudioLoop?.();
 			}
 		}
 

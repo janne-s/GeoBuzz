@@ -723,6 +723,7 @@ export class SequencerUIManager {
 			AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
 		});
 		menu.addEventListener('change', () => {
+			track.layers = [...(liveSoundObj.layers || [])];
 			AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
 		});
 
@@ -736,7 +737,8 @@ export class SequencerUIManager {
 			{ id: 'patches', label: 'Patch' },
 			{ id: 'keyboard', label: 'Keys' },
 			{ id: 'fx', label: 'FX' },
-			{ id: 'eq', label: 'EQ' }
+			{ id: 'eq', label: 'EQ' },
+			{ id: 'layers', label: 'Layers' }
 		];
 
 		if (!hasKeyboard(liveSoundObj)) {

@@ -486,11 +486,28 @@ export const FX_REGISTRY = {
 	},
 
 	Reverb: {
-		label: "Reverb",
+		label: "Reverb (convolution)",
 		parameters: ['fx_decay', 'fx_preDelay'],
 		factory: (params) => new Tone.Reverb({
 			decay: params.decay || 1.5,
 			preDelay: params.preDelay || 0.01
+		})
+	},
+
+	Freeverb: {
+		label: "Freeverb",
+		parameters: ['fx_roomSize', 'fx_dampening'],
+		factory: (params) => new Tone.Freeverb({
+			roomSize: params.roomSize !== undefined ? params.roomSize : 0.7,
+			dampening: params.dampening || 3000
+		})
+	},
+
+	JCReverb: {
+		label: "JC Reverb",
+		parameters: ['fx_roomSize'],
+		factory: (params) => new Tone.JCReverb({
+			roomSize: params.roomSize !== undefined ? params.roomSize : 0.5
 		})
 	},
 

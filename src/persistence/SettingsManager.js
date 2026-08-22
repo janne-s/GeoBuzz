@@ -98,7 +98,8 @@ export class SettingsManager {
 					offsetSteps: track.offsetSteps,
 					offset: track.offset,
 					muted: track.muted,
-					soloed: track.soloed
+					soloed: track.soloed,
+					layers: track.layers || []
 				}))
 			}))
 		};
@@ -387,9 +388,6 @@ export class SettingsManager {
 		for (const layer of this.context.LayerManager.userLayers) {
 			this.context.LayerManager._userLayersMap.set(layer.id, layer);
 			this.context.audioFunctions.createLayerFXNodes(layer);
-			if (layer.fxNodes.gain) {
-				layer.fxNodes.gain.gain.value = layer.gain;
-			}
 
 			await this.context.FXManager.restoreChain(layer, { isLayer: true });
 
@@ -398,6 +396,7 @@ export class SettingsManager {
 			}
 		}
 
+		this.context.LayerManager.applyLayerGains();
 		this.context.LayerManager.refreshUserLayersUI();
 	}
 
@@ -683,6 +682,8 @@ export class SettingsManager {
 		});
 
 		this.context.Selectors.getPaths().length = 0;
+
+		this.context.Selectors.getSequencers().forEach(seq => seq.dispose());
 		this.context.Selectors.getSequencers().length = 0;
 		this.context.AppState.rebuildIndexes();
 		this.context.AppState.drawing.pathCount = 0;
@@ -690,6 +691,7 @@ export class SettingsManager {
 		this.context.audioFunctions.refreshSequencersList();
 
 		this.context.LayerManager.userLayers.forEach(layer => {
+			this.context.LayerManager._wakeLayer(layer);
 			if (layer.fxNodes) {
 				Object.values(layer.fxNodes).forEach(node => {
 					if (node?.dispose) node.dispose();
@@ -831,14 +833,13 @@ export class SettingsManager {
 			this.context.LayerManager.userLayers.push(newLayer);
 			this.context.LayerManager._userLayersMap.set(newLayer.id, newLayer);
 			this.context.audioFunctions.createLayerFXNodes(newLayer);
-			if (newLayer.fxNodes?.gain) {
-				newLayer.fxNodes.gain.gain.value = newLayer.gain;
-			}
 			await this.context.FXManager.restoreChain(newLayer, { isLayer: true });
 			if (newLayer.eq?.enabled) {
 				this.context.audioFunctions.createLayerEQNode(newLayer);
 			}
 		}
+
+		this.context.LayerManager.applyLayerGains();
 
 		const allIds = this.context.LayerManager.userLayers.map(l => parseInt(l.id.replace('user_', '')));
 		const maxId = Math.max(...allIds);

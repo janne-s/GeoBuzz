@@ -166,6 +166,8 @@ function generateFXParams() {
 		fx_feedback: { label: 'Feedback', type: 'range', min: 0, max: 0.95, step: 0.01, defaultValue: 0.5, unit: '', category: 'effect', serialize: true, ui: true },
 		fx_decay: { label: 'Decay', type: 'range', min: 0.1, max: 10, step: 0.1, defaultValue: 1.5, unit: ' s', category: 'effect', serialize: true, ui: true },
 		fx_preDelay: { label: 'Pre-Delay', type: 'range', min: 0, max: 0.1, step: 0.001, defaultValue: 0.01, unit: ' s', category: 'effect', serialize: true, ui: true },
+		fx_roomSize: { label: 'Room Size', type: 'range', min: 0, max: 0.95, step: 0.01, defaultValue: 0.7, category: 'effect', serialize: true, ui: true },
+		fx_dampening: { label: 'Dampening', type: 'range', min: 200, max: 12000, step: 100, defaultValue: 3000, unit: ' Hz', category: 'effect', serialize: true, ui: true },
 		fx_mix: { label: 'Mix', type: 'range', min: 0, max: 100, step: 1, defaultValue: 50, unit: ' %', category: 'effect', serialize: true, ui: true }
 	};
 }

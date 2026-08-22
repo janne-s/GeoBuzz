@@ -3,6 +3,7 @@ import { AppState } from '../core/state/StateManager.js';
 import { Selectors } from '../core/state/selectors.js';
 import { deepClone } from '../core/utils/math.js';
 import { DEFAULT_FX_STRUCTURE, DEFAULT_EQ_STRUCTURE } from '../config/defaults.js';
+import { fxTailSeconds } from '../core/audio/FxTail.js';
 
 let context = null;
 
@@ -21,6 +22,7 @@ class LayerManagerClass {
 		this.userLayers = [];
 		this.nextLayerId = 1;
 		this._silencingGain = 1;
+		this._layerActivity = new Map();
 	}
 
 	getUserLayer(id) {
@@ -163,6 +165,11 @@ class LayerManagerClass {
 
 	removeUserLayer(layerId) {
 		const removedLayer = this.getUserLayer(layerId);
+		if (removedLayer?._bypassTimeout) {
+			clearTimeout(removedLayer._bypassTimeout);
+			removedLayer._bypassTimeout = null;
+		}
+		this._layerActivity.delete(layerId);
 
 		const layerMenu = Selectors.getMenus().find(menuData => menuData.menu.dataset?.layerId === layerId);
 		if (layerMenu) {
@@ -214,6 +221,49 @@ class LayerManagerClass {
 		}
 	}
 
+	beginActivityFrame() {
+		this._layerActivity.clear();
+	}
+
+	reportActivity(layerIds, gain) {
+		if (!(gain > 0) || !layerIds || layerIds.length === 0) return;
+		for (let i = 0; i < layerIds.length; i++) {
+			const id = layerIds[i];
+			this._layerActivity.set(id, (this._layerActivity.get(id) || 0) + gain);
+		}
+	}
+
+	commitActivityFrame() {
+		this.userLayers.forEach(layer => {
+			if ((this._layerActivity.get(layer.id) || 0) > 0) {
+				this._wakeLayer(layer);
+			} else {
+				this._scheduleLayerBypass(layer);
+			}
+		});
+	}
+
+	_wakeLayer(layer) {
+		if (layer._bypassTimeout) {
+			clearTimeout(layer._bypassTimeout);
+			layer._bypassTimeout = null;
+		}
+		if (layer._bypassed && layer.fxNodes && !layer.fxNodes.output.disposed) {
+			layer.fxNodes.output.toDestination();
+			layer._bypassed = false;
+		}
+	}
+
+	_scheduleLayerBypass(layer) {
+		if (layer._bypassed || layer._bypassTimeout || !layer.fxNodes) return;
+		layer._bypassTimeout = setTimeout(() => {
+			layer._bypassTimeout = null;
+			if (!layer.fxNodes || layer.fxNodes.output.disposed) return;
+			layer.fxNodes.output.disconnect();
+			layer._bypassed = true;
+		}, fxTailSeconds(layer.fx) * 1000);
+	}
+
 	applyLayerGains() {
 		const anySoloed = this.userLayers.some(l => l.soloed);
 		this.userLayers.forEach(l => {
@@ -230,6 +280,7 @@ class LayerManagerClass {
 	}
 
 	applyLayerStateChange() {
+		this.userLayers.forEach(layer => this._wakeLayer(layer));
 		this.applyLayerGains();
 
 		Selectors.getSounds().forEach(sound => {
@@ -237,6 +288,8 @@ class LayerManagerClass {
 				context.reconnectSoundToLayers(sound);
 			}
 		});
+
+		Selectors.getSequencers().forEach(seq => seq.reconnectTracksToLayers());
 
 		this.refreshUserLayersUI();
 		this.updateAllElements();

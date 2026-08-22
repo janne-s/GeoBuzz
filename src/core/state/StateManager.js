@@ -9,6 +9,7 @@ export class StateManager {
 		};
 
 		this._soundsMap = new Map();
+		this._soundsByPersistentId = new Map();
 		this._pathsMap = new Map();
 		this._sequencersMap = new Map();
 		this._subscribers = [];
@@ -253,6 +254,7 @@ export class StateManager {
 			case 'SIMULATION_STOPPED':
 				this.simulation.isActive = false;
 				this.simulation.isPlacingTarget = false;
+				this.simulation.animationState.currentSpeedMs = 0;
 				break;
 
 			case 'SIMULATION_PLACEMENT_STARTED':
@@ -290,6 +292,7 @@ export class StateManager {
 			case 'SOUND_ADDED':
 				this.data.sounds.push(action.payload.sound);
 				this._soundsMap.set(action.payload.sound.id, action.payload.sound);
+				this._indexPersistentId(action.payload.sound);
 				break;
 
 			case 'SOUND_REMOVED':
@@ -298,6 +301,7 @@ export class StateManager {
 					const idx = this.data.sounds.indexOf(removedSound);
 					if (idx !== -1) this.data.sounds.splice(idx, 1);
 					this._soundsMap.delete(action.payload.sound.id);
+					if (removedSound.persistentId) this._soundsByPersistentId.delete(removedSound.persistentId);
 				}
 				break;
 
@@ -421,8 +425,19 @@ export class StateManager {
 		return this._soundsMap.get(id);
 	}
 
+	_indexPersistentId(sound) {
+		if (sound?.persistentId) this._soundsByPersistentId.set(sound.persistentId, sound);
+	}
+
 	getSoundByPersistentId(persistentId) {
-		return this.data.sounds.find(s => s.persistentId === persistentId);
+		const cached = this._soundsByPersistentId.get(persistentId);
+		if (cached && cached.persistentId === persistentId && this._soundsMap.get(cached.id) === cached) {
+			return cached;
+		}
+		const found = this.data.sounds.find(s => s.persistentId === persistentId);
+		if (found) this._indexPersistentId(found);
+		else this._soundsByPersistentId.delete(persistentId);
+		return found;
 	}
 
 	getPath(id) {
@@ -437,7 +452,11 @@ export class StateManager {
 		this._soundsMap.clear();
 		this._pathsMap.clear();
 		this._sequencersMap.clear();
-		this.data.sounds.forEach(s => this._soundsMap.set(s.id, s));
+		this._soundsByPersistentId.clear();
+		this.data.sounds.forEach(s => {
+			this._soundsMap.set(s.id, s);
+			this._indexPersistentId(s);
+		});
 		this.data.controlPaths.forEach(p => this._pathsMap.set(p.id, p));
 		this.data.sequencers.forEach(seq => this._sequencersMap.set(seq.id, seq));
 	}

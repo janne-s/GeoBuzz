@@ -10,6 +10,8 @@ import { generateLFOWaveform } from '../../config/parameterRegistry.js';
 import { GpsInstabilityTracker } from '../geospatial/GpsInstabilityTracker.js';
 import { applySoundModulationPatches } from './SoundModulation.js';
 import { applyModShaping } from './ModShaping.js';
+import { fxTailSeconds } from './FxTail.js';
+import { LayerManager } from '../../layers/LayerManager.js';
 
 let context = null;
 let stateSubscriptionInitialized = false;
@@ -55,7 +57,10 @@ export class DistanceSequencer {
 		this.enabled = options.enabled !== undefined ? options.enabled : true;
 		this.numSteps = options.numSteps || CONSTANTS.SEQUENCER_DEFAULT_STEPS;
 		this.stepLength = options.stepLength || CONSTANTS.SEQUENCER_DEFAULT_LENGTH;
-		this.speedScale = options.speedScale || CONSTANTS.SEQUENCER_SPEED_SCALE_MIN;
+		this.speedScale = Math.max(
+			CONSTANTS.SEQUENCER_SPEED_SCALE_MIN,
+			Math.min(CONSTANTS.SEQUENCER_SPEED_SCALE_MAX, options.speedScale || CONSTANTS.SEQUENCER_SPEED_SCALE_MIN)
+		);
 		this.speedGateMin = options.speedGateMin !== undefined ? options.speedGateMin : CONSTANTS.SEQUENCER_SPEED_THRESHOLD;
 		this.speedGateMax = options.speedGateMax !== undefined ? options.speedGateMax : CONSTANTS.SEQUENCER_SPEED_GATE_MAX;
 		this.speedGateHold = options.speedGateHold !== undefined ? options.speedGateHold : CONSTANTS.SEQUENCER_SPEED_GATE_HOLD_DEFAULT;
@@ -219,7 +224,7 @@ export class DistanceSequencer {
 			this._releaseAllNotes();
 		}
 		this._updateSceneChangePaths(userPos);
-		this.dispatchEvent('stateChange');
+		this._dispatchStateChangeIfChanged();
 
 		if (!this.insideArea) return;
 
@@ -316,13 +321,20 @@ export class DistanceSequencer {
 					: (expectedStep - track.currentStep + trackSteps) % trackSteps;
 				track._lastAbsoluteStep = absoluteStepCount;
 				if (pending > 0) {
-					this._scheduleTrackSteps(track, pending, elapsed);
+					this._scheduleTrackSteps(track, pending, elapsed, trackSteps);
 				}
 			}
 		});
 
-		this.dispatchEvent('stateChange');
+		this._dispatchStateChangeIfChanged();
 		this.lastPosition = currentPos;
+	}
+
+	_dispatchStateChangeIfChanged() {
+		const signature = `${this.insideArea}|${this.currentStep}|${this.activeSceneIndex}|${Math.round(this.totalDistance * 10)}`;
+		if (signature === this._stateSignature) return;
+		this._stateSignature = signature;
+		this.dispatchEvent('stateChange');
 	}
 
 	calculateSmoothedDistance() {
@@ -351,6 +363,7 @@ export class DistanceSequencer {
 				type: track.synthType,
 				role: 'sound',
 				params: params,
+				layers: [...(track.layers || [])],
 				color: '#8e44ad'
 			}, { onMap: false });
 
@@ -426,6 +439,66 @@ export class DistanceSequencer {
 		}
 	}
 
+	_trackTailSeconds(track) {
+		const soundObj = this._synthPool.get(track.id);
+		const release = soundObj?.params?.release ?? 0.1;
+		return fxTailSeconds(soundObj?.params?.fx, release);
+	}
+
+	_wakeTrackAudio(track, soundObj) {
+		if (track._bypassTimeout) {
+			clearTimeout(track._bypassTimeout);
+			track._bypassTimeout = null;
+		}
+		if (!track._audioBypassed || !soundObj?.gain || soundObj.gain.disposed) return;
+
+		track._audioBypassed = false;
+		const now = Tone.now();
+		soundObj.gain.gain.cancelScheduledValues(now);
+		soundObj.gain.gain.setValueAtTime(0, now);
+
+		soundObj.layers = [...(track.layers || [])];
+		soundObj.layers.forEach(layerId => {
+			const layer = LayerManager.getUserLayer(layerId);
+			if (layer) LayerManager._wakeLayer(layer);
+		});
+
+		if (context.reconnectSoundToLayers) {
+			context.reconnectSoundToLayers(soundObj);
+		} else {
+			soundObj.gain.toDestination();
+		}
+		soundObj.gain.gain.linearRampToValueAtTime(
+			this._trackGainValue(soundObj),
+			now + CONSTANTS.FX_BYPASS_RAMP_TIME
+		);
+	}
+
+	_scheduleTrackBypass(track) {
+		if (track._audioBypassed || track._bypassTimeout) return;
+		if (!this._synthPool.has(track.id)) return;
+
+		track._bypassTimeout = setTimeout(() => {
+			track._bypassTimeout = null;
+			if (this._activeNotes.get(track.id)?.size > 0) return;
+			if (track._pendingSteps && track._pendingSteps.length > 0) return;
+
+			const soundObj = this._synthPool.get(track.id);
+			if (!soundObj?.gain || soundObj.gain.disposed) return;
+
+			soundObj.gain.disconnect();
+			track._audioBypassed = true;
+		}, this._trackTailSeconds(track) * 1000);
+	}
+
+	_clearTrackBypass(track) {
+		if (track._bypassTimeout) {
+			clearTimeout(track._bypassTimeout);
+			track._bypassTimeout = null;
+		}
+		track._audioBypassed = false;
+	}
+
 	advanceTrackStep(track) {
 		const nextStep = track.currentStep + 1;
 		const trackSteps = Math.min(
@@ -454,14 +527,17 @@ export class DistanceSequencer {
 		this.onTrackStepTrigger(track, track.currentStep);
 	}
 
-	_scheduleTrackSteps(track, pending, elapsed) {
+	_scheduleTrackSteps(track, pending, elapsed, trackSteps) {
 		this.advanceTrackStep(track);
 		if (pending < 2) return;
 
+		const capped = Math.min(pending, trackSteps);
+		if (capped < 2) return;
+
 		const now = performance.now();
-		const interval = (elapsed * 1000) / pending;
+		const interval = (elapsed * 1000) / capped;
 		track._pendingSteps = [];
-		for (let i = 1; i < pending; i++) {
+		for (let i = 1; i < capped; i++) {
 			track._pendingSteps.push(now + i * interval);
 		}
 	}
@@ -476,6 +552,18 @@ export class DistanceSequencer {
 				this.advanceTrackStep(track);
 			}
 		});
+	}
+
+	hasPendingWork() {
+		const now = Tone.now();
+		for (let i = 0; i < this.tracks.length; i++) {
+			const track = this.tracks[i];
+			if (track._pendingSteps && track._pendingSteps.length > 0) return true;
+			if (track._releaseUntil && now < track._releaseUntil) return true;
+			const notes = this._activeNotes.get(track.id);
+			if (notes && notes.size > 0) return true;
+		}
+		return false;
 	}
 
 	processModulation() {
@@ -776,7 +864,7 @@ export class DistanceSequencer {
 								finalValue = Math.max(param.minValue, Math.min(param.maxValue, finalValue));
 							}
 							param.value = finalValue;
-						} else {
+						} else if (Math.abs(fxNode[normalizedParam] - finalValue) > CONSTANTS.FX_PROPERTY_WRITE_EPSILON) {
 							fxNode[normalizedParam] = finalValue;
 						}
 					} catch (error) {
@@ -804,6 +892,7 @@ export class DistanceSequencer {
 			activeNotes.forEach(note => this._triggerRelease(track, note));
 			this._activeNotes.delete(track.id);
 		}
+		this._scheduleTrackBypass(track);
 	}
 
 	applyMuteState() {
@@ -927,6 +1016,10 @@ export class DistanceSequencer {
 		}
 
 		this._activeNotes.set(track.id, notesForThisStep);
+
+		if (notesForThisStep.size === 0) {
+			this._scheduleTrackBypass(track);
+		}
 	}
 
 	async _triggerAttackChord(track, midiNotes, velocity) {
@@ -994,6 +1087,7 @@ export class DistanceSequencer {
 		} else if (track.instrumentType === 'synth') {
 			try {
 				const soundObj = await this._getSynth(track);
+				this._wakeTrackAudio(track, soundObj);
 				await handleAttack(soundObj);
 			} catch (error) {
 				console.error("Error preparing synth for sequencer:", error);
@@ -1102,7 +1196,10 @@ export class DistanceSequencer {
 	}
 
 	async _releaseAllNotes() {
-		this.tracks.forEach(track => { track._pendingSteps = null; });
+		this.tracks.forEach(track => {
+			track._pendingSteps = null;
+			this._scheduleTrackBypass(track);
+		});
 		const releasePromises = [];
 		this._activeNotes.forEach((notes, trackId) => {
 			const track = this._tracksMap.get(trackId);
@@ -1148,11 +1245,48 @@ export class DistanceSequencer {
 
 		this._releaseAllNotes();
 
+		this.tracks.forEach(track => this._clearTrackBypass(track));
 		this._synthPool.forEach(soundObj => context.destroySound(soundObj));
 		this._synthPool.clear();
 
 		this.dispatchEvent('stateChange');
 
+	}
+
+	reconnectTracksToLayers() {
+		if (!context.reconnectSoundToLayers) return;
+		this.tracks.forEach(track => {
+			if (track._audioBypassed) return;
+			const soundObj = this._synthPool.get(track.id);
+			if (soundObj?.gain && !soundObj.gain.disposed) {
+				soundObj.layers = [...(track.layers || [])];
+				context.reconnectSoundToLayers(soundObj);
+			}
+		});
+	}
+
+	reportLayerActivity() {
+		const now = Tone.now();
+		this.tracks.forEach(track => {
+			if (!track.layers || track.layers.length === 0) return;
+			if (track._audioBypassed) return;
+
+			const notes = this._activeNotes.get(track.id);
+			const ringing = (notes && notes.size > 0)
+				|| (track._releaseUntil && now < track._releaseUntil)
+				|| !!track._bypassTimeout;
+
+			if (ringing) LayerManager.reportActivity(track.layers, 1);
+		});
+	}
+
+	dispose() {
+		this.stop();
+		this.tracks.forEach(track => this._clearTrackBypass(track));
+		if (this._releaseTimeoutId) {
+			clearTimeout(this._releaseTimeoutId);
+			this._releaseTimeoutId = null;
+		}
 	}
 
 	addTrack(trackData = {}) {
@@ -1205,6 +1339,7 @@ export class DistanceSequencer {
 			offset: trackData.offset !== undefined ? trackData.offset : 0,
 			muted: trackData.muted || false,
 			soloed: trackData.soloed || false,
+			layers: trackData.layers ? [...trackData.layers] : [],
 			currentStep: -1
 		};
 		this.tracks.push(track);
@@ -1235,6 +1370,7 @@ export class DistanceSequencer {
 			instrumentId: source.instrumentId,
 			synthType: source.synthType,
 			synthParams: deepClone(source.synthParams),
+			layers: [...(source.layers || [])],
 			octave: source.octave,
 			numSteps: source.numSteps,
 			sceneSteps,
@@ -1264,6 +1400,7 @@ export class DistanceSequencer {
 
 		const soundObj = this._synthPool.get(trackId);
 		if (soundObj) {
+			this._clearTrackBypass(track);
 			context.destroySound(soundObj);
 			this._synthPool.delete(trackId);
 		}
