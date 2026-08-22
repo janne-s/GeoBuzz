@@ -1098,6 +1098,9 @@ function createLayerFXSlot(layer, slotNum, container, tabBar) {
 }
 
 function appendElementMuteSolo(item, element, onChange) {
+	const actions = document.createElement('div');
+	actions.className = 'element-list-actions';
+
 	const soloBtn = document.createElement('button');
 	soloBtn.className = `solo-btn element-list-btn ${element.soloed ? 'active' : ''}`;
 	soloBtn.textContent = 'S';
@@ -1107,7 +1110,7 @@ function appendElementMuteSolo(item, element, onChange) {
 		element.soloed = !element.soloed;
 		onChange();
 	};
-	item.appendChild(soloBtn);
+	actions.appendChild(soloBtn);
 
 	const muteBtn = document.createElement('button');
 	muteBtn.className = `mute-btn element-list-btn ${element.muted ? 'active' : ''}`;
@@ -1118,7 +1121,9 @@ function appendElementMuteSolo(item, element, onChange) {
 		element.muted = !element.muted;
 		onChange();
 	};
-	item.appendChild(muteBtn);
+	actions.appendChild(muteBtn);
+
+	item.appendChild(actions);
 }
 
 function refreshElementsList() {
