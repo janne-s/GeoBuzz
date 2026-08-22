@@ -295,7 +295,10 @@ export function updateAudio(userPos, now) {
 		let targetGain = (isControlledBySequencer || isInside) ? calcGain(audioPos, s) : 0;
 
 		if (inDeadZone && targetGain > 0) {
-			targetGain = s._lastDeadZoneGain !== undefined ? s._lastDeadZoneGain : 1;
+			if (s._lastDeadZoneGain === undefined) {
+				s._lastDeadZoneGain = targetGain;
+			}
+			targetGain = s._lastDeadZoneGain;
 		} else if (targetGain > 0) {
 			s._lastDeadZoneGain = targetGain;
 		}
