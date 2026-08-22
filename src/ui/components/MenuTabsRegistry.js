@@ -1787,12 +1787,6 @@ export const MenuTabs = {
 						obj.layers = obj.layers.filter(id => id !== layerId);
 					}
 
-					const layer = context.LayerManager.getUserLayer(layerId);
-					if (layer && !layer.fxNodes) {
-
-						context.createLayerFXNodes(layer);
-					}
-
 					if (obj.gain) {
 						context.reconnectSoundToLayers(obj);
 						context.LayerManager.updateAllElements();

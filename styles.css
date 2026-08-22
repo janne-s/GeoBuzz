@@ -755,6 +755,7 @@ input[type="radio"] {
 .element-list-item {
 	display: flex;
 	align-items: center;
+	line-height: 16px;
 	gap: 6px;
 	padding: var(--spacing-sm) var(--spacing-md);
 	margin-bottom: var(--spacing-xxs);
@@ -778,6 +779,16 @@ input[type="radio"] {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.element-list-btn {
+	flex: 0 0 auto;
+	box-sizing: border-box;
+	width: 14px;
+	height: 14px;
+	font-size: var(--font-xs);
+	line-height: 1;
+	border-radius: 2px;
 }
 
 .element-type {

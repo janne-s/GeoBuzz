@@ -25,6 +25,7 @@ import { FXManager } from './audio/FXManager.js';
 import { AudioChainManager, updateFXChain, updateLayerFXChain } from './audio/AudioChainManager.js';
 import { AudioContextManager } from './audio/AudioContextManager.js';
 import { createEffect, createLayerFXNodes } from './audio/FXManager.js';
+import { isPathAudioActive } from './audio/audioUtils.js';
 import { AmbisonicsManager } from './audio/AmbisonicsManager.js';
 import { EchoManager } from './audio/EchoManager.js';
 import { updateAudio, getUserMovementSpeed, startAudioLoop, stopAudioLoop } from './audio/AudioEngine.js';
@@ -461,9 +462,7 @@ const ParameterManager = {
 
 		if (paramKey === 'layerGain') {
 			target.gain = value;
-			if (target.fxNodes && target.fxNodes.gain) {
-				target.fxNodes.gain.gain.rampTo(value, 0.1);
-			}
+			LayerManager.applyLayerGains();
 			return;
 		}
 
@@ -942,7 +941,9 @@ function showFileManagerDialog(soundObj = null, onFileSelected = null) {
 		gain: originalLayer.gain
 	};
 	LayerManager.userLayers.push(newLayer);
+	LayerManager._userLayersMap.set(newLayer.id, newLayer);
 	createLayerFXNodes(newLayer);
+	LayerManager.applyLayerGains();
 	LayerManager.refreshUserLayersUI();
 }
 
@@ -1096,6 +1097,30 @@ function createLayerFXSlot(layer, slotNum, container, tabBar) {
 	return content;
 }
 
+function appendElementMuteSolo(item, element, onChange) {
+	const soloBtn = document.createElement('button');
+	soloBtn.className = `solo-btn element-list-btn ${element.soloed ? 'active' : ''}`;
+	soloBtn.textContent = 'S';
+	soloBtn.title = element.soloed ? 'Unsolo element' : 'Solo element';
+	soloBtn.onclick = (e) => {
+		e.stopPropagation();
+		element.soloed = !element.soloed;
+		onChange();
+	};
+	item.appendChild(soloBtn);
+
+	const muteBtn = document.createElement('button');
+	muteBtn.className = `mute-btn element-list-btn ${element.muted ? 'active' : ''}`;
+	muteBtn.textContent = 'M';
+	muteBtn.title = element.muted ? 'Unmute element' : 'Mute element';
+	muteBtn.onclick = (e) => {
+		e.stopPropagation();
+		element.muted = !element.muted;
+		onChange();
+	};
+	item.appendChild(muteBtn);
+}
+
 function refreshElementsList() {
 	const listContainer = document.getElementById('elementsList');
 	if (!listContainer) return;
@@ -1140,6 +1165,12 @@ function refreshElementsList() {
 		type.textContent = sound.type;
 		item.appendChild(type);
 
+		appendElementMuteSolo(item, sound, () => {
+			refreshElementsList();
+			AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
+			AppState.dispatch({ type: 'SOUND_UPDATED', payload: { sound } });
+		});
+
 		item.onclick = () => {
 			document.getElementById('controlMenu').classList.remove('active');
 			const markerPoint = map.latLngToContainerPoint(sound.marker.getLatLng());
@@ -1169,6 +1200,14 @@ function refreshElementsList() {
 		type.className = 'element-type element-type-path';
 		type.textContent = path.type;
 		item.appendChild(type);
+
+		if (isPathAudioActive(path)) {
+			appendElementMuteSolo(item, path, () => {
+				refreshElementsList();
+				AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
+				AppState.dispatch({ type: 'PATH_UPDATED', payload: { path } });
+			});
+		}
 
 		item.onclick = () => {
 			document.getElementById('controlMenu').classList.remove('active');
@@ -1250,6 +1289,7 @@ function reconnectSoundToLayers(sound) {
 			if (layer) {
 				if (!layer.fxNodes || !layer.fxNodes.input) {
 					createLayerFXNodes(layer);
+					LayerManager.applyLayerGains();
 				}
 				sound.gain.connect(layer.fxNodes.input);
 
@@ -2659,8 +2699,8 @@ AppState.subscribe((action) => {
 		}
 
 		case 'AUDIO_ECHO_UPDATE_REQUESTED': {
-			const { sound, userPos, silencingGain } = action.payload;
-			EchoManager.update(sound, userPos, silencingGain);
+			const { sound, userPos, silencingGain, elementGain } = action.payload;
+			EchoManager.update(sound, userPos, silencingGain, elementGain);
 			break;
 		}
 

@@ -39,6 +39,8 @@ export function createControlPath(type, data = {}, options = {}) {
 		tolerance: data.tolerance || 0,
 		direction: data.direction || 'forward',
 		loop: data.loop !== undefined ? data.loop : true,
+		muted: data.muted || false,
+		soloed: data.soloed || false,
 		visible: true,
 		pathLine: null,
 		pathCircle: null,

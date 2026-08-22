@@ -6,6 +6,7 @@
 
 - Freeverb and JC Reverb effects, far cheaper than the convolution reverb
 - Sequencer tracks can be assigned to a user layer, sharing its effect chain
+- Mute and solo in the Elements list for every element that takes part in audio processing
 
 ### Changed
 
@@ -21,6 +22,9 @@
 - Sequencer synths staying in the audio graph once a track had played
 - Clearing all elements leaving sequencer synths behind
 - A layer saved muted loading unmuted
+- The layer gain slider ignoring mute, solo and silencers
+- A duplicated layer not being assignable to elements
+- A new layer sounding while another layer is soloed
 
 ## 2026-08-21
 

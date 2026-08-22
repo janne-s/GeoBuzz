@@ -58,6 +58,22 @@ export function calcGain(userPos, obj) {
 	return volumeScalar * volume;
 }
 
+export function isPathAudioActive(path) {
+	return !!(path.params.echo?.enabled || path.params.silencer);
+}
+
+export function pathContributes(path, role) {
+	const paths = Selectors.getPaths();
+	const isPeer = role === 'echo'
+		? (p) => !!p.params.echo?.enabled
+		: (p) => !!p.params.silencer;
+
+	for (let i = 0; i < paths.length; i++) {
+		if (paths[i].soloed && isPeer(paths[i])) return !!path.soloed;
+	}
+	return !path.muted;
+}
+
 export function calculateSilencingGain(userPos) {
 	let silencingGain = 1;
 	if (!userPos) return silencingGain;
@@ -65,7 +81,8 @@ export function calculateSilencingGain(userPos) {
 	const paths = Selectors.getPaths();
 	for (let i = 0; i < paths.length; i++) {
 		const path = paths[i];
-		if (path.params.silencer && context.Geometry.isPointInControlPath(userPos, path)) {
+		if (!path.params.silencer || !pathContributes(path, 'silencer')) continue;
+		if (context.Geometry.isPointInControlPath(userPos, path)) {
 			silencingGain = Math.min(silencingGain, 1 - calculatePathGain(userPos, path));
 		}
 	}

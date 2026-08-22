@@ -200,10 +200,14 @@ export function updateAudio(userPos, now) {
 	}
 
 	const sounds = Selectors.getSounds();
+	const anySoundSoloed = sounds.some(sound => sound.soloed);
+
 	for (let i = 0; i < sounds.length; i++) {
 		const s = sounds[i];
 
 		if (!s.isReady) continue;
+
+		const elementGain = anySoundSoloed ? (s.soloed ? 1 : 0) : (s.muted ? 0 : 1);
 
 		if (s.type === "SoundFile" && (!s.synth.loaded || !s.synth.buffer)) {
 			continue;
@@ -241,7 +245,7 @@ export function updateAudio(userPos, now) {
 			if (s.wasInsideArea && s.echoNodes && s.echoNodes.size > 0) {
 				AppState.dispatch({
 					type: 'AUDIO_ECHO_UPDATE_REQUESTED',
-					payload: { sound: s, userPos: audioPos, silencingGain }
+					payload: { sound: s, userPos: audioPos, silencingGain, elementGain }
 				});
 			}
 			s.wasInsideArea = false;
@@ -250,7 +254,7 @@ export function updateAudio(userPos, now) {
 
 		AppState.dispatch({
 			type: 'AUDIO_ECHO_UPDATE_REQUESTED',
-			payload: { sound: s, userPos: audioPos, silencingGain }
+			payload: { sound: s, userPos: audioPos, silencingGain, elementGain }
 		});
 		if (s.echoNodes && s.echoNodes.size > 0) {
 			for (const [pathId, nodeData] of s.echoNodes.entries()) {
@@ -295,6 +299,8 @@ export function updateAudio(userPos, now) {
 		} else if (targetGain > 0) {
 			s._lastDeadZoneGain = targetGain;
 		}
+
+		targetGain *= elementGain;
 
 		const clampedGain = clampGainDelta(targetGain, s.id);
 		const effectiveGain = (clampedGain > 0 ? clampedGain : 0) * silencingGain;

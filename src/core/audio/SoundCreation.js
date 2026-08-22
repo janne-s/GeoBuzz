@@ -37,6 +37,8 @@ export function createSoundObject(baseData = {}) {
 		yHandle: null,
 		labelMarker: null,
 		layers: [],
+		muted: false,
+		soloed: false,
 		synth: null,
 		gain: null,
 		envelopeGain: null,
@@ -452,6 +454,8 @@ export async function loadSound(soundData, options = {}) {
 		color: soundData.color,
 		shapeType: soundData.shapeType || "circle",
 		layers: soundData.layers || [],
+		muted: soundData.muted || false,
+		soloed: soundData.soloed || false,
 		frequencyMode: soundData.frequencyMode || false,
 		lastTouchedParam: soundData.lastTouchedParam || 'pitch',
 		pathRoles: soundData.pathRoles || {

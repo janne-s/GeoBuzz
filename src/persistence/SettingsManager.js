@@ -115,6 +115,8 @@ export class SettingsManager {
 			shapeType: sound.shapeType,
 			maxDistance: sound.maxDistance,
 			layers: sound.layers,
+			muted: sound.muted || false,
+			soloed: sound.soloed || false,
 			frequencyMode: sound.frequencyMode,
 			modulationSources: sound.modulationSources,
 			motion: sound.motion,
@@ -200,6 +202,8 @@ export class SettingsManager {
 			tolerance: path.tolerance || 0,
 			loop: path.loop !== undefined ? path.loop : true,
 			direction: path.direction || 'forward',
+			muted: path.muted || false,
+			soloed: path.soloed || false,
 			params: path.params
 		};
 
@@ -442,6 +446,8 @@ export class SettingsManager {
 				tolerance: p.tolerance,
 				loop: p.loop !== undefined ? p.loop : true,
 				direction: p.direction || 'forward',
+				muted: p.muted || false,
+				soloed: p.soloed || false,
 				params: p.params
 			};
 
@@ -526,6 +532,8 @@ export class SettingsManager {
 			if (!sound) return;
 
 			sound.layers = s.layers || [];
+			sound.muted = s.muted || false;
+			sound.soloed = s.soloed || false;
 			sound.frequencyMode = s.frequencyMode || false;
 			sound.pathRoles = s.pathRoles || { movement: null, zones: [], modulation: [], soundModulation: [] };
 			sound.motion = s.motion || null;

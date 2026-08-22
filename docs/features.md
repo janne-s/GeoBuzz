@@ -352,6 +352,24 @@ Three collapsible effect slots. Effects process in series.
 | **Decay** | Reverb tail length (s) |
 | **Pre-Delay** | Initial delay before reverb (s) |
 
+The side menu's Elements list shows **M** and **S** buttons on every element
+that takes part in audio processing: sound elements, and control paths with
+echo or a silencer enabled. Paths that only shape movement get no buttons.
+
+- **Sound element** — mute silences its whole output, echo reflections
+  included, which layer mute does not reach. A muted sound stops rather than
+  playing silently, the same as inside a silencer, so it restarts when
+  unmuted.
+- **Echo path** — mute removes its reflections from every sound that includes
+  it.
+- **Silencer path** — mute takes the silencer out of the mix, so it stops
+  attenuating. Muting an element always means "this element contributes
+  nothing", which for a silencer means no attenuation.
+
+Solo is scoped to the element's own kind: soloing a sound silences the other
+sounds, soloing an echo path silences the other echo paths, and neither
+affects the other kind.
+
 A sequencer track can be assigned to a user layer from the **Layers** tab of
 its Synth Settings. Every track on the same layer shares that layer's one
 effect chain, so a reverb common to several tracks costs the same as one.

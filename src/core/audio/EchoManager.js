@@ -1,6 +1,7 @@
 import { CONSTANTS } from '../constants.js';
 import { Selectors } from '../state/selectors.js';
 import { isCircularPath } from '../utils/math.js';
+import { pathContributes } from './audioUtils.js';
 
 let context = null;
 
@@ -9,7 +10,7 @@ export function setContext(ctx) {
 }
 
 class EchoManagerClass {
-	update(sound, userPos, silencingGain = 1) {
+	update(sound, userPos, silencingGain = 1, elementGain = 1) {
 		if (!sound.params.reflections?.enabled) {
 			this.cleanup(sound);
 			return;
@@ -58,7 +59,8 @@ class EchoManagerClass {
 			const distanceAttenuation = Math.max(0, 1 - (totalDist / maxAudibleDistance));
 			const echoLevel = path.params.echo.level !== undefined ? path.params.echo.level : 0.1;
 
-			const gainValue = distanceAttenuation * echoLevel * soundAreaGain * silencingGain;
+			const pathGain = pathContributes(path, 'echo') ? 1 : 0;
+			const gainValue = distanceAttenuation * echoLevel * soundAreaGain * silencingGain * elementGain * pathGain;
 
 			let nodeData = sound.echoNodes.get(path.id);
 
