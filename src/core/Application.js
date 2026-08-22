@@ -637,6 +637,8 @@ async function getRouteAndAnimate() {
 }
 
 function updateSoundMarkerPosition(sound, newPosition) {
+	if (sound.userLat === newPosition.lat && sound.userLng === newPosition.lng) return;
+
 	const oldPosition = sound.shapeType === 'polygon' ? sound.marker.getLatLng() : null;
 
 	sound.marker.setLatLng(newPosition);

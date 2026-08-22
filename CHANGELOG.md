@@ -14,6 +14,7 @@
 - The audio loop now sleeps when there is nothing to update
 - Layer effects disconnect once the layer has been silent for longer than its tail
 - Sequencer track effects disconnect once the track has been silent for longer than its tail
+- The selection pulse animates opacity instead of box-shadow, so it no longer repaints every frame
 
 ### Fixed
 
@@ -25,6 +26,9 @@
 - The layer gain slider ignoring mute, solo and silencers
 - A duplicated layer not being assignable to elements
 - A new layer sounding while another layer is soloed
+- Go and Cancel dropping onto separate rows in the simulation panel
+- The direction readout searching the document and redrawing on every frame
+- Sound markers on a movement path redrawing when they had not moved
 
 ## 2026-08-21
 

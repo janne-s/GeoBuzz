@@ -352,13 +352,22 @@ export function updateSoundOnCirclePath(sound, path, speed, elapsed, options = {
 	updateMarkerPosition(sound, newPosition);
 }
 
+let lastDirectionUI = { heading: null, slider: null, arrow: null, degreeDisplay: null };
+
 export function updateDirectionUI(newHeading) {
-	const directionSlider = document.querySelector('.direction-slider');
-	if (directionSlider) {
-		directionSlider.value = newHeading;
-		const arrow = document.querySelector('.direction-arrow');
-		const degreeDisplay = document.querySelector('.degree-display');
-		if (arrow) arrow.style.transform = `rotate(${newHeading - 45}deg)`;
-		if (degreeDisplay) degreeDisplay.textContent = `${newHeading}°`;
+	if (newHeading === lastDirectionUI.heading && lastDirectionUI.slider?.isConnected) return;
+
+	if (!lastDirectionUI.slider?.isConnected) {
+		lastDirectionUI.slider = document.querySelector('.direction-slider');
+		lastDirectionUI.arrow = document.querySelector('.direction-arrow');
+		lastDirectionUI.degreeDisplay = document.querySelector('.degree-display');
 	}
+
+	const { slider, arrow, degreeDisplay } = lastDirectionUI;
+	if (!slider) return;
+
+	lastDirectionUI.heading = newHeading;
+	slider.value = newHeading;
+	if (arrow) arrow.style.transform = `rotate(${newHeading - 45}deg)`;
+	if (degreeDisplay) degreeDisplay.textContent = `${newHeading}°`;
 }
