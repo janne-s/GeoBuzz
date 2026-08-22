@@ -32,7 +32,7 @@ export function showLayerFXDialog(layer) {
 
 	const { header, cleanup: headerCleanup } = createDraggableHeader(
 		menu,
-		`Layer FX: ${layer.name}`,
+		'Layer Settings',
 		createElementNavigationDropdown(layer, 'layer')
 	);
 	menu.appendChild(header);
