@@ -32,13 +32,6 @@ export class AudioNodeManager {
 			type: params.filterType || "lowpass",
 			Q: params.resonance || 1
 		});
-		const eq = new Tone.EQ3({
-			low: params.eq?.low || 0,
-			mid: params.eq?.mid || 0,
-			high: params.eq?.high || 0,
-			lowFrequency: params.eq?.lowFrequency || 400,
-			highFrequency: params.eq?.highFrequency || 2500
-		});
 
 		let synth;
 		let loopFadeGain = null;
@@ -73,7 +66,7 @@ export class AudioNodeManager {
 			lastNodeInChain.connect(envelopeGain);
 			envelopeGain.connect(masterGain);
 
-			return { synth, gain: masterGain, envelopeGain, filter, panner, eq, fx1: null, fx2: null, fx3: null, loopFadeGain };
+			return { synth, gain: masterGain, envelopeGain, filter, panner, eq: null, fx1: null, fx2: null, fx3: null, loopFadeGain };
 
 		} catch (error) {
 			console.error('Error creating audio chain:', error);
@@ -123,14 +116,6 @@ export class AudioNodeManager {
 		envelopeGain.connect(masterGain);
 
 		return { synth, gain: masterGain, envelopeGain, filter, panner, eq, fx1: null, fx2: null, fx3: null };
-	}
-
-	static connectChain(nodes) {
-		for (let i = 0; i < nodes.length - 1; i++) {
-			if (nodes[i] && nodes[i + 1]) {
-				nodes[i].connect(nodes[i + 1]);
-			}
-		}
 	}
 
 	static disposeNodes(nodes) {

@@ -200,6 +200,10 @@ export async function changeSoundType(obj, newType) {
 		obj.fx1 = obj.fx2 = obj.fx3 = null;
 
 		await FXManager.restoreChain(obj, { isLayer: false });
+		if (obj.params.eq?.enabled) {
+			AudioNodeManager.ensureEQNode(obj);
+			AudioNodeManager.updateFXChain(obj);
+		}
 
 		obj.label = AppState.getAutoName(newType, obj.role);
 

@@ -1,7 +1,7 @@
 import { LayerManager } from '../../layers/LayerManager.js';
 
 export const AudioChainManager = {
-	connect(nodes, destination) {
+	connect(nodes) {
 		for (let i = 0; i < nodes.length - 1; i++) {
 			if (nodes[i] && nodes[i + 1]) {
 				try {

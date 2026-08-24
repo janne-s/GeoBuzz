@@ -474,7 +474,7 @@ const ParameterManager = {
 				updateLayerFXChain(target);
 			} else {
 				target.params.eq.enabled = value;
-				AudioNodeManager.ensureEQNode(target);
+				if (value) AudioNodeManager.ensureEQNode(target);
 				updateFXChain(target);
 			}
 			return;
@@ -1410,8 +1410,7 @@ async function _upgradeSynthToPolyphonic(soundObj, requiredPolyphony) {
 	}
 	await waitForNextFrame();
 
-	soundObj.params.polyphony = requiredPolyphony;
-	const newSynth = synthDef.factory(soundObj.params);
+	const newSynth = synthDef.factory({ ...soundObj.params, polyphony: requiredPolyphony });
 
 	const connectionTarget = soundObj.loopFadeGain || soundObj.filter;
 	oldSynth.disconnect();

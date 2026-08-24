@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-08-24
+
+### Changed
+
+- The three-band EQ is allocated only when it is enabled
+- Audio output uses a playback-oriented buffer instead of the browser's smallest
+
+### Fixed
+
+- Playing a chord no longer overwrites a sequencer track's saved polyphony setting
+- Notes could stick on permanently when moving quickly across sequencer areas
+- Removing a sequencer track left its sounding notes playing
+
 ## 2026-08-22
 
 ### Added

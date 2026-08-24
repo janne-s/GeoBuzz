@@ -1,3 +1,5 @@
+import { CONSTANTS } from '../constants.js';
+
 class AudioContextManagerClass {
 	constructor() {
 		this.nativeContext = null;
@@ -9,7 +11,7 @@ class AudioContextManagerClass {
 		if (this.nativeContext && this.nativeContext.state !== 'closed') return;
 		try {
 			const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-			this.nativeContext = new AudioContextClass();
+			this.nativeContext = new AudioContextClass({ latencyHint: CONSTANTS.AUDIO_LATENCY_HINT });
 			Tone.setContext(new Tone.Context(this.nativeContext));
 		} catch (error) {
 			console.error("Failed to create AudioContext:", error);

@@ -352,14 +352,12 @@ export class DistanceSequencer {
 	async _getSynth(track) {
 		if (!this._synthPool.has(track.id)) {
 			const params = track.synthParams || initializeSynthParameters(track.synthType, 'sound', {}, context.PARAMETER_REGISTRY);
-			if (!params.polyphony || params.polyphony < 8) {
-				params.polyphony = 8;
-			}
+			const polyphony = Math.max(params.polyphony || 1, CONSTANTS.SEQUENCER_TRACK_POLYPHONY);
 
 			const soundObj = await context.createFullSoundInstance({
 				type: track.synthType,
 				role: 'sound',
-				params: params,
+				params: { ...params, polyphony },
 				layers: [...(track.layers || [])],
 				color: '#8e44ad'
 			}, { onMap: false });
@@ -414,6 +412,17 @@ export class DistanceSequencer {
 		}
 
 		return this._synthPool.get(track.id);
+	}
+
+	_applyPolyphony(soundObj, required) {
+		soundObj._runtimePolyphony = required;
+		if (soundObj.synth instanceof Tone.Sampler) {
+			soundObj.synth.maxPolyphony = required;
+		} else if (soundObj.synth instanceof Tone.PolySynth) {
+			soundObj.synth.set({ maxPolyphony: required });
+		} else if (soundObj.synth instanceof Tone.Synth || soundObj.synth instanceof Tone.AMSynth || soundObj.synth instanceof Tone.FMSynth) {
+			context._upgradeSynthToPolyphonic(soundObj, required);
+		}
 	}
 
 	_trackGainValue(soundObj) {
@@ -900,7 +909,7 @@ export class DistanceSequencer {
 		});
 	}
 
-	async onTrackStepTrigger(track, stepIndex) {
+	onTrackStepTrigger(track, stepIndex) {
 		if (!track.steps[stepIndex]) {
 			console.warn(`Step ${stepIndex} does not exist for track ${track.id}`);
 			return;
@@ -932,7 +941,7 @@ export class DistanceSequencer {
 		const willHaveActiveNotes = notesForThisStep.size > 0;
 
 		for (const midiNote of notesToStop) {
-			await this._triggerRelease(track, midiNote, willHaveActiveNotes);
+			this._triggerRelease(track, midiNote, willHaveActiveNotes);
 		}
 
 		const allNotesToTrigger = new Set([...notesToStart, ...notesToRetrigger]);
@@ -985,7 +994,7 @@ export class DistanceSequencer {
 			if (!isNoteGateOpen(note, stepIndex)) {
 				notesForThisStep.delete(note);
 				sustainedNotes.delete(note);
-				await this._triggerRelease(track, note, notesForThisStep.size > 0);
+				this._triggerRelease(track, note, notesForThisStep.size > 0);
 			}
 		}
 
@@ -997,6 +1006,8 @@ export class DistanceSequencer {
 			}
 		});
 
+		this._activeNotes.set(track.id, notesForThisStep);
+
 		if (allNotesToTrigger.size > 0) {
 			const notesArray = Array.from(allNotesToTrigger);
 			const velocities = track.steps[stepIndex].velocities || {};
@@ -1006,21 +1017,19 @@ export class DistanceSequencer {
 				velocitiesNormalized[note] = midiVel / 127;
 			});
 			try {
-				await this._triggerAttackChord(track, notesArray, velocitiesNormalized);
+				this._triggerAttackChord(track, notesArray, velocitiesNormalized, notesForThisStep.size);
 			} catch (error) {
 				console.error(`Sequencer error on track ${track.id}:`, error.message);
 			}
 		}
-
-		this._activeNotes.set(track.id, notesForThisStep);
 
 		if (notesForThisStep.size === 0) {
 			this._scheduleTrackBypass(track);
 		}
 	}
 
-	async _triggerAttackChord(track, midiNotes, velocity) {
-		const handleAttack = async (soundObj) => {
+	_triggerAttackChord(track, midiNotes, velocity, soundingNotes = 0) {
+		const handleAttack = (soundObj) => {
 			if (!soundObj || !soundObj.synth) {
 				return;
 			}
@@ -1035,17 +1044,9 @@ export class DistanceSequencer {
 				}
 			}
 
-			const requiredPolyphony = midiNotes.length;
-			if (soundObj.params.polyphony < requiredPolyphony) {
-				soundObj.params.polyphony = requiredPolyphony;
-
-				if (soundObj.synth instanceof Tone.Sampler) {
-					soundObj.synth.maxPolyphony = requiredPolyphony;
-				} else if (soundObj.synth instanceof Tone.PolySynth) {
-					soundObj.synth.set({ maxPolyphony: requiredPolyphony });
-				} else if (soundObj.synth instanceof Tone.Synth || soundObj.synth instanceof Tone.AMSynth || soundObj.synth instanceof Tone.FMSynth) {
-					await context._upgradeSynthToPolyphonic(soundObj, requiredPolyphony);
-				}
+			const requiredPolyphony = Math.max(midiNotes.length, soundingNotes);
+			if ((soundObj._runtimePolyphony ?? soundObj.params.polyphony ?? 1) < requiredPolyphony) {
+				this._applyPolyphony(soundObj, requiredPolyphony);
 			}
 
 			const avgVelocity = Object.values(velocity).reduce((sum, v) => sum + v, 0) / Object.keys(velocity).length || 0.8;
@@ -1064,7 +1065,7 @@ export class DistanceSequencer {
 				if (soundObj.envelopeGain) {
 					soundObj.envelopeGain.gain.setValueAtTime(avgVelocity, Tone.now());
 				}
-				await context.StreamManager.playStream(soundObj);
+				context.StreamManager.playStream(soundObj);
 			} else {
 				if (soundObj.envelopeGain) {
 					const now = Tone.now();
@@ -1080,14 +1081,20 @@ export class DistanceSequencer {
 		if (track.instrumentType === 'sound') {
 			const sound = AppState.getSoundByPersistentId(track.instrumentId);
 			if (!sound) return;
-			await handleAttack(sound);
+			handleAttack(sound);
 		} else if (track.instrumentType === 'synth') {
-			try {
-				const soundObj = await this._getSynth(track);
-				this._wakeTrackAudio(track, soundObj);
-				await handleAttack(soundObj);
-			} catch (error) {
-				console.error("Error preparing synth for sequencer:", error);
+			const pooled = this._synthPool.get(track.id);
+			if (pooled) {
+				this._wakeTrackAudio(track, pooled);
+				handleAttack(pooled);
+			} else {
+				this._getSynth(track).then(soundObj => {
+					if (!soundObj) return;
+					this._wakeTrackAudio(track, soundObj);
+					handleAttack(soundObj);
+				}).catch(error => {
+					console.error("Error preparing synth for sequencer:", error);
+				});
 			}
 		}
 	}
@@ -1101,7 +1108,7 @@ export class DistanceSequencer {
 		return stepIndex;
 	}
 
-	async _triggerRelease(track, midiNote, willHaveActiveNotes = false) {
+	_triggerRelease(track, midiNote, willHaveActiveNotes = false) {
 		if (track.instrumentType === 'synth') {
 			const soundObj = this._synthPool.get(track.id);
 			if (soundObj && soundObj.synth && !soundObj.synth.disposed) {
@@ -1192,21 +1199,17 @@ export class DistanceSequencer {
 		}
 	}
 
-	async _releaseAllNotes() {
+	_releaseAllNotes() {
 		this.tracks.forEach(track => {
 			track._pendingSteps = null;
 			this._scheduleTrackBypass(track);
 		});
-		const releasePromises = [];
 		this._activeNotes.forEach((notes, trackId) => {
 			const track = this._tracksMap.get(trackId);
 			if (track) {
-				notes.forEach(note => {
-					releasePromises.push(this._triggerRelease(track, note));
-				});
+				notes.forEach(note => this._triggerRelease(track, note));
 			}
 		});
-		await Promise.all(releasePromises);
 		this._activeNotes.clear();
 	}
 
@@ -1289,7 +1292,7 @@ export class DistanceSequencer {
 	addTrack(trackData = {}) {
 		const params = trackData.synthParams || (() => {
 			const p = initializeSynthParameters(trackData.synthType || 'Synth', 'sound', {}, context.PARAMETER_REGISTRY);
-			p.polyphony = 8;
+			p.polyphony = CONSTANTS.SEQUENCER_TRACK_POLYPHONY;
 			return p;
 		})();
 
@@ -1389,9 +1392,8 @@ export class DistanceSequencer {
 		if (!track) return;
 
 		const activeNotes = this._activeNotes.get(trackId);
-		if (activeNotes && activeNotes.length > 0) {
-			const releasePromises = activeNotes.map(note => this._triggerRelease(track, note));
-			await Promise.all(releasePromises);
+		if (activeNotes && activeNotes.size > 0) {
+			activeNotes.forEach(note => this._triggerRelease(track, note));
 			this._activeNotes.delete(trackId);
 		}
 
