@@ -6,6 +6,10 @@
 .env.local
 .env.*
 
+# Dev workspace contents — never version them
+server-kit/workspaces/*
+!server-kit/workspaces/.htaccess
+
 # OS
 .DS_Store
 .claude
