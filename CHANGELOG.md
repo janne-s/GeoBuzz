@@ -5,6 +5,7 @@
 ### Changed
 
 - Position-based audio work no longer runs on every animation frame
+- Map styles are now Dark, Light and OpenStreetMap, all drawn from OpenStreetMap tiles
 
 ### Fixed
 

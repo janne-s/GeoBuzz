@@ -22,15 +22,21 @@ export class MapManager {
 		this.map.createPane('soundElement');
 		this.map.createPane('userMarker');
 
-		this.currentTileLayer = L.tileLayer(tileLayers[this.currentMapStyle].url, {
-			attribution: tileLayers[this.currentMapStyle].attribution,
-			maxZoom: CONSTANTS.MAX_MAP_ZOOM,
-			maxNativeZoom: CONSTANTS.MAX_TILE_NATIVE_ZOOM
-		}).addTo(this.map);
+		this.currentTileLayer = this.createTileLayer(this.currentMapStyle).addTo(this.map);
 
 		this.populateStyleDropdown();
 
 		return this.map;
+	}
+
+	createTileLayer(styleName) {
+		const style = tileLayers[styleName];
+		return L.tileLayer(style.url, {
+			attribution: style.attribution,
+			className: style.tintClass || '',
+			maxZoom: CONSTANTS.MAX_MAP_ZOOM,
+			maxNativeZoom: CONSTANTS.MAX_TILE_NATIVE_ZOOM
+		});
 	}
 
 	populateStyleDropdown() {
@@ -61,11 +67,7 @@ export class MapManager {
 		this.map.removeLayer(this.currentTileLayer);
 
 		this.currentMapStyle = styleName;
-		this.currentTileLayer = L.tileLayer(tileLayers[styleName].url, {
-			attribution: tileLayers[styleName].attribution,
-			maxZoom: CONSTANTS.MAX_MAP_ZOOM,
-			maxNativeZoom: CONSTANTS.MAX_TILE_NATIVE_ZOOM
-		}).addTo(this.map);
+		this.currentTileLayer = this.createTileLayer(styleName).addTo(this.map);
 
 		const mapStyleSelect = document.getElementById('mapStyleSelect');
 		if (mapStyleSelect) {
