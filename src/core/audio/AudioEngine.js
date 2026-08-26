@@ -27,6 +27,7 @@ let lastSpeedDistance = 0;
 let lastSpeedTime = 0;
 let computedSpeed = 0;
 let listenerAtOrigin = false;
+let lastPositionWorkPos = null;
 
 export function setContext(ctx) {
 	context = ctx;
@@ -157,7 +158,7 @@ export function isSoundControlledBySequencer(sound) {
 	return false;
 }
 
-export function updateAudio(userPos, now) {
+export function updateAudio(userPos, now, forcePositionWork = true) {
 	const NoteManager = context.NoteManager;
 	const OSCManager = context.OSCManager;
 	const processLFOs = context.processLFOs;
@@ -176,8 +177,17 @@ export function updateAudio(userPos, now) {
 			totalDistanceTraveled += distance;
 		}
 	}
+
+	const listenerMoved = !audioPos || forcePositionWork || !lastPositionWorkPos ||
+		Geometry.calculateDistanceMeters(lastPositionWorkPos, audioPos) >= CONSTANTS.AUDIO_POSITION_WORK_MIN_DISTANCE;
+
+	if (listenerMoved && audioPos) {
+		lastPositionWorkPos = { lat: audioPos.lat, lng: audioPos.lng };
+	}
+
 	if (!userPos) {
 		lastUserPosition = null;
+		lastPositionWorkPos = null;
 	} else if (lastUserPosition) {
 		lastUserPosition.lat = userPos.lat;
 		lastUserPosition.lng = userPos.lng;
@@ -264,11 +274,29 @@ export function updateAudio(userPos, now) {
 		}
 
 		const soundPos = s.marker.getLatLng();
-		if (isInside === undefined) {
-			isInside = Geometry.isPointInShape(audioPos, s);
+
+		const positionWorkFirstRun = !s._positionWork;
+		if (positionWorkFirstRun) {
+			s._positionWork = { isInside: false, soundDistance: 0, areaGain: 0 };
 		}
 
-		const soundDistance = context.map ? context.map.distance(audioPos, soundPos) : 0;
+		const positionWorkDue = positionWorkFirstRun || listenerMoved || s._positionModulated ||
+			s._sizeModulated || !!s.pathRoles?.movement;
+
+		if (isInside === undefined) {
+			if (positionWorkDue) {
+				s._positionWork.isInside = Geometry.isPointInShape(audioPos, s);
+			}
+			isInside = s._positionWork.isInside;
+		} else {
+			s._positionWork.isInside = isInside;
+		}
+
+		if (positionWorkDue) {
+			s._positionWork.soundDistance = context.map ? context.map.distance(audioPos, soundPos) : 0;
+		}
+
+		const soundDistance = s._positionWork.soundDistance;
 		const inDeadZone = isInDeadZone(soundDistance, s.maxDistance || 100);
 
 		if (shouldSendOSC) {
@@ -289,35 +317,37 @@ export function updateAudio(userPos, now) {
 			continue;
 		}
 
-		AppState.dispatch({
-			type: 'AUDIO_ECHO_UPDATE_REQUESTED',
-			payload: { sound: s, userPos: audioPos, silencingGain, elementGain }
-		});
-		if (s.echoNodes && s.echoNodes.size > 0) {
-			for (const [pathId, nodeData] of s.echoNodes.entries()) {
-				if (nodeData.reflectionPoint) {
-					EchoManager.updateEchoPannerPosition(nodeData, nodeData.reflectionPoint, audioPos);
+		if (positionWorkDue) {
+			AppState.dispatch({
+				type: 'AUDIO_ECHO_UPDATE_REQUESTED',
+				payload: { sound: s, userPos: audioPos, silencingGain, elementGain }
+			});
+			if (s.echoNodes && s.echoNodes.size > 0) {
+				for (const [pathId, nodeData] of s.echoNodes.entries()) {
+					if (nodeData.reflectionPoint) {
+						EchoManager.updateEchoPannerPosition(nodeData, nodeData.reflectionPoint, audioPos);
+					}
 				}
 			}
-		}
 
-		if (spatialMode === 'hrtf') {
-			if (s.useSpatialPanning && s.panner instanceof Tone.Panner3D && s.panner.positionX) {
-				const coords = calculateRelativePosition(soundPos, audioPos, userDirection);
-				s.panner.positionX.value = coords.x;
-				s.panner.positionY.value = coords.y;
-				s.panner.positionZ.value = 0;
-			}
-		} else if (spatialMode === 'stereo') {
-			if (s.useSpatialPanning && s.panner) {
-				if (s.panner instanceof Tone.Panner3D && s.panner.positionX) {
+			if (spatialMode === 'hrtf') {
+				if (s.useSpatialPanning && s.panner instanceof Tone.Panner3D && s.panner.positionX) {
 					const coords = calculateRelativePosition(soundPos, audioPos, userDirection);
-					s.panner.positionX.rampTo(coords.x, CONSTANTS.PANNER_RAMP_TIME);
-					s.panner.positionY.rampTo(coords.y, CONSTANTS.PANNER_RAMP_TIME);
+					s.panner.positionX.value = coords.x;
+					s.panner.positionY.value = coords.y;
 					s.panner.positionZ.value = 0;
-				} else if (s.panner.pan) {
-					const panValue = calculateBearingPan(audioPos, soundPos, userDirection);
-					s.panner.pan.rampTo(panValue, CONSTANTS.PANNER_RAMP_TIME);
+				}
+			} else if (spatialMode === 'stereo') {
+				if (s.useSpatialPanning && s.panner) {
+					if (s.panner instanceof Tone.Panner3D && s.panner.positionX) {
+						const coords = calculateRelativePosition(soundPos, audioPos, userDirection);
+						s.panner.positionX.rampTo(coords.x, CONSTANTS.PANNER_RAMP_TIME);
+						s.panner.positionY.rampTo(coords.y, CONSTANTS.PANNER_RAMP_TIME);
+						s.panner.positionZ.value = 0;
+					} else if (s.panner.pan) {
+						const panValue = calculateBearingPan(audioPos, soundPos, userDirection);
+						s.panner.pan.rampTo(panValue, CONSTANTS.PANNER_RAMP_TIME);
+					}
 				}
 			}
 		}
@@ -329,7 +359,11 @@ export function updateAudio(userPos, now) {
 			});
 		}
 
-		let targetGain = (isControlledBySequencer || isInside) ? calcGain(audioPos, s) : 0;
+		if (positionWorkDue) {
+			s._positionWork.areaGain = (isControlledBySequencer || isInside) ? calcGain(audioPos, s) : 0;
+		}
+
+		let targetGain = s._positionWork.areaGain;
 
 		if (inDeadZone && targetGain > 0) {
 			if (s._lastDeadZoneGain === undefined) {
@@ -646,7 +680,7 @@ export function audioUpdateLoop() {
 	if (positionsMayHaveChanged) {
 		const userPos = context.GeolocationManager?.getUserPosition();
 		if (userPos) {
-			updateAudio(userPos, now);
+			updateAudio(userPos, now, false);
 		}
 	}
 

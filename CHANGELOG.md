@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-26
+
+### Changed
+
+- Position-based audio work no longer runs on every animation frame
+
 ## 2026-08-25
 
 ### Added

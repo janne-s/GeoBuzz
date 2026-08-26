@@ -987,7 +987,7 @@ export class RuntimeEngine {
 		if (this.isPlaying && Tone.context.state === 'running') {
 			const userPos = GeolocationManager.getUserPosition();
 			if (userPos) {
-				updateAudio(userPos);
+				updateAudio(userPos, undefined, false);
 			}
 		}
 
