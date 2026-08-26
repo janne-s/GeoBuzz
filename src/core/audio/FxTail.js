@@ -1,5 +1,13 @@
 import { CONSTANTS } from '../constants.js';
 
+export function feedbackDelayTailSeconds(delayTime, feedback) {
+	const clamped = Math.min(0.99, Math.max(0, feedback ?? 0.5));
+	const time = delayTime ?? 0.25;
+	return clamped > 0
+		? time * (Math.log(CONSTANTS.FX_TAIL_FLOOR) / Math.log(clamped))
+		: time;
+}
+
 export function fxTailSeconds(fxConfig, extraSeconds = 0) {
 	let tail = 0;
 
@@ -15,11 +23,7 @@ export function fxTailSeconds(fxConfig, extraSeconds = 0) {
 		} else if (slot.type === 'Freeverb' || slot.type === 'JCReverb') {
 			slotTail = CONSTANTS.ALGORITHMIC_REVERB_TAIL_S;
 		} else if (slot.type === 'FeedbackDelay' || slot.type === 'PingPongDelay') {
-			const feedback = Math.min(0.99, Math.max(0, params.feedback ?? 0.5));
-			const delayTime = params.delayTime ?? 0.25;
-			slotTail = feedback > 0
-				? delayTime * (Math.log(CONSTANTS.FX_TAIL_FLOOR) / Math.log(feedback))
-				: delayTime;
+			slotTail = feedbackDelayTailSeconds(params.delayTime, params.feedback);
 		}
 
 		if (slotTail > tail) tail = slotTail;

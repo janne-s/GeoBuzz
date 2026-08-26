@@ -2,6 +2,7 @@ import { CONSTANTS } from '../constants.js';
 import { Selectors } from '../state/selectors.js';
 import { isCircularPath } from '../utils/math.js';
 import { pathContributes } from './audioUtils.js';
+import { feedbackDelayTailSeconds } from './FxTail.js';
 
 let context = null;
 
@@ -17,6 +18,9 @@ class EchoManagerClass {
 		}
 
 		const soundAreaGain = context.calcGain(userPos, sound);
+		const audible = soundAreaGain * silencingGain * elementGain > 0;
+
+		if (audible) this._wakeTaps(sound);
 
 		if (!sound.echoNodes) sound.echoNodes = new Map();
 
@@ -114,6 +118,8 @@ class EchoManagerClass {
 					reflectionPoint: reflectionPoint
 				};
 				sound.echoNodes.set(path.id, nodeData);
+
+				if (sound._echoBypassed) this._disconnectTap(nodeData);
 			}
 
 			nodeData.delay.delayTime.rampTo(delayTime, 0.1);
@@ -124,6 +130,68 @@ class EchoManagerClass {
 
 			this.updateEchoPannerPosition(nodeData, reflectionPoint, userPos);
 		}
+
+		if (!audible) this._scheduleTapBypass(sound);
+	}
+
+	_disconnectTap(nodeData) {
+		const output = nodeData.ambisonicSource ? nodeData.gain : (nodeData.panner || nodeData.gain);
+		if (output && !output.disposed) output.disconnect();
+	}
+
+	_connectTap(nodeData) {
+		if (nodeData.ambisonicSource) {
+			Tone.connect(nodeData.gain, nodeData.ambisonicSource.input);
+		} else if (nodeData.panner) {
+			nodeData.panner.toDestination();
+		} else {
+			nodeData.gain.toDestination();
+		}
+	}
+
+	_tapTailSeconds(sound) {
+		let tail = 0;
+		sound.echoNodes.forEach(nodeData => {
+			if (!nodeData.delay || nodeData.delay.disposed) return;
+			const slotTail = feedbackDelayTailSeconds(nodeData.delay.delayTime.value, nodeData.delay.feedback.value);
+			if (slotTail > tail) tail = slotTail;
+		});
+		return Math.min(CONSTANTS.FX_BYPASS_MAX_TAIL_S, tail) + CONSTANTS.FX_BYPASS_MARGIN_S;
+	}
+
+	_wakeTaps(sound) {
+		if (sound._echoBypassTimeout) {
+			clearTimeout(sound._echoBypassTimeout);
+			sound._echoBypassTimeout = null;
+		}
+		if (!sound._echoBypassed) return;
+
+		sound._echoBypassed = false;
+		if (!sound.echoNodes) return;
+		sound.echoNodes.forEach(nodeData => {
+			if (nodeData.gain && !nodeData.gain.disposed) this._connectTap(nodeData);
+		});
+	}
+
+	_scheduleTapBypass(sound) {
+		if (sound._echoBypassed || sound._echoBypassTimeout) return;
+		if (!sound.echoNodes || sound.echoNodes.size === 0) return;
+
+		sound._echoBypassTimeout = setTimeout(() => {
+			sound._echoBypassTimeout = null;
+			if (!sound.echoNodes || sound.echoNodes.size === 0) return;
+
+			sound.echoNodes.forEach(nodeData => this._disconnectTap(nodeData));
+			sound._echoBypassed = true;
+		}, this._tapTailSeconds(sound) * 1000);
+	}
+
+	_clearTapBypass(sound) {
+		if (sound._echoBypassTimeout) {
+			clearTimeout(sound._echoBypassTimeout);
+			sound._echoBypassTimeout = null;
+		}
+		sound._echoBypassed = false;
 	}
 
 	updateEchoPannerPosition(nodeData, reflectionPoint, userPos) {
@@ -148,6 +216,7 @@ class EchoManagerClass {
 	}
 
 	cleanup(sound) {
+		this._clearTapBypass(sound);
 		if (sound.echoNodes) {
 			for (const [pathId, nodeData] of sound.echoNodes.entries()) {
 				nodeData.gain.disconnect();

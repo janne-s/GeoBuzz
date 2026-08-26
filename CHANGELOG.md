@@ -6,6 +6,10 @@
 
 - Position-based audio work no longer runs on every animation frame
 
+### Fixed
+
+- Echo taps kept loading the CPU after their sound went silent
+
 ## 2026-08-25
 
 ### Added
