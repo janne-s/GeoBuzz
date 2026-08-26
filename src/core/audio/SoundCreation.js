@@ -5,6 +5,7 @@ import { Geometry } from '../geospatial/Geometry.js';
 import { AudioNodeManager } from './AudioNodeManager.js';
 import { StreamManager } from './StreamManager.js';
 import { getSynthCapabilities, initializeSynthParameters } from './SynthRegistry.js';
+import { startOneShotPlayback } from './SoundLifecycle.js';
 import { deepClone } from '../utils/math.js';
 import { isFileSynth } from '../utils/typeChecks.js';
 import { DEFAULT_LFO_STRUCTURE, DEFAULT_FX_STRUCTURE, DEFAULT_EQ_STRUCTURE } from '../../config/defaults.js';
@@ -288,14 +289,7 @@ export function setSequencerControl(sound, controlled) {
 						if (sound.params.loop && startLoopedPlayback) {
 							startLoopedPlayback(sound);
 						} else if (!sound.params.speedAdvance) {
-							let offset = 0;
-							if (sound.params.resumePlayback && sound.playbackPosition > 0) {
-								if (sound.playbackPosition >= sound.soundDuration) sound.playbackPosition = 0;
-								offset = sound.playbackPosition;
-							}
-							sound.synth.start(undefined, offset);
-							sound.isPlaying = true;
-							sound._playbackStartTime = Tone.now();
+							startOneShotPlayback(sound);
 						}
 					} else if (sound.type !== 'SoundFile') {
 						NoteManager.trigger(sound);
@@ -431,7 +425,7 @@ export async function loadSound(soundData, options = {}) {
 	const ShapeManager = context.ShapeManager;
 	const autoLoadSoundFile = context.autoLoadSoundFile;
 	const restoreFXChain = context.restoreFXChain;
-	const _applySoundFilePlaybackParams = context._applySoundFilePlaybackParams;
+	const applySoundFilePlaybackParams = context.applySoundFilePlaybackParams;
 	const deferFileLoading = options.deferFileLoading || false;
 
 	if (!soundData || soundData.lat === undefined || soundData.lng === undefined) {
@@ -522,8 +516,8 @@ export async function loadSound(soundData, options = {}) {
 	if (!deferFileLoading) {
 		if ((obj.type === "SoundFile" || obj.type === "Sampler") && obj.params.soundFile && autoLoadSoundFile) {
 			await autoLoadSoundFile(obj, obj.params.soundFile);
-			if (obj.type === "SoundFile" && _applySoundFilePlaybackParams) {
-				_applySoundFilePlaybackParams(obj, false);
+			if (obj.type === "SoundFile" && applySoundFilePlaybackParams) {
+				applySoundFilePlaybackParams(obj, false);
 			}
 		} else if (obj.type === "StreamPlayer" && obj.params.streamUrl) {
 			await context.StreamManager.initializeStream(obj);

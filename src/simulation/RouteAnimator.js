@@ -212,12 +212,6 @@ export const RouteAnimator = {
 			userMarker.setLatLng(finalPos);
 			updateAudio(finalPos, Tone.now());
 
-			Selectors.getSequencers().forEach(seq => {
-				if (seq.enabled) {
-					seq.updatePosition(finalPos.lat, finalPos.lng);
-				}
-			});
-
 			stopSimulation();
 		} else {
 			const newPosition = this.getPointAtDistance(Selectors.getSimulationRoute().points, distanceTravelled);
@@ -240,12 +234,6 @@ export const RouteAnimator = {
 
 			userMarker.setLatLng(newPosition);
 			updateAudio(newPosition, Tone.now());
-
-			Selectors.getSequencers().forEach(seq => {
-				if (seq.enabled) {
-					seq.updatePosition(newPosition.lat, newPosition.lng);
-				}
-			});
 
 			AppState.simulation.animationState.frameId = requestAnimationFrame((t) => this.animateMovement(t, stopSimulation));
 		}

@@ -36,7 +36,7 @@ export const Geometry = {
 		} else if (obj.shapeType === "polygon") {
 			return this.isPointInPolygon(point, obj.vertices);
 		} else if (obj.shapeType === "line") {
-			const pts = obj.smoothing > 0 ? this.smoothPoints(obj.linePoints, obj.smoothing) : obj.linePoints;
+			const pts = this.getEffectiveLinePoints(obj);
 			return this.isPointInLineCorridor(point, pts, obj.lineTolerance);
 		} else if (obj.shapeType === "oval") {
 			return this.isPointInOval(point, obj.ovalCenter, obj.radiusX, obj.radiusY);
@@ -479,6 +479,10 @@ export const Geometry = {
 		return points;
 	},
 
+	getEffectiveLinePoints(obj) {
+		return obj.smoothing > 0 ? this.smoothPoints(obj.linePoints, obj.smoothing) : obj.linePoints;
+	},
+
 	smoothPoints(points, smoothing) {
 		if (!points || points.length < 2 || smoothing <= 0) return points;
 
@@ -794,7 +798,7 @@ export const Geometry = {
 	},
 
 	updateLineCorridor(obj) {
-		const pts = obj.smoothing > 0 ? this.smoothPoints(obj.linePoints, obj.smoothing) : obj.linePoints;
+		const pts = this.getEffectiveLinePoints(obj);
 		const corridorPoints = this.generateSoundLineCorridorWithSemicircles(pts, obj.lineTolerance);
 		if (obj.polygon) obj.polygon.setLatLngs(corridorPoints);
 	},
@@ -962,7 +966,7 @@ export const Geometry = {
 		}
 
 		if (obj.shapeType === 'line' && obj.linePoints && obj.linePoints.length >= 2) {
-			const pts = obj.smoothing > 0 ? this.smoothPoints(obj.linePoints, obj.smoothing) : obj.linePoints;
+			const pts = this.getEffectiveLinePoints(obj);
 			const corridorPoints = this.generateSoundLineCorridorWithSemicircles(pts, obj.lineTolerance);
 			const intersections = [];
 			const extent = 0.01;
@@ -1266,7 +1270,7 @@ export const Geometry = {
 		}
 
 		if (volumeOrigin === 'centerline' && obj.shapeType === 'line' && obj.linePoints) {
-			const pts = obj.smoothing > 0 ? this.smoothPoints(obj.linePoints, obj.smoothing) : obj.linePoints;
+			const pts = this.getEffectiveLinePoints(obj);
 			if (obj._divisionLine) {
 				obj._divisionLine.setLatLngs(pts);
 			} else {

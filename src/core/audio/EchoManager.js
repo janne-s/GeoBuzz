@@ -16,26 +16,21 @@ class EchoManagerClass {
 			return;
 		}
 
-		const soundAreaGain = context.Geometry.isPointInShape(userPos, sound) ? context.calcGain(userPos, sound) : 0;
+		const soundAreaGain = context.calcGain(userPos, sound);
 
 		if (!sound.echoNodes) sound.echoNodes = new Map();
 
-		const allEchoPaths = Selectors.getPaths().filter(p =>
-			p.params.echo?.enabled
-		);
+		const echoPaths = Selectors.getEchoPaths();
 
-		if (allEchoPaths.length === 0) {
+		if (echoPaths.length === 0) {
 			this.cleanup(sound);
 			return;
 		}
 
-		const includedPathIds = new Set(sound.params.reflections.include || []);
-		const activePaths = allEchoPaths.filter(p => includedPathIds.has(p.id));
-
-		const activePathIds = includedPathIds;
+		const includedPathIds = sound.params.reflections.include || [];
 
 		for (const [pathId, nodeData] of sound.echoNodes.entries()) {
-			if (!activePathIds.has(pathId)) {
+			if (!includedPathIds.includes(pathId)) {
 				nodeData.delay.dispose();
 				nodeData.gain.dispose();
 				if (nodeData.panner) nodeData.panner.dispose();
@@ -46,7 +41,10 @@ class EchoManagerClass {
 			}
 		}
 
-		activePaths.forEach(path => {
+		for (let i = 0; i < echoPaths.length; i++) {
+			const path = echoPaths[i];
+			if (!includedPathIds.includes(path.id)) continue;
+
 			const reflectionPoint = this.findClosestPointOnPath(userPos, path);
 			const sourcePos = sound.marker.getLatLng();
 
@@ -125,7 +123,7 @@ class EchoManagerClass {
 			nodeData.reflectionPoint = reflectionPoint;
 
 			this.updateEchoPannerPosition(nodeData, reflectionPoint, userPos);
-		});
+		}
 	}
 
 	updateEchoPannerPosition(nodeData, reflectionPoint, userPos) {

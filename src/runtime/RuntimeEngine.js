@@ -31,7 +31,7 @@ import { processLFOs, processPathLFOs, setContext as setLFOProcessorContext } fr
 import { updateSynthParam, setContext as setParameterUpdaterContext } from '../core/audio/ParameterUpdater.js';
 import { setContext as setDistanceSequencerContext } from '../core/audio/DistanceSequencer.js';
 import { createFullSoundInstance, setContext as setSoundCreationContext } from '../core/audio/SoundCreation.js';
-import { destroySound, startLoopedPlayback, stopLoopedPlayback, upgradeSynthToPolyphonic, setContext as setSoundLifecycleContext } from '../core/audio/SoundLifecycle.js';
+import { destroySound, startLoopedPlayback, stopLoopedPlayback, upgradeSynthToPolyphonic, applySoundFilePlaybackParams, setContext as setSoundLifecycleContext } from '../core/audio/SoundLifecycle.js';
 import { DEFAULT_LFO_STRUCTURE, DEFAULT_FX_STRUCTURE, DEFAULT_EQ_STRUCTURE } from '../config/defaults.js';
 import { PARAMETER_REGISTRY } from '../config/parameterRegistry.js';
 import { deepClone, isCircularPath } from '../core/utils/math.js';
@@ -47,6 +47,7 @@ import { CONSTANTS } from '../core/constants.js';
 import { SHAPE_REGISTRY, setRegistriesContext } from '../config/registries.js';
 
 let engineContext = null;
+let publicContext = null;
 
 function resetAreaTracking(userPos) {
 	if (!userPos) {
@@ -268,39 +269,7 @@ export class RuntimeEngine {
 				stopLoopedPlayback,
 				_upgradeSynthToPolyphonic: upgradeSynthToPolyphonic,
 				autoLoadSoundFile: (sound, filename) => this.loadSoundFile(sound, filename),
-				_applySoundFilePlaybackParams: (sound, shouldRestart = false) => {
-					if ((sound.type !== "SoundFile" && sound.type !== "Granular") || !sound.synth) {
-						return;
-					}
-					const isGranular = sound.type === "Granular";
-					sound.synth.set({
-						loop: sound.params.loop || false,
-						playbackRate: sound.params.speed,
-						reverse: sound.params.reverse,
-						loopStart: sound.params.loopStart,
-						loopEnd: sound.params.loopEnd
-					});
-					if (isGranular) {
-						sound.synth.detune = sound.params.grainDetune || 0;
-						if (sound.params.timeStretchMode === 'manual') {
-							sound.synth.grainSize = sound.params.grainSize || 0.1;
-							sound.synth.overlap = sound.params.overlap || 0.05;
-						}
-					} else {
-						sound.synth.fadeIn = sound.params.fadeIn;
-						sound.synth.fadeOut = sound.params.fadeOut;
-					}
-					if (shouldRestart && sound.isPlaying && sound.params.loop) {
-						if (sound._restartTimeout) {
-							cancelAnimationFrame(sound._restartTimeout);
-						}
-						sound._restartTimeout = requestAnimationFrame(async () => {
-							stopLoopedPlayback(sound);
-							await new Promise(resolve => requestAnimationFrame(resolve));
-							startLoopedPlayback(sound);
-						});
-					}
-				},
+				applySoundFilePlaybackParams,
 				restoreFXChain: async (obj) => {
 					await FXManager.restoreChain(obj, { isLayer: false });
 				},
@@ -314,6 +283,14 @@ export class RuntimeEngine {
 					},
 					showUserMenu: () => {}
 				}
+			};
+
+			publicContext = {
+				map: engineContext.map,
+				AppState,
+				Selectors,
+				LayerManager,
+				GeolocationManager
 			};
 
 			setAudioEngineContext(engineContext);
@@ -604,6 +581,11 @@ export class RuntimeEngine {
 					if (sound.type !== 'Sampler' || !sound.soundDuration) {
 						sound.soundDuration = duration;
 					}
+
+					if (!sound.params.loopEnd && sound.soundDuration) {
+						sound.params.loopEnd = sound.soundDuration;
+					}
+
 					sound.wasInsideArea = false;
 					sound.isPlaying = false;
 					sound.isReady = true;
@@ -1157,7 +1139,7 @@ export class RuntimeEngine {
 	}
 
 	getContext() {
-		return engineContext;
+		return publicContext;
 	}
 }
 

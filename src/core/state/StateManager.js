@@ -128,6 +128,7 @@ export class StateManager {
 		};
 
 		this._saveWorkspaceCallback = null;
+		this._failedSaves = 0;
 	}
 
 	setSaveCallback(callback) {
@@ -177,9 +178,22 @@ export class StateManager {
 		let timeoutId = null;
 		return () => {
 			if (timeoutId) clearTimeout(timeoutId);
-			timeoutId = setTimeout(() => {
-				if (this._saveWorkspaceCallback) {
-					this._saveWorkspaceCallback();
+			timeoutId = setTimeout(async () => {
+				if (!this._saveWorkspaceCallback) return;
+
+				try {
+					await this._saveWorkspaceCallback();
+					this._failedSaves = 0;
+				} catch (error) {
+					this._failedSaves += 1;
+					console.error('Workspace save failed:', error);
+
+					if (this._failedSaves === 2) {
+						this.dispatch({
+							type: 'WORKSPACE_SAVE_FAILED',
+							payload: { error, attempts: this._failedSaves }
+						});
+					}
 				}
 			}, 1000);
 		};

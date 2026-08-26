@@ -1,3 +1,4 @@
+import { CONSTANTS } from '../constants.js';
 import { AudioNodeManager } from './AudioNodeManager.js';
 import { StreamManager } from './StreamManager.js';
 import { EchoManager } from './EchoManager.js';
@@ -16,10 +17,6 @@ export function setContext(ctx) {
 
 export function destroySound(obj) {
 	AudioNodeManager.stopPlayback(obj);
-	if (obj._loopCheckInterval) {
-		clearInterval(obj._loopCheckInterval);
-		obj._loopCheckInterval = null;
-	}
 	if (obj.type === "StreamPlayer") {
 		context.StreamManager.cleanupStream(obj);
 	}
@@ -63,6 +60,122 @@ export function destroySound(obj) {
 	}
 }
 
+export function getLoopBounds(obj) {
+	const duration = obj.synth?.buffer?.duration || obj.soundDuration || 0;
+	if (!duration) return null;
+
+	let start = Math.max(0, Math.min(obj.params.loopStart || 0, duration));
+	let end = Math.min(obj.params.loopEnd || duration, duration);
+
+	if (end <= start) {
+		start = 0;
+		end = duration;
+	}
+
+	return { start, end, duration };
+}
+
+export function applySoundFilePlaybackParams(soundObj, shouldRestart = false) {
+	if ((soundObj.type !== "SoundFile" && soundObj.type !== "Granular") || !soundObj.synth) {
+		return;
+	}
+
+	const settings = {
+		loop: soundObj.params.loop || false,
+		playbackRate: soundObj.params.speed,
+		reverse: soundObj.params.reverse
+	};
+
+	const bounds = getLoopBounds(soundObj);
+	if (bounds) {
+		settings.loopStart = bounds.start;
+		settings.loopEnd = bounds.end;
+	}
+
+	soundObj.synth.set(settings);
+
+	if (soundObj.type === "Granular") {
+		soundObj.synth.detune = soundObj.params.grainDetune || 0;
+		if (soundObj.params.timeStretchMode === 'manual') {
+			soundObj.synth.grainSize = soundObj.params.grainSize || 0.1;
+			soundObj.synth.overlap = soundObj.params.overlap || 0.05;
+		}
+	} else {
+		soundObj.synth.fadeIn = soundObj.params.fadeIn;
+		soundObj.synth.fadeOut = soundObj.params.fadeOut;
+	}
+
+	if (shouldRestart && soundObj.isPlaying && soundObj.params.loop) {
+		if (soundObj._restartTimeout) {
+			cancelAnimationFrame(soundObj._restartTimeout);
+		}
+		soundObj._restartTimeout = requestAnimationFrame(async () => {
+			stopLoopedPlayback(soundObj);
+			await waitForNextFrame();
+			startLoopedPlayback(soundObj);
+		});
+	}
+}
+
+function loopFadeTimes(obj, passDuration) {
+	return {
+		fadeIn: Math.min(obj.params.loopFadeIn || CONSTANTS.LOOP_FADE_MIN, passDuration / 2),
+		fadeOut: Math.min(obj.params.loopFadeOut || CONSTANTS.LOOP_FADE_MIN, passDuration / 2)
+	};
+}
+
+export function scheduleLoopFades(obj) {
+	if (!obj._loopActive || !obj.loopFadeGain || !obj.synth) return;
+
+	const bounds = getLoopBounds(obj);
+	if (!bounds) return;
+
+	const rate = obj.synth.playbackRate || 1;
+	const loopLength = bounds.end - bounds.start;
+	const passDuration = loopLength / rate;
+	if (!(passDuration > 0)) return;
+
+	const gain = obj.loopFadeGain.gain;
+	const now = Tone.now();
+	const { fadeIn, fadeOut } = loopFadeTimes(obj, passDuration);
+
+	const geometryChanged = obj._loopFadeRate !== rate
+		|| obj._loopFadeStart !== bounds.start
+		|| obj._loopFadeEnd !== bounds.end;
+
+	if (geometryChanged) {
+		const oldLength = obj._loopFadeEnd - obj._loopFadeStart;
+		const consumed = Math.max(0, (now - obj._loopFadeAnchor) * obj._loopFadeRate);
+		const bufferPos = obj._loopFadeStart + (oldLength > 0 ? consumed % oldLength : 0);
+		const nextPass = now + Math.max(0, bounds.end - bufferPos) / rate;
+
+		gain.cancelAndHoldAtTime(now);
+		if (nextPass - now > fadeOut) {
+			gain.linearRampToValueAtTime(1, nextPass - fadeOut);
+			gain.linearRampToValueAtTime(0, nextPass);
+		}
+
+		obj._loopFadeAnchor = nextPass - passDuration;
+		obj._loopFadeNextPass = nextPass;
+		obj._loopFadeRate = rate;
+		obj._loopFadeStart = bounds.start;
+		obj._loopFadeEnd = bounds.end;
+	}
+
+	const horizon = now + CONSTANTS.LOOP_FADE_SCHEDULE_AHEAD;
+	let passStart = obj._loopFadeNextPass;
+
+	while (passStart < horizon) {
+		gain.setValueAtTime(0, passStart);
+		gain.linearRampToValueAtTime(1, passStart + fadeIn);
+		gain.setValueAtTime(1, passStart + passDuration - fadeOut);
+		gain.linearRampToValueAtTime(0, passStart + passDuration);
+		passStart += passDuration;
+	}
+
+	obj._loopFadeNextPass = passStart;
+}
+
 export function startLoopedPlayback(obj) {
 	if (obj.type !== "SoundFile" || !obj.synth || !obj.synth.loaded) {
 		console.warn(`Cannot start loop: type=${obj.type}, synth exists=${!!obj.synth}, buffer loaded=${!!obj.synth?.loaded}`);
@@ -73,145 +186,92 @@ export function startLoopedPlayback(obj) {
 		return;
 	}
 
-	const loopStart = obj.params.loopStart || 0;
-	let loopEnd = obj.params.loopEnd || obj.soundDuration;
-	if (loopEnd <= loopStart) {
-		loopEnd = obj.soundDuration;
-	}
-	const loopDuration = loopEnd - loopStart;
+	const bounds = getLoopBounds(obj);
+	const loopDuration = bounds ? bounds.end - bounds.start : 0;
 
-	if (!loopDuration || loopDuration <= 0) {
+	if (loopDuration <= 0) {
 		console.warn("Cannot start loop with zero or negative duration");
 		return;
 	}
 
+	let resumeOffset = 0;
+	if (obj.params.resumePlayback && obj.playbackPosition > bounds.start && obj.playbackPosition < bounds.end) {
+		resumeOffset = obj.playbackPosition - bounds.start;
+	}
+
+	const now = Tone.now();
+
+	if (obj.synth.state !== 'stopped') {
+		obj.synth.stop(now);
+	}
+
+	obj.synth.loop = true;
+	obj.synth.loopStart = bounds.start;
+	obj.synth.loopEnd = bounds.end;
+	obj.synth.start(now, bounds.start + resumeOffset);
+
 	obj.isPlaying = true;
 	obj._loopActive = true;
-	obj._isFirstLoopIteration = true;
-
-	let resumeOffset = 0;
-	if (obj.params.resumePlayback && obj.playbackPosition !== undefined && obj.playbackPosition > 0) {
-		if (obj.playbackPosition >= loopStart && obj.playbackPosition < loopEnd) {
-			resumeOffset = obj.playbackPosition - loopStart;
-		}
-	}
-	obj._resumeOffset = resumeOffset;
-
-	obj._loopStartTime = Tone.now();
+	obj._loopStartTime = now;
 	obj._loopInitialOffset = resumeOffset;
 
-	const playLoopIteration = () => {
-		if (!obj._loopActive) return;
+	const rate = obj.synth.playbackRate || 1;
+	const passDuration = loopDuration / rate;
+	const firstPassRemaining = (loopDuration - resumeOffset) / rate;
 
-		const now = Tone.now();
+	if (obj.loopFadeGain) {
+		const gain = obj.loopFadeGain.gain;
+		const { fadeIn, fadeOut } = loopFadeTimes(obj, passDuration);
+		const inTime = Math.min(fadeIn, firstPassRemaining / 2);
+		const outTime = Math.min(fadeOut, firstPassRemaining / 2);
 
-		let startPos, duration;
+		gain.cancelAndHoldAtTime(now);
+		gain.setValueAtTime(0, now);
+		gain.linearRampToValueAtTime(1, now + inTime);
+		gain.setValueAtTime(1, now + firstPassRemaining - outTime);
+		gain.linearRampToValueAtTime(0, now + firstPassRemaining);
+	}
 
-		if (obj._isFirstLoopIteration && obj._resumeOffset > 0) {
-			startPos = loopStart + obj._resumeOffset;
-			duration = loopEnd - startPos;
-			obj._isFirstLoopIteration = false;
-		} else {
-			startPos = loopStart;
-			duration = loopDuration;
-			obj._isFirstLoopIteration = false;
-		}
+	obj._loopFadeNextPass = now + firstPassRemaining;
+	obj._loopFadeAnchor = now - resumeOffset / rate;
+	obj._loopFadeRate = rate;
+	obj._loopFadeStart = bounds.start;
+	obj._loopFadeEnd = bounds.end;
 
-		if (isNaN(startPos) || isNaN(duration) || duration <= 0) {
-			console.error(`${obj.label}: Invalid loop values`);
-			stopLoopedPlayback(obj);
-			return;
-		}
-
-		obj._currentIterationStartTime = now;
-		obj._currentIterationStartPos = startPos;
-		obj._currentIterationDuration = duration;
-
-		let currentSpeed = obj.synth.playbackRate;
-		if (!currentSpeed || isNaN(currentSpeed) || currentSpeed <= 0) {
-			currentSpeed = obj.params.speed || 1.0;
-		}
-		const playbackDuration = duration / currentSpeed;
-
-		if (obj.params.playbackMode === 'granular') {
-			obj.synth.start(now, startPos);
-			obj.synth.stop(now + playbackDuration);
-		} else {
-			obj.synth.start(now, startPos, duration);
-		}
-
-		const fadeInDur = Math.min(obj.params.loopFadeIn || 0.01, playbackDuration / 2);
-		const fadeOutDur = Math.min(obj.params.loopFadeOut || 0.01, playbackDuration / 2);
-
-		obj.loopFadeGain.gain.cancelScheduledValues(now);
-		obj.loopFadeGain.gain.setValueAtTime(0, now);
-		obj.loopFadeGain.gain.linearRampToValueAtTime(1, now + fadeInDur);
-
-		const fadeOutStartTime = now + playbackDuration - fadeOutDur;
-		if (fadeOutStartTime > now + fadeInDur) {
-			obj.loopFadeGain.gain.setValueAtTime(1, fadeOutStartTime);
-			obj.loopFadeGain.gain.linearRampToValueAtTime(0, now + playbackDuration);
-		}
-	};
-
-	const checkLoopStatus = () => {
-		if (!obj._loopActive) {
-			if (obj._loopCheckInterval) {
-				clearInterval(obj._loopCheckInterval);
-				obj._loopCheckInterval = null;
-			}
-			return;
-		}
-
-		if (obj.synth.state === 'stopped') {
-			playLoopIteration();
-		}
-	};
-
-	playLoopIteration();
-	obj._loopCheckInterval = setInterval(checkLoopStatus, 50);
+	scheduleLoopFades(obj);
 }
 
 export function stopLoopedPlayback(obj) {
-	if (obj.type !== "SoundFile" || !obj.synth.loaded) return;
+	if (obj.type !== "SoundFile" || !obj.synth) return;
 
 	if (!obj.isPlaying && !obj._loopActive) {
 		return;
 	}
 
-	if (obj.params.resumePlayback && obj._currentIterationStartTime && obj._currentIterationStartPos !== undefined) {
-		const now = Tone.now();
-		const elapsed = (now - obj._currentIterationStartTime) * (obj.params.speed || 1.0);
-		let currentPos = obj._currentIterationStartPos + elapsed;
+	const bounds = getLoopBounds(obj);
 
-		const loopStart = obj.params.loopStart || 0;
-		const loopEnd = obj.params.loopEnd || obj.soundDuration;
-		const loopDuration = loopEnd - loopStart;
-
-		if (currentPos >= loopEnd && loopDuration > 0) {
-			currentPos = loopStart + ((currentPos - loopStart) % loopDuration);
-		}
-
-		obj.playbackPosition = Math.max(loopStart, Math.min(currentPos, loopEnd));
+	if (bounds && obj.params.resumePlayback && obj._loopStartTime !== undefined) {
+		const loopDuration = bounds.end - bounds.start;
+		const elapsed = (Tone.now() - obj._loopStartTime) * (obj.params.speed || 1.0);
+		obj.playbackPosition = bounds.start + ((obj._loopInitialOffset + elapsed) % loopDuration);
 	}
 
 	obj._loopActive = false;
 
-	if (obj._loopCheckInterval) {
-		clearInterval(obj._loopCheckInterval);
-		obj._loopCheckInterval = null;
-	}
+	const now = Tone.now();
+	const fadeOutTime = obj.params.loopFadeOut || CONSTANTS.GAIN_RAMP_TIME;
 
 	if (obj.loopFadeGain) {
-		const now = Tone.now();
-		const fadeOutTime = obj.params.loopFadeOut || 0.1;
-		obj.loopFadeGain.gain.cancelScheduledValues(now);
+		obj.loopFadeGain.gain.cancelAndHoldAtTime(now);
 		obj.loopFadeGain.gain.setTargetAtTime(0, now, fadeOutTime / 4);
 	}
 
-	obj.synth.stop(Tone.now() + 0.2);
+	if (!obj.synth.disposed && obj.synth.state !== 'stopped') {
+		obj.synth.stop(now + fadeOutTime);
+	}
 	obj.isPlaying = false;
 }
+
 
 export async function upgradeSynthToPolyphonic(soundObj, requiredPolyphony) {
 	const synthDef = SYNTH_REGISTRY[soundObj.type];
@@ -241,6 +301,55 @@ export async function upgradeSynthToPolyphonic(soundObj, requiredPolyphony) {
 	}
 }
 
+export function startOneShotPlayback(soundObj) {
+	if (!soundObj.synth) return;
+
+	soundObj._stoppedManually = false;
+
+	if (soundObj.loopFadeGain) {
+		const now = Tone.now();
+		soundObj.loopFadeGain.gain.cancelAndHoldAtTime(now);
+		soundObj.loopFadeGain.gain.setValueAtTime(1, now);
+	}
+
+	let offset = 0;
+	if (soundObj.params.resumePlayback) {
+		if (soundObj.playbackPosition >= soundObj.soundDuration) {
+			soundObj.playbackPosition = 0;
+		}
+		offset = soundObj.playbackPosition;
+	}
+
+	soundObj.synth.start(undefined, offset);
+	soundObj.isPlaying = true;
+	soundObj._playbackStartTime = Tone.now();
+
+	soundObj.synth.onstop = () => {
+		soundObj.isPlaying = false;
+		if (!soundObj._stoppedManually) {
+			soundObj.playbackPosition = 0;
+		}
+	};
+}
+
+export function stopOneShotPlayback(soundObj) {
+	if (!soundObj.synth) return;
+
+	if (soundObj.params.resumePlayback) {
+		const elapsed = (Tone.now() - soundObj._playbackStartTime) * (soundObj.params.speed || 1.0);
+		soundObj.playbackPosition += elapsed;
+		if (soundObj.playbackPosition > soundObj.soundDuration) {
+			soundObj.playbackPosition = soundObj.soundDuration;
+		}
+	} else {
+		soundObj.playbackPosition = 0;
+	}
+
+	soundObj._stoppedManually = true;
+	soundObj.isPlaying = false;
+	soundObj.synth.stop(Tone.now());
+}
+
 export function triggerPlayback(soundObj, userPos) {
 	if (soundObj.type !== "SoundFile" || !soundObj.synth.loaded) return;
 
@@ -256,27 +365,8 @@ export function triggerPlayback(soundObj, userPos) {
 		}
 	} else {
 		if (!soundObj.wasInsideArea && !soundObj.isPlaying) {
-			soundObj._stoppedManually = false;
-			let offset = 0;
-
-			if (soundObj.params.resumePlayback) {
-				if (soundObj.playbackPosition >= soundObj.soundDuration) {
-					soundObj.playbackPosition = 0;
-				}
-				offset = soundObj.playbackPosition;
-			}
-
-			soundObj.synth.start(undefined, offset);
-			soundObj._playbackStartTime = Tone.now();
-			soundObj.isPlaying = true;
+			startOneShotPlayback(soundObj);
 			soundObj.wasInsideArea = true;
-
-			soundObj.synth.onstop = () => {
-				soundObj.isPlaying = false;
-				if (!soundObj._stoppedManually) {
-					soundObj.playbackPosition = 0;
-				}
-			};
 		}
 	}
 }

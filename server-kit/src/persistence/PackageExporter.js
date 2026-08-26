@@ -15,6 +15,7 @@
  */
 
 import { SettingsManager } from './SettingsManager.js';
+import { collectRuntimeModules } from './runtimeModules.js';
 
 let context = null;
 
@@ -194,12 +195,14 @@ export const PackageExporter = {
 	},
 
 	async addSoundFiles(zip, soundFiles) {
+		if (soundFiles.length === 0) return;
+
 		if (!context?.Selectors?.getWorkspaceId) {
-			console.warn('Workspace context not available, skipping sound files');
-			return;
+			throw new Error('No workspace is open, so the sound files could not be added.');
 		}
 
 		const workspaceId = context.Selectors.getWorkspaceId();
+		const missing = [];
 
 		for (const fileName of soundFiles) {
 			try {
@@ -210,11 +213,16 @@ export const PackageExporter = {
 					const blob = await fileResponse.blob();
 					zip.file(`sounds/${fileName}`, blob);
 				} else {
-					console.warn(`Failed to fetch sound file ${fileName}: ${fileResponse.status}`);
+					missing.push(fileName);
 				}
 			} catch (error) {
-				console.warn(`Error adding sound file ${fileName}:`, error);
+				console.error(`Error adding sound file ${fileName}:`, error);
+				missing.push(fileName);
 			}
+		}
+
+		if (missing.length > 0) {
+			throw new Error(`These sound files are missing from the workspace:\n${missing.join('\n')}`);
 		}
 	},
 
@@ -285,123 +293,11 @@ export const PackageExporter = {
 	 * @param {JSZip} zip - JSZip instance
 	 */
 	async addSourceFiles(zip) {
-		try {
-			const csrfResponse = await fetch('api/csrf.php');
-			if (!csrfResponse.ok) {
-				throw new Error(`CSRF endpoint returned ${csrfResponse.status}: ${csrfResponse.statusText}`);
-			}
-
-			let csrfData;
-			try {
-				const csrfText = await csrfResponse.text();
-				csrfData = JSON.parse(csrfText);
-			} catch (e) {
-				throw new Error('CSRF endpoint did not return valid JSON. Is csrf.php configured?');
-			}
-
-			const response = await fetch('api/exports/list_src_files.php', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-CSRF-Token': csrfData.token
-				}
-			});
-
-			if (!response.ok) {
-				throw new Error(`Source files endpoint returned ${response.status}: ${response.statusText}`);
-			}
-
-			let data;
-			try {
-				const responseText = await response.text();
-				data = JSON.parse(responseText);
-			} catch (e) {
-				throw new Error('Source files endpoint did not return valid JSON. Is list_src_files.php configured?');
-			}
-
-			if (!data.success || data.error) {
-				throw new Error(data.error || 'Failed to fetch source files');
-			}
-
-			const files = data.files;
-
-			const excludeDirs = [
-				'src/ui/',
-				'src/interactions/',
-				'src/api/',
-				'src/events/',
-				'src/persistence/',
-				'src/shapes/',
-				'src/simulation/',
-				'src/debug/',
-				'src/map/'
-			];
-
-			const runtimeFiles = files.filter(filePath => {
-				return !excludeDirs.some(dir => filePath.startsWith(dir));
-			});
-
-			for (const filePath of runtimeFiles) {
-				try {
-					const fileResponse = await fetch(`../${filePath}`);
-					if (fileResponse.ok) {
-						const content = await fileResponse.text();
-						zip.file(filePath, content);
-					} else {
-						console.warn(`Failed to fetch ${filePath}: ${fileResponse.status}`);
-					}
-				} catch (error) {
-					console.warn(`Error adding ${filePath}:`, error);
-				}
-			}
-
-		} catch (error) {
-			console.error('Failed to add source files:', error);
-			throw new Error(`Could not include source files: ${error.message}`);
-		}
+		return collectRuntimeModules((filePath, content) => zip.file(filePath, content));
 	},
 
 	async getSourceFilesList() {
-		const csrfResponse = await fetch('api/csrf.php');
-		if (!csrfResponse.ok) {
-			throw new Error(`CSRF endpoint returned ${csrfResponse.status}: ${csrfResponse.statusText}`);
-		}
-
-		const csrfData = JSON.parse(await csrfResponse.text());
-
-		const response = await fetch('api/exports/list_src_files.php', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'X-CSRF-Token': csrfData.token
-			}
-		});
-
-		if (!response.ok) {
-			throw new Error(`Source files endpoint returned ${response.status}: ${response.statusText}`);
-		}
-
-		const data = JSON.parse(await response.text());
-
-		if (!data.success || data.error) {
-			throw new Error(data.error || 'Failed to fetch source files');
-		}
-
-		const excludeDirs = [
-			'src/ui/',
-			'src/interactions/',
-			'src/api/',
-			'src/events/',
-			'src/persistence/',
-			'src/shapes/',
-			'src/simulation/',
-			'src/debug/',
-			'src/map/'
-		];
-
-		return data.files.filter(filePath => {
-			return !excludeDirs.some(dir => filePath.startsWith(dir));
-		});
+		return collectRuntimeModules();
 	},
 
 	async exportToWorkspace(meta = {}) {

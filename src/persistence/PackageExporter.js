@@ -1,54 +1,12 @@
 import { SettingsManager } from './SettingsManager.js';
 import { LocalBackend } from '../api/LocalBackend.js';
+import { collectRuntimeModules } from './runtimeModules.js';
 
 let context = null;
 
 export function setPackageExporterContext(appContext) {
 	context = appContext;
 }
-
-const RUNTIME_FILES = [
-	'src/config/ParameterRangeManager.js',
-	'src/config/defaults.js',
-	'src/config/parameterRegistry.js',
-	'src/config/registries.js',
-	'src/core/AppContext.js',
-	'src/core/audio/AmbisonicsManager.js',
-	'src/core/audio/AudioChainManager.js',
-	'src/core/audio/AudioContextManager.js',
-	'src/core/audio/AudioEngine.js',
-	'src/core/audio/AudioNodeManager.js',
-	'src/core/audio/AudioSmoother.js',
-	'src/core/audio/DistanceSequencer.js',
-	'src/core/audio/EchoManager.js',
-	'src/core/audio/FXManager.js',
-	'src/core/audio/LFOProcessor.js',
-	'src/core/audio/ParameterUpdater.js',
-	'src/core/audio/SoundCreation.js',
-	'src/core/audio/SoundLifecycle.js',
-	'src/core/audio/StreamManager.js',
-	'src/core/audio/SynthRegistry.js',
-	'src/core/audio/audioUtils.js',
-	'src/core/constants.js',
-	'src/core/geospatial/DeviceOrientationManager.js',
-	'src/core/geospatial/GeolocationManager.js',
-	'src/core/geospatial/Geometry.js',
-	'src/core/geospatial/KalmanFilter.js',
-	'src/core/geospatial/OrientationKalmanFilter.js',
-	'src/core/geospatial/PathZoneChecker.js',
-	'src/core/state/StateManager.js',
-	'src/core/state/actions.js',
-	'src/core/state/selectors.js',
-	'src/core/utils/async.js',
-	'src/core/utils/audioHelpers.js',
-	'src/core/utils/coordinates.js',
-	'src/core/utils/debounce.js',
-	'src/core/utils/math.js',
-	'src/core/utils/typeChecks.js',
-	'src/core/utils/validation.js',
-	'src/layers/LayerManager.js',
-	'src/runtime/RuntimeEngine.js'
-];
 
 export const PackageExporter = {
 	async loadTemplate(templatePath, replacements = {}) {
@@ -210,12 +168,14 @@ export const PackageExporter = {
 	},
 
 	async addSoundFiles(zip, soundFiles) {
+		if (soundFiles.length === 0) return;
+
 		if (!context?.Selectors?.getWorkspaceId) {
-			console.warn('Workspace context not available, skipping sound files');
-			return;
+			throw new Error('No workspace is open, so the sound files could not be added.');
 		}
 
 		const workspaceId = context.Selectors.getWorkspaceId();
+		const missing = [];
 
 		for (const fileName of soundFiles) {
 			try {
@@ -224,11 +184,16 @@ export const PackageExporter = {
 				if (blob) {
 					zip.file(`sounds/${fileName}`, blob);
 				} else {
-					console.warn(`Sound file not found in storage: ${fileName}`);
+					missing.push(fileName);
 				}
 			} catch (error) {
-				console.warn(`Error adding sound file ${fileName}:`, error);
+				console.error(`Error adding sound file ${fileName}:`, error);
+				missing.push(fileName);
 			}
+		}
+
+		if (missing.length > 0) {
+			throw new Error(`These sound files are missing from the workspace:\n${missing.join('\n')}`);
 		}
 	},
 
@@ -295,23 +260,11 @@ export const PackageExporter = {
 	},
 
 	async addSourceFiles(zip) {
-		for (const filePath of RUNTIME_FILES) {
-			try {
-				const fileResponse = await fetch(`../${filePath}`);
-				if (fileResponse.ok) {
-					const content = await fileResponse.text();
-					zip.file(filePath, content);
-				} else {
-					console.warn(`Failed to fetch ${filePath}: ${fileResponse.status}`);
-				}
-			} catch (error) {
-				console.warn(`Error adding ${filePath}:`, error);
-			}
-		}
+		return collectRuntimeModules((filePath, content) => zip.file(filePath, content));
 	},
 
 	async getSourceFilesList() {
-		return [...RUNTIME_FILES];
+		return collectRuntimeModules();
 	}
 };
 

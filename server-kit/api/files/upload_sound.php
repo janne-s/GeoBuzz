@@ -40,9 +40,7 @@ handleEndpoint(function($ctx) {
 		jsonError("File exceeds max size of " . formatFileSize($maxUpload), 413);
 	}
 	
-	$finfo = finfo_open(FILEINFO_MIME_TYPE);
-	$detectedMime = finfo_file($finfo, $file['tmp_name']);
-	finfo_close($finfo);
+	$detectedMime = mime_content_type($file['tmp_name']);
 
 	$baseMime = explode(';', $detectedMime)[0];
 

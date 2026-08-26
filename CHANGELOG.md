@@ -1,17 +1,55 @@
 # Changelog
 
+## 2026-08-25
+
+### Added
+
+- Loop end starts at the end of the sound when a file is loaded
+- Runtime API docs and the exported README explain how to feed your own compass heading
+
+### Changed
+
+- Removed an unused listener-orientation function and the source-listing endpoint the export no longer needs
+
+### Fixed
+
+- Both exports left out modules the player needs, producing a player that would not start
+- An export that could not include every module or sound now fails instead of reporting success
+- The exported player's Elements list left out sequencers
+- Workspaces over 100 KB stopped saving, without telling anyone
+- A workspace save that fails twice in a row now says so
+- Directory listing of the workspaces folder is now denied from the repository, not only by server config
+- Looping a sound file was unreliable, and restarted audibly on every pass
+- The loop end slider could not reach the end of the file
+- Bearing panning collapsed stereo sound files to mono
+- Pan did nothing on sound files, samplers and streams, by hand or by modulation
+- Modulating a sound file's speed had no effect
+- Inertia was offered for LFO modulation, where it does nothing
+- A modulation target the element does not offer was shown as selected but never applied, and survived a change of element type
+- An element's position and size stayed offset when its position modulation was turned off
+- Echoes went silent after changing an element's sound type or spatial mode
+- Changing the spatial or panning mode left elements near silent until you left the area and returned
+
 ## 2026-08-24
 
 ### Changed
 
 - The three-band EQ is allocated only when it is enabled
 - Audio output uses a playback-oriented buffer instead of the browser's smallest
+- The runtime API exposes a fixed set of managers instead of the whole engine
+- Less repeated geometry, allocation and audio work per frame
 
 ### Fixed
 
 - Playing a chord no longer overwrites a sequencer track's saved polyphony setting
 - Notes could stick on permanently when moving quickly across sequencer areas
 - Removing a sequencer track left its sounding notes playing
+- A sound file could not trigger again after playing to its end
+- Speed gates let a note start briefly on every step
+- Loop start and end were ignored, and dragging either to the end of the file broke playback
+- Changing a sound file's playback mode while looping left the loop running
+- Uploading a sound failed on PHP 8.5
+- A failed sound upload showed the browser's parser error instead of the server's reason
 
 ## 2026-08-22
 

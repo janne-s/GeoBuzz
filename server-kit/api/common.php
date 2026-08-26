@@ -3,6 +3,9 @@ if (session_status() === PHP_SESSION_NONE) {
 	session_start();
 }
 
+define('CSRF_BODY_SCAN_LIMIT', 102400);
+define('MAX_WORKSPACE_SETTINGS_BYTES', 5242880);
+
 function validateCSRF() {
 	if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 		return;
@@ -16,9 +19,9 @@ function validateCSRF() {
 		$token = $_POST['csrf_token'];
 	} else {
 		$contentType = $_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '';
-		if (stripos($contentType, 'application/json') !== false) {
-			$requestBody = readRequestBodySafely(102400); 
-			$json = json_decode($requestBody, true);
+		$contentLength = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+		if (stripos($contentType, 'application/json') !== false && $contentLength <= CSRF_BODY_SCAN_LIMIT) {
+			$json = json_decode(file_get_contents('php://input', false, null, 0, CSRF_BODY_SCAN_LIMIT), true);
 			if ($json && isset($json['csrf_token'])) {
 				$token = $json['csrf_token'];
 			}
@@ -42,6 +45,22 @@ function readRequestBodySafely($maxBytes = 102400) {
 	}
 	
 	return file_get_contents('php://input', false, null, 0, $maxBytes);
+}
+
+function writeFileAtomically($path, $contents) {
+	$tmp = $path . '.' . bin2hex(random_bytes(4)) . '.tmp';
+
+	if (file_put_contents($tmp, $contents, LOCK_EX) !== strlen($contents)) {
+		@unlink($tmp);
+		return false;
+	}
+
+	if (!rename($tmp, $path)) {
+		@unlink($tmp);
+		return false;
+	}
+
+	return true;
 }
 
 function generateCSRFToken() {

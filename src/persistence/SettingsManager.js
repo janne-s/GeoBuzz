@@ -574,8 +574,8 @@ export class SettingsManager {
 						});
 					}
 					return this.context.autoLoadSoundFile(sound, filename).then(() => {
-						if (sound.type === 'SoundFile' && this.context._applySoundFilePlaybackParams) {
-							this.context._applySoundFilePlaybackParams(sound, false);
+						if (sound.type === 'SoundFile' && this.context.applySoundFilePlaybackParams) {
+							this.context.applySoundFilePlaybackParams(sound, false);
 						}
 					}).catch(error => {
 						console.warn(`Failed to load sound file ${filename}:`, error);

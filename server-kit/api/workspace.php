@@ -24,11 +24,11 @@ handleEndpoint(function($ctx) {
 			jsonError("Settings not found", 404);
 		}
 	} elseif ($method === 'POST' && $action === 'save' && isset($_GET['id'])) {
-		$data = json_decode(readRequestBodySafely(), true);
+		$data = json_decode(readRequestBodySafely(MAX_WORKSPACE_SETTINGS_BYTES), true);
 		json_last_error() === JSON_ERROR_NONE || jsonError("Invalid JSON");
 		unset($data['csrf_token']);
 		$file = getWorkspaceDir(basename($_GET['id'])) . "/settings.json";
-		file_put_contents($file, json_encode($data)) !== false ? jsonSuccess() : jsonError("Failed to save", 500);
+		writeFileAtomically($file, json_encode($data)) ? jsonSuccess() : jsonError("Failed to save", 500);
 	}
 	
 	jsonError("Invalid request", 400);

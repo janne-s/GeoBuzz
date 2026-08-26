@@ -311,6 +311,10 @@
 					btn.disabled = false;
 					btn.innerHTML = '<i class="fas fa-pause"></i><span>Pause</span>';
 					updateStatus('Playing...');
+
+					const state = runtimeEngine.getState();
+					updateSoundsList(state.sounds, state.sequencers);
+
 					updatePlaybackStatus();
 				}).catch(error => {
 					console.error('Playback error:', error);

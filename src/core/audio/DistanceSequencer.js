@@ -377,7 +377,7 @@ export class DistanceSequencer {
 
 				if (track.synthType === 'SoundFile' && params.soundFile) {
 					await context.autoLoadSoundFile(soundObj, params.soundFile);
-					context._applySoundFilePlaybackParams(soundObj, false);
+					context.applySoundFilePlaybackParams(soundObj, false);
 				}
 
 				if (track.synthType === 'Sampler' && params.samplerMode === 'single' && params.soundFile) {

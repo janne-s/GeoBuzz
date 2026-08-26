@@ -18,27 +18,13 @@ export const Backend = {
 		if (config.method === 'POST' && Security.csrfToken && config.body) {
 			if (isFormData) {
 				Security.addToFormData(config.body);
-			} else if (typeof config.body === 'string') {
-				try {
-					const bodyObj = JSON.parse(config.body);
-					bodyObj.csrf_token = Security.csrfToken;
-					config.body = JSON.stringify(bodyObj);
-					config.headers = {
-						'Content-Type': 'application/json',
-						...options.headers
-					};
-				} catch (e) {
-					config.body = Security.addToBody(config.body);
-					config.headers = {
-						'Content-Type': 'application/x-www-form-urlencoded',
-						...options.headers
-					};
-				}
 			} else {
-				config.body.csrf_token = Security.csrfToken;
-				config.body = JSON.stringify(config.body);
+				if (typeof config.body !== 'string') {
+					config.body = JSON.stringify(config.body);
+				}
 				config.headers = {
 					'Content-Type': 'application/json',
+					'X-CSRF-Token': Security.csrfToken,
 					...options.headers
 				};
 			}

@@ -1,6 +1,16 @@
 import { Backend } from './Backend.js';
 import { Security } from './SecurityManager.js';
 
+function describeNonJsonResponse(text) {
+	const sizeLimit = text.match(/Content-Length of (\d+) bytes exceeds the limit of (\d+) bytes/);
+	if (sizeLimit) {
+		return `The file is larger than the server accepts (limit ${sizeLimit[2]} bytes). Raise post_max_size and upload_max_filesize in php.ini.`;
+	}
+
+	const snippet = text.trim().replace(/\s+/g, ' ').slice(0, 200);
+	return `The server did not return JSON: ${snippet || '(empty response)'}`;
+}
+
 export const FilesAPI = {
 	/**
 	 * List files in a workspace
@@ -69,28 +79,35 @@ export const FilesAPI = {
 		}
 
 		const contentLength = response.headers.get('content-length');
+		let text;
+
 		if (!contentLength || !onProgress) {
-			return await response.json();
+			text = await response.text();
+		} else {
+			const total = parseInt(contentLength, 10);
+			let loaded = 0;
+
+			const reader = response.body.getReader();
+			const chunks = [];
+
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+
+				chunks.push(value);
+				loaded += value.length;
+				onProgress((loaded / total) * 100);
+			}
+
+			text = await new Blob(chunks).text();
 		}
 
-		const total = parseInt(contentLength, 10);
-		let loaded = 0;
-
-		const reader = response.body.getReader();
-		const chunks = [];
-
-		while (true) {
-			const { done, value } = await reader.read();
-			if (done) break;
-
-			chunks.push(value);
-			loaded += value.length;
-			onProgress((loaded / total) * 100);
+		let result;
+		try {
+			result = JSON.parse(text);
+		} catch {
+			throw new Error(describeNonJsonResponse(text));
 		}
-
-		const blob = new Blob(chunks);
-		const text = await blob.text();
-		const result = JSON.parse(text);
 
 		if (!result.success) {
 			throw new Error(result.error || "Upload failed");

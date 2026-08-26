@@ -2,14 +2,15 @@ import { createElement, createButton } from '../domHelpers.js';
 import { createDraggableHeader, createElementNavigationDropdown } from '../controllers/HeaderBuilder.js';
 import { createMenuStructure, createHeaderControls, createSpatialSection, createTabBar, createParamsContainer, createActionButtons } from '../controllers/UIBuilder.js';
 import { MenuTabs } from '../components/MenuTabsRegistry.js';
-import { SYNTH_REGISTRY } from '../../core/audio/SynthRegistry.js';
+import { SYNTH_REGISTRY, getAvailableModulationTargets } from '../../core/audio/SynthRegistry.js';
+import { EchoManager } from '../../core/audio/EchoManager.js';
 import { DEFAULT_FX_STRUCTURE, DEFAULT_EQ_STRUCTURE, DEFAULT_LFO_STRUCTURE } from '../../config/defaults.js';
 import { deepClone } from '../../core/utils/math.js';
 import { waitForNextFrame } from '../../core/utils/async.js';
 
 let AppState, Selectors, MenuManager, ModalSystem, AudioNodeManager, StreamManager, FXManager, GeolocationManager;
 let closeAllMenus, destroySound, stopLoopedPlayback, isFileSynth;
-let initializeSynthParameters, getSynthCapabilities, updateAudio, autoLoadSoundFile, _applySoundFilePlaybackParams;
+let initializeSynthParameters, getSynthCapabilities, updateAudio, autoLoadSoundFile, applySoundFilePlaybackParams;
 let reconnectSoundToLayers, refreshElementsList;
 
 export function setContext(context) {
@@ -29,7 +30,7 @@ export function setContext(context) {
 	getSynthCapabilities = context.getSynthCapabilities;
 	updateAudio = context.updateAudio;
 	autoLoadSoundFile = context.autoLoadSoundFile;
-	_applySoundFilePlaybackParams = context._applySoundFilePlaybackParams;
+	applySoundFilePlaybackParams = context.applySoundFilePlaybackParams;
 	reconnectSoundToLayers = context.reconnectSoundToLayers;
 	refreshElementsList = context.refreshElementsList;
 }
@@ -138,6 +139,7 @@ export async function changeSoundType(obj, newType) {
 	}
 
 	FXManager.disposeAll(obj, { isLayer: false });
+	EchoManager.cleanup(obj);
 	AudioNodeManager.disposeNodes([obj.synth, obj.gain, obj.envelopeGain, obj.filter, obj.panner, obj.loopFadeGain, obj.eq]);
 	await waitForNextFrame();
 
@@ -181,6 +183,16 @@ export async function changeSoundType(obj, newType) {
 
 		obj.params = newParams;
 
+		const availableTargets = getAvailableModulationTargets(newType, obj.role);
+		if (availableTargets.length > 0 && obj.params.lfo) {
+			['mod1', 'mod2', 'mod3'].forEach(mod => {
+				const modConfig = obj.params.lfo[mod];
+				if (modConfig && !availableTargets.includes(modConfig.target)) {
+					modConfig.target = availableTargets[0];
+				}
+			});
+		}
+
 		const { synth, gain, envelopeGain, filter, panner, eq, loopFadeGain } = AudioNodeManager.createAudioChain(newType, obj.params, Selectors.getSpatialMode());
 
 		Object.assign(obj, {
@@ -209,7 +221,7 @@ export async function changeSoundType(obj, newType) {
 
 		if (newType === 'SoundFile' && preservedData.fileName) {
 			await autoLoadSoundFile(obj, preservedData.fileName);
-			_applySoundFilePlaybackParams(obj, false);
+			applySoundFilePlaybackParams(obj, false);
 		} else if (newType === 'Sampler' && preservedData.samplerMode === 'single' && preservedData.fileName) {
 			await autoLoadSoundFile(obj, preservedData.fileName);
 		} else if (newType === 'Sampler' && preservedData.samplerMode === 'grid' && Object.keys(preservedData.gridSamples).length > 0) {

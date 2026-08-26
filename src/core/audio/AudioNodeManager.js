@@ -4,16 +4,9 @@ import { SYNTH_REGISTRY } from './SynthRegistry.js';
 import { getUserMovementSpeed } from './AudioEngine.js';
 
 export class AudioNodeManager {
-	static createAudioChain(type, params = {}, spatialMode = 'off') {
-		const masterGain = new Tone.Gain(0).toDestination();
-		const envelopeGain = new Tone.Gain(1);
-
-		const synthDef = SYNTH_REGISTRY[type] || {};
-		const isStereoSource = synthDef.isStereo || false;
-
-		let panner = null;
-		if (spatialMode === 'hrtf') {
-			panner = new Tone.Panner3D({
+	static createPanner(type, params = {}, spatialMode = 'off', useSpatialPanning = true) {
+		if (spatialMode === 'hrtf' && useSpatialPanning) {
+			return new Tone.Panner3D({
 				panningModel: CONSTANTS.PANNER_3D_MODEL,
 				distanceModel: CONSTANTS.PANNER_3D_DISTANCE_MODEL,
 				refDistance: CONSTANTS.PANNER_3D_REF_DISTANCE,
@@ -23,9 +16,20 @@ export class AudioNodeManager {
 				positionY: 0,
 				positionZ: 0
 			});
-		} else if (!isStereoSource) {
-			panner = new Tone.Panner(params.pan || 0);
 		}
+
+		return new Tone.Panner({
+			pan: params.pan || 0,
+			channelCount: SYNTH_REGISTRY[type]?.isStereo ? 2 : 1
+		});
+	}
+
+	static createAudioChain(type, params = {}, spatialMode = 'off') {
+		const masterGain = new Tone.Gain(0).toDestination();
+		const envelopeGain = new Tone.Gain(1);
+
+		const synthDef = SYNTH_REGISTRY[type] || {};
+		const panner = this.createPanner(type, params, spatialMode);
 
 		const filter = new Tone.Filter({
 			frequency: params.filterFreq || CONSTANTS.DEFAULT_SOUND.filterFreq,

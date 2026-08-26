@@ -102,6 +102,41 @@ The included player is a BOILERPLATE. Here's how to customize it:
    runtimeEngine.dispose();
 
 
+PROVIDING YOUR OWN HEADING
+--------------------------
+
+The engine rotates the sound field around AppState.audio.userDirection,
+a compass bearing in degrees (0 = north). It is filled from the GPS course,
+which is accurate while the listener walks but undefined when they stand
+still.
+
+Device orientation is deliberately not part of the engine: on iOS the
+compass needs DeviceOrientationEvent.requestPermission() called from a user
+gesture, so it belongs to your player's own UI. Write the value yourself and
+the engine picks it up on its next update:
+
+   const { AppState } = runtimeEngine.getContext();
+
+   window.addEventListener('deviceorientationabsolute', (event) => {
+     if (event.alpha !== null) {
+       AppState.audio.userDirection = Math.round((360 - event.alpha) % 360);
+     }
+   });
+
+On iOS, ask for permission from a button first:
+
+   button.addEventListener('click', async () => {
+     if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+       const response = await DeviceOrientationEvent.requestPermission();
+       if (response !== 'granted') return;
+     }
+     window.addEventListener('deviceorientation', handleOrientation);
+   });
+
+Anything can drive it - a compass, a headtracker, a slider, a fixed bearing.
+Leave it alone and the GPS course keeps it up to date.
+
+
 UPDATING THE BUZZ
 -----------------
 

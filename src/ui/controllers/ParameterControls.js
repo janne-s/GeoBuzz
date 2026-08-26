@@ -185,10 +185,12 @@ export function createParameterControl(def, paramKey, target, onUpdate, options 
 		slider.min = effectiveDef.min;
 		slider.step = effectiveDef.step;
 
+		let exactMax = null;
+
 		if (effectiveDef.dynamicMax && (target.type === 'SoundFile' && target.soundDuration)) {
 			const maxFade = target.soundDuration;
-			const step = parseFloat(slider.step);
-			slider.max = Math.ceil(maxFade / step) * step;
+			exactMax = maxFade;
+			slider.max = maxFade;
 			if (getValue() > maxFade) {
 				setValue(maxFade);
 			}
@@ -286,7 +288,10 @@ export function createParameterControl(def, paramKey, target, onUpdate, options 
 		});
 
 		slider.oninput = () => {
-			const value = parseFloat(slider.value);
+			let value = parseFloat(slider.value);
+			if (exactMax !== null && value + parseFloat(slider.step) > exactMax) {
+				value = exactMax;
+			}
 			updateDisplay(value);
 			AppState.dispatch({
 				type: 'PARAMETER_CHANGED',

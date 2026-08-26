@@ -20,6 +20,9 @@ let getSmoothedPathPoints = null;
 let getOffsetPolyline = null;
 let map = null;
 
+const INTERNAL_MODS = ["mod1", "mod2", "mod3"];
+const FX_MODS = ["fxMod1", "fxMod2", "fxMod3"];
+
 export function setContext(ctx) {
 	GeolocationManager = ctx.GeolocationManager;
 	updateSynthParam = ctx.updateSynthParam;
@@ -35,6 +38,85 @@ export function setContext(ctx) {
 	map = ctx.map;
 }
 
+function applyCircleRadius(s, radius) {
+	s.maxDistance = Math.max(CONSTANTS.MIN_RADIUS, radius);
+	s.circle.setRadius(s.maxDistance);
+
+	const center = s.marker.getLatLng();
+	if (s.labelMarker) {
+		s.labelMarker.setLatLng(Geometry.computeEdgeLatLng(center, s.maxDistance, 'label'));
+	}
+	if (s.handle) {
+		s.handle.setLatLng(Geometry.computeEdgeLatLng(center, s.maxDistance));
+	}
+}
+
+function applyPositionOffset(s, deltaLat, deltaLng) {
+	const newLat = s.userLat + deltaLat;
+	const newLng = s.userLng + deltaLng;
+	const newLatLng = L.latLng(newLat, newLng);
+
+	s.marker.setLatLng(newLatLng);
+
+	if (s.shapeType === "circle" && s.circle) {
+		s.circle.setLatLng(newLatLng);
+		if (s.handle) {
+			const newEdge = Geometry.computeEdgeLatLng(newLatLng, s.maxDistance);
+			s.handle.setLatLng(newEdge);
+		}
+		if (s.labelMarker) {
+			const newLabelPos = Geometry.computeEdgeLatLng(newLatLng, s.maxDistance, 'label');
+			s.labelMarker.setLatLng(newLabelPos);
+		}
+	} else if (s.shapeType === "polygon" && s.polygon && s.vertices) {
+		if (!s.originalVertices) {
+			s.originalVertices = s.vertices.map(v => ({
+				lat: v.lat - s.userLat,
+				lng: v.lng - s.userLng
+			}));
+		}
+		s.vertices = s.originalVertices.map(offset =>
+			L.latLng(s.userLat + offset.lat + deltaLat, s.userLng + offset.lng + deltaLng)
+		);
+		s.polygon.setLatLngs(s.vertices);
+		if (s.vertexMarkers) {
+			for (let i = 0; i < s.vertexMarkers.length; i++) {
+				const marker = s.vertexMarkers[i];
+				if (marker && s.vertices[i]) {
+					marker.setLatLng(s.vertices[i]);
+				}
+			}
+		}
+		if (s.labelMarker && s.vertices[0]) {
+			s.labelMarker.setLatLng(s.vertices[0]);
+		}
+	} else if (s.shapeType === "line" && s.polygon && s.linePoints && s.linePoints.length >= 2) {
+		if (!s._originalLinePoints) {
+			s._originalLinePoints = s.linePoints.map(p => ({
+				lat: p.lat - s.userLat,
+				lng: p.lng - s.userLng
+			}));
+		}
+		s.linePoints = s._originalLinePoints.map(offset =>
+			L.latLng(s.userLat + offset.lat + deltaLat, s.userLng + offset.lng + deltaLng)
+		);
+		const pts = s.smoothing > 0 ? Geometry.smoothPoints(s.linePoints, s.smoothing) : s.linePoints;
+		const corridorPoints = Geometry.generateSoundLineCorridorWithSemicircles(pts, s.lineTolerance);
+		s.polygon.setLatLngs(corridorPoints);
+		if (s.linePointMarkers && s.linePointMarkers.length > 0) {
+			s.linePointMarkers.forEach((marker, i) => {
+				if (marker && s.linePoints[i]) marker.setLatLng(s.linePoints[i]);
+			});
+		}
+		if (s.labelMarker && s.linePoints[0]) {
+			s.labelMarker.setLatLng(s.linePoints[0]);
+		}
+	} else if (s.shapeType === "oval" && s.polygon && s.ovalCenter) {
+		const newCenter = L.latLng(s.userLat + deltaLat, s.userLng + deltaLng);
+		Geometry.updateOvalPosition(s, newCenter);
+	}
+}
+
 export function processLFOs(s, now) {
 	const t = now;
 
@@ -46,6 +128,8 @@ export function processLFOs(s, now) {
 	const xRange = s.params.lfo.x.range;
 	const yFreq = s.params.lfo.y.freq;
 	const yRange = s.params.lfo.y.range;
+	const xActive = xFreq > 0 && xRange > 0;
+	const yActive = yFreq > 0 && yRange > 0;
 
 	const shouldUpdateDOM = domUpdateCounter.frame % 2 === 0;
 
@@ -57,108 +141,47 @@ export function processLFOs(s, now) {
 		let deltaLat = 0;
 		let deltaLng = 0;
 
-		if (xFreq > 0 && xRange > 0) {
+		if (xActive) {
 			const phase = (t - s.params.lfo._phaseOffsets.x) * xFreq * CONSTANTS.TWO_PI;
 			const xOffset = Math.sin(phase) * (xRange / 2);
 			deltaLng = xOffset / CONSTANTS.METERS_PER_LNG;
 		}
 
-		if (yFreq > 0 && yRange > 0) {
+		if (yActive) {
 			const phase = (t - s.params.lfo._phaseOffsets.y) * yFreq * CONSTANTS.TWO_PI;
 			const yOffset = Math.sin(phase) * (yRange / 2);
 			deltaLat = yOffset / CONSTANTS.METERS_PER_LAT;
 		}
 
-		if (((xFreq > 0 && xRange > 0) || (yFreq > 0 && yRange > 0)) && shouldUpdateDOM) {
-			const newLat = s.userLat + deltaLat;
-			const newLng = s.userLng + deltaLng;
-			const newLatLng = L.latLng(newLat, newLng);
-
-			s.marker.setLatLng(newLatLng);
-
-			if (s.shapeType === "circle" && s.circle) {
-				s.circle.setLatLng(newLatLng);
-				if (s.handle) {
-					const newEdge = Geometry.computeEdgeLatLng(newLatLng, s.maxDistance);
-					s.handle.setLatLng(newEdge);
-				}
-				if (s.labelMarker) {
-					const newLabelPos = Geometry.computeEdgeLatLng(newLatLng, s.maxDistance, 'label');
-					s.labelMarker.setLatLng(newLabelPos);
-				}
-			} else if (s.shapeType === "polygon" && s.polygon && s.vertices) {
-				if (!s.originalVertices) {
-					s.originalVertices = s.vertices.map(v => ({
-						lat: v.lat - s.userLat,
-						lng: v.lng - s.userLng
-					}));
-				}
-				s.vertices = s.originalVertices.map(offset =>
-					L.latLng(s.userLat + offset.lat + deltaLat, s.userLng + offset.lng + deltaLng)
-				);
-				s.polygon.setLatLngs(s.vertices);
-				if (s.vertexMarkers) {
-					for (let i = 0; i < s.vertexMarkers.length; i++) {
-						const marker = s.vertexMarkers[i];
-						if (marker && s.vertices[i]) {
-							marker.setLatLng(s.vertices[i]);
-						}
-					}
-				}
-				if (s.labelMarker && s.vertices[0]) {
-					s.labelMarker.setLatLng(s.vertices[0]);
-				}
-			} else if (s.shapeType === "line" && s.polygon && s.linePoints && s.linePoints.length >= 2) {
-				if (!s._originalLinePoints) {
-					s._originalLinePoints = s.linePoints.map(p => ({
-						lat: p.lat - s.userLat,
-						lng: p.lng - s.userLng
-					}));
-				}
-				s.linePoints = s._originalLinePoints.map(offset =>
-					L.latLng(s.userLat + offset.lat + deltaLat, s.userLng + offset.lng + deltaLng)
-				);
-				const pts = s.smoothing > 0 ? Geometry.smoothPoints(s.linePoints, s.smoothing) : s.linePoints;
-				const corridorPoints = Geometry.generateSoundLineCorridorWithSemicircles(pts, s.lineTolerance);
-				s.polygon.setLatLngs(corridorPoints);
-				if (s.linePointMarkers && s.linePointMarkers.length > 0) {
-					s.linePointMarkers.forEach((marker, i) => {
-						if (marker && s.linePoints[i]) marker.setLatLng(s.linePoints[i]);
-					});
-				}
-				if (s.labelMarker && s.linePoints[0]) {
-					s.labelMarker.setLatLng(s.linePoints[0]);
-				}
-			} else if (s.shapeType === "oval" && s.polygon && s.ovalCenter) {
-				const newCenter = L.latLng(s.userLat + deltaLat, s.userLng + deltaLng);
-				Geometry.updateOvalPosition(s, newCenter);
-			}
+		if ((xActive || yActive) && shouldUpdateDOM) {
+			applyPositionOffset(s, deltaLat, deltaLng);
+			s._positionModulated = true;
+		} else if (!xActive && !yActive && s._positionModulated) {
+			applyPositionOffset(s, 0, 0);
+			s._positionModulated = false;
 		}
 	}
 
 	const sizeFreq = s.params.lfo.size.freq;
 	const sizeRange = s.params.lfo.size.range;
-	if (sizeFreq > 0 && sizeRange > 0 && s.shapeType === "circle" && s.circle && shouldUpdateDOM) {
+	const sizeActive = sizeFreq > 0 && sizeRange > 0;
+
+	if (!sizeActive && s._sizeModulated && s.shapeType === "circle" && s.circle) {
+		applyCircleRadius(s, s.originalSize);
+		s._sizeModulated = false;
+	}
+
+	if (sizeActive && s.shapeType === "circle" && s.circle && shouldUpdateDOM) {
 		if (!s.params.lfo._phaseOffsets) {
 			s.params.lfo._phaseOffsets = { x: 0, y: 0, size: 0 };
 		}
 		const phase = (t - s.params.lfo._phaseOffsets.size) * sizeFreq * CONSTANTS.TWO_PI;
 		const sizeOffset = Math.sin(phase) * (sizeRange / 2);
-		s.maxDistance = Math.max(CONSTANTS.MIN_RADIUS, s.originalSize + sizeOffset);
-		s.circle.setRadius(s.maxDistance);
-
-		const center = s.marker.getLatLng();
-		if (s.labelMarker) {
-			const newLabelPos = Geometry.computeEdgeLatLng(center, s.maxDistance, 'label');
-			s.labelMarker.setLatLng(newLabelPos);
-		}
-		if (s.handle) {
-			const newHandlePos = Geometry.computeEdgeLatLng(center, s.maxDistance);
-			s.handle.setLatLng(newHandlePos);
-		}
+		applyCircleRadius(s, s.originalSize + sizeOffset);
+		s._sizeModulated = true;
 	}
 
-	if (!userPos) return;
+	if (!userPos) return undefined;
 
 	const modulationOffsets = new Map();
 
@@ -180,9 +203,8 @@ export function processLFOs(s, now) {
 			processSoundModulation(s, userPos, addOffset);
 		}
 
-		const mods = ["mod1", "mod2", "mod3"];
-		for (let i = 0; i < mods.length; i++) {
-			const mod = mods[i];
+		for (let i = 0; i < INTERNAL_MODS.length; i++) {
+			const mod = INTERNAL_MODS[i];
 			const { target, freq, range, source } = s.params.lfo[mod];
 			if (range > 0 || (freq > 0 && source !== 'lfo')) {
 				const offset = processInternalModulation(s, mod, target, freq, range, source, t, userPos, userSpeed);
@@ -190,9 +212,8 @@ export function processLFOs(s, now) {
 			}
 		}
 
-		const fxMods = ["fxMod1", "fxMod2", "fxMod3"];
-		for (let i = 0; i < fxMods.length; i++) {
-			const mod = fxMods[i];
+		for (let i = 0; i < FX_MODS.length; i++) {
+			const mod = FX_MODS[i];
 			if (s.params.lfo[mod]) {
 				const { target, freq, range, source } = s.params.lfo[mod];
 				if (target && target !== 'none' && (range > 0 || (freq > 0 && source !== 'lfo'))) {
@@ -203,14 +224,14 @@ export function processLFOs(s, now) {
 		}
 	}
 
-	const modulatedParams = new Set(modulationOffsets.keys());
+	if (modulationOffsets.size === 0 && !s._previouslyModulatedParams?.size) return isInside;
 
 	if (!s._previouslyModulatedParams) {
 		s._previouslyModulatedParams = new Set();
 	}
-	const paramsToReset = new Set([...s._previouslyModulatedParams].filter(p => !modulatedParams.has(p)));
 
-	paramsToReset.forEach(target => {
+	for (const target of s._previouslyModulatedParams) {
+		if (modulationOffsets.has(target)) continue;
 		if (target === 'volume') {
 			delete s._modulatedVolume;
 		} else {
@@ -220,7 +241,7 @@ export function processLFOs(s, now) {
 			}
 		}
 		s._previouslyModulatedParams.delete(target);
-	});
+	}
 
 	modulationOffsets.forEach((totalOffset, target) => {
 		const def = PARAMETER_REGISTRY[target];
@@ -253,6 +274,8 @@ export function processLFOs(s, now) {
 
 		s._previouslyModulatedParams.add(target);
 	});
+
+	return isInside;
 }
 
 const domUpdateCounter = { frame: 0 };

@@ -18,7 +18,7 @@ import { GeolocationManager } from './geospatial/GeolocationManager.js';
 import { DeviceOrientationManager } from './geospatial/DeviceOrientationManager.js';
 import { PathZoneChecker } from './geospatial/PathZoneChecker.js';
 import { AudioNodeManager, PolyphonyManager } from './audio/AudioNodeManager.js';
-import { SYNTH_REGISTRY, FX_REGISTRY, getSynthCapabilities, getParametersForSynth, getAvailableFXTypes, getAvailableSynthTypes, initializeSynthParameters, getAvailableFXModulationTargets } from './audio/SynthRegistry.js';
+import { SYNTH_REGISTRY, FX_REGISTRY, getSynthCapabilities, getParametersForSynth, getAvailableFXTypes, getAvailableSynthTypes, initializeSynthParameters, getAvailableFXModulationTargets, getAvailableModulationTargets } from './audio/SynthRegistry.js';
 import { midiToNoteName } from './utils/audioHelpers.js';
 import { StreamManager } from './audio/StreamManager.js';
 import { FXManager } from './audio/FXManager.js';
@@ -31,7 +31,7 @@ import { EchoManager } from './audio/EchoManager.js';
 import { updateAudio, getUserMovementSpeed, startAudioLoop, stopAudioLoop } from './audio/AudioEngine.js';
 import { updateSynthParam } from './audio/ParameterUpdater.js';
 import { addSound, addSoundLine, addSoundOval, loadSound, createSoundObject, createFullSoundInstance } from './audio/SoundCreation.js';
-import { destroySound, startLoopedPlayback, stopLoopedPlayback, upgradeSynthToPolyphonic, triggerPlayback } from './audio/SoundLifecycle.js';
+import { destroySound, startLoopedPlayback, stopLoopedPlayback, upgradeSynthToPolyphonic, triggerPlayback, applySoundFilePlaybackParams } from './audio/SoundLifecycle.js';
 import { DistanceSequencer } from './audio/DistanceSequencer.js';
 import { calcGain, calculatePathGain, calculateRelativePosition, calculateBearingPan } from './audio/audioUtils.js';
 import { processLFOs, processPathLFOs } from './audio/LFOProcessor.js';
@@ -124,7 +124,7 @@ import { setContext as setLFOProcessorContext } from './audio/LFOProcessor.js';
 import { setContext as setEchoManagerContext } from './audio/EchoManager.js';
 import { setContext as setDistanceSequencerContext } from './audio/DistanceSequencer.js';
 import { setContext as setAudioUtilsContext } from './audio/audioUtils.js';
-import { setContext as setAudioSmootherContext } from './audio/AudioSmoother.js';
+import { setContext as setAudioSmootherContext, clearSoundCache } from './audio/AudioSmoother.js';
 import { setUIEventHandlersContext } from '../events/UIEventHandler.js';
 import { setStorageAdapterContext } from '../persistence/StorageAdapter.js';
 import { setDragHandlersContext } from '../interactions/DragHandlers.js';
@@ -658,23 +658,6 @@ function updateSoundMarkerPosition(sound, newPosition) {
 		);
 		sound._originalMarkerPos = newPosition;
 	}
-}
-
-function getAvailableModulationTargets(synthType, role) {
-	const synthParams = getParametersForSynth(synthType, role);
-
-	const modulatableParams = synthParams.filter(param => {
-		if (param.startsWith('lfo_') || param.startsWith('fx_')) {
-			return false;
-		}
-
-		const def = PARAMETER_REGISTRY[param];
-		if (!def) return false;
-
-		return def.type === 'range' || def.type === 'number';
-	});
-
-	return [...new Set(modulatableParams)];
 }
 
 function getEffectParameters(effectType) {
@@ -1267,6 +1250,7 @@ function resetAreaTracking(userPos) {
 function reconnectAmbisonicsSource(sound) {
 	if (!sound.ambisonicSource) return;
 
+	EchoManager.cleanup(sound);
 	sound.filter.disconnect();
 	sound.envelopeGain.disconnect();
 	sound.gain.disconnect();
@@ -1332,44 +1316,6 @@ function getAudioNodeParameter(synth, audioNodePath) {
 	return current;
 }
 
-function _applySoundFilePlaybackParams(soundObj, shouldRestart = false) {
-	if ((soundObj.type !== "SoundFile" && soundObj.type !== "Granular") || !soundObj.synth) {
-		return;
-	}
-
-	const isGranular = soundObj.type === "Granular";
-
-	soundObj.synth.set({
-		loop: soundObj.params.loop || false,
-		playbackRate: soundObj.params.speed,
-		reverse: soundObj.params.reverse,
-		loopStart: soundObj.params.loopStart,
-		loopEnd: soundObj.params.loopEnd
-	});
-
-	if (isGranular) {
-		soundObj.synth.detune = soundObj.params.grainDetune || 0;
-		if (soundObj.params.timeStretchMode === 'manual') {
-			soundObj.synth.grainSize = soundObj.params.grainSize || 0.1;
-			soundObj.synth.overlap = soundObj.params.overlap || 0.05;
-		}
-	} else {
-		soundObj.synth.fadeIn = soundObj.params.fadeIn;
-		soundObj.synth.fadeOut = soundObj.params.fadeOut;
-	}
-
-	if (shouldRestart && soundObj.isPlaying && soundObj.params.loop) {
-		if (soundObj._restartTimeout) {
-			cancelAnimationFrame(soundObj._restartTimeout);
-		}
-		soundObj._restartTimeout = requestAnimationFrame(async () => {
-			stopLoopedPlayback(soundObj);
-			await waitForNextFrame();
-			startLoopedPlayback(soundObj);
-		});
-	}
-}
-
 async function _handleSoundFileModeChange(soundObj, newMode) {
 	if (soundObj.params.playbackMode === newMode) return;
 
@@ -1395,7 +1341,7 @@ async function _handleSoundFileModeChange(soundObj, newMode) {
 		await autoLoadSoundFile(soundObj, soundFile);
 	}
 
-	_applySoundFilePlaybackParams(soundObj, false);
+	applySoundFilePlaybackParams(soundObj, false);
 }
 
 async function _upgradeSynthToPolyphonic(soundObj, requiredPolyphony) {
@@ -1621,15 +1567,14 @@ function showUserMenu(point) {
 }
 
 async function setSoundPannerType(soundObj) {
-	if (!soundObj.filter || !soundObj.panner || !soundObj.envelopeGain) return;
+	if (!soundObj.filter || !soundObj.envelopeGain) return;
 
-	const shouldUseHrtf = Selectors.getSpatialMode() === 'hrtf' && soundObj.useSpatialPanning;
 	const shouldUseAmbisonics = Selectors.getSpatialMode() === 'ambisonics' && soundObj.useSpatialPanning;
 	const currentIsAmbisonic = soundObj.ambisonicSource && soundObj.ambisonicSource !== null;
 
 	const wasPlaying = soundObj.isPlaying;
-	const playingNotes = soundObj.params.selectedNotes && soundObj.params.selectedNotes.length > 0 ? [...soundObj.params.selectedNotes] : (wasPlaying ? [soundObj.params.pitch || 60] : []);
 
+	EchoManager.cleanup(soundObj);
 	soundObj.filter.disconnect();
 	soundObj.envelopeGain.disconnect();
 	soundObj.gain.disconnect();
@@ -1659,30 +1604,12 @@ async function setSoundPannerType(soundObj) {
 			soundObj.gain.toDestination();
 		}
 	} else {
-		if (shouldUseHrtf) {
-			soundObj.panner = new Tone.Panner3D({
-				panningModel: CONSTANTS.PANNER_3D_MODEL,
-				distanceModel: CONSTANTS.PANNER_3D_DISTANCE_MODEL,
-				refDistance: CONSTANTS.PANNER_3D_REF_DISTANCE,
-				maxDistance: CONSTANTS.PANNER_3D_MAX_DISTANCE,
-				rolloffFactor: CONSTANTS.PANNER_3D_ROLLOFF_FACTOR
-			});
-		} else {
-			const synthDef = SYNTH_REGISTRY[soundObj.type];
-			const isStereoSource = synthDef?.isStereo || false;
-
-			if (isStereoSource && Selectors.getSpatialMode() === 'stereo') {
-				soundObj.panner = new Tone.Panner3D({
-					panningModel: 'equalpower',
-					distanceModel: 'linear',
-					refDistance: 1,
-					maxDistance: 10000,
-					rolloffFactor: 0
-				});
-			} else {
-				soundObj.panner = new Tone.Panner(soundObj.params.pan || 0);
-			}
-		}
+		soundObj.panner = AudioNodeManager.createPanner(
+			soundObj.type,
+			soundObj.params,
+			Selectors.getSpatialMode(),
+			soundObj.useSpatialPanning
+		);
 
 		soundObj.filter.connect(soundObj.panner);
 		soundObj.panner.connect(soundObj.envelopeGain);
@@ -1708,12 +1635,16 @@ async function setSoundPannerType(soundObj) {
 		}
 	}
 
+	reconnectSoundToLayers(soundObj);
+
 	if (wasPlaying && soundObj.type !== 'SoundFile' && soundObj.type !== 'StreamPlayer') {
+		PolyphonyManager.release(soundObj);
+		soundObj.isPlaying = false;
 		await waitForNextFrame();
-		if (playingNotes.length > 0) {
-			PolyphonyManager.triggerPolyphonic(soundObj.synth, playingNotes, true);
-		}
+		AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 	}
+
+	startAudioLoop();
 }
 
 async function setSpatialMode(newMode) {
@@ -1758,6 +1689,7 @@ async function setSpatialMode(newMode) {
 			s.wasInsideArea = false;
 		});
 		updateAudio(userPos);
+		startAudioLoop();
 	}
 
 	AppState.dispatch({
@@ -1776,6 +1708,7 @@ async function rebuildSoundAudioChain(soundObj) {
 		appContext.AmbisonicsManager.removeSource(soundObj);
 		soundObj.ambisonicSource = null;
 	}
+	EchoManager.cleanup(soundObj);
 	AudioNodeManager.disposeNodes([
 		soundObj.synth, soundObj.gain, soundObj.envelopeGain,
 		soundObj.filter, soundObj.panner, soundObj.eq,
@@ -1796,7 +1729,7 @@ async function rebuildSoundAudioChain(soundObj) {
 	soundObj.params = currentParams;
 	if (currentType === 'SoundFile' && soundFile) {
 		await autoLoadSoundFile(soundObj, soundFile);
-		_applySoundFilePlaybackParams(soundObj, false);
+		applySoundFilePlaybackParams(soundObj, false);
 	}
 
 	await restoreFXChain(soundObj);
@@ -1806,30 +1739,7 @@ async function rebuildSoundAudioChain(soundObj) {
 
 	reconnectSoundToLayers(soundObj);
 	AudioNodeManager.updateFXChain(soundObj);
-}
-
-function updateListenerOrientation() {
-	if (Selectors.getSpatialMode() !== 'hrtf') {
-		Tone.Listener.forwardX.value = 0;
-		Tone.Listener.forwardY.value = 0;
-		Tone.Listener.forwardZ.value = -1;
-		Tone.Listener.upX.value = 0;
-		Tone.Listener.upY.value = 1;
-		Tone.Listener.upZ.value = 0;
-		return;
-	}
-
-	const angleRad = Selectors.getUserDirection() * (Math.PI / 180);
-
-	const forwardY = Math.cos(angleRad);
-	const forwardX = Math.sin(angleRad);
-
-	Tone.Listener.forwardX.value = forwardX;
-	Tone.Listener.forwardY.value = forwardY;
-	Tone.Listener.forwardZ.value = 0;
-	Tone.Listener.upX.value = 0;
-	Tone.Listener.upY.value = 0;
-	Tone.Listener.upZ.value = 1;
+	clearSoundCache(soundObj.id);
 }
 
 async function loadServerSoundFile(filename, soundObj) {
@@ -1914,6 +1824,10 @@ async function autoLoadSoundFile(soundObj, filename) {
 				}
 				if (soundObj.type !== 'Sampler' || !soundObj.soundDuration) {
 					soundObj.soundDuration = duration;
+				}
+
+				if (!soundObj.params.loopEnd && soundObj.soundDuration) {
+					soundObj.params.loopEnd = soundObj.soundDuration;
 				}
 
 
@@ -2143,7 +2057,6 @@ appContext.initialize({
 		updateSynthParam,
 		calcGain,
 		calculatePathGain,
-		updateListenerOrientation,
 		calculateRelativePosition,
 		calculateBearingPan,
 		processLFOs,
@@ -2360,7 +2273,7 @@ appContext.initialize({
 		updateSynthParam,
 		updateAudio,
 		autoLoadSoundFile,
-		_applySoundFilePlaybackParams,
+		applySoundFilePlaybackParams,
 		updateLayerFXChain,
 		updateSoundPositionOnPath,
 		createFullSoundInstance,
@@ -2393,7 +2306,7 @@ appContext.setDependency('updateAudio', updateAudio);
 appContext.setDependency('initializeSynthParameters', initializeSynthParameters);
 appContext.setDependency('getSynthCapabilities', getSynthCapabilities);
 appContext.setDependency('autoLoadSoundFile', autoLoadSoundFile);
-appContext.setDependency('_applySoundFilePlaybackParams', _applySoundFilePlaybackParams);
+appContext.setDependency('applySoundFilePlaybackParams', applySoundFilePlaybackParams);
 appContext.setDependency('_handleSoundFileModeChange', _handleSoundFileModeChange);
 appContext.setDependency('setupRecording', setupRecording);
 appContext.setDependency('setupStreamTesting', setupStreamTesting);
@@ -2709,6 +2622,15 @@ AppState.subscribe((action) => {
 					showUserMenu(point);
 				}
 			}
+			break;
+		}
+
+		case 'WORKSPACE_SAVE_FAILED': {
+			const { error, attempts } = action.payload;
+			ModalSystem.alert(
+				`Your work could not be saved to the workspace (${attempts} attempts).\n\n${error?.message || error}\n\nExport the Buzz to a file before closing this page.`,
+				'Workspace Not Saved'
+			);
 			break;
 		}
 

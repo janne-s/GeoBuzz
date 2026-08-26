@@ -804,6 +804,9 @@ export const MenuTabs = {
 			dropdownsContainer.appendChild(sourceSelect);
 
 			const availableTargets = context.getAvailableModulationTargets(obj.type, obj.role);
+			if (availableTargets.length > 0 && !availableTargets.includes(obj.params.lfo[mod].target)) {
+				obj.params.lfo[mod].target = availableTargets[0];
+			}
 			const targetOptions = availableTargets.map(t => ({ value: t, label: context.PARAMETER_REGISTRY[t]?.label || t }));
 			const targetSelect = createSelect(targetOptions, obj.params.lfo[mod].target, (e) => {
 				obj.params.lfo[mod].target = e.target.value;
@@ -849,7 +852,8 @@ export const MenuTabs = {
 			group.appendChild(dropdownsContainer);
 
 			group.appendChild(context.createParameterControl(context.PARAMETER_REGISTRY[`lfo_${mod}_range`], `lfo_${mod}_range`, obj, onUpdate, { small: true }));
-			group.appendChild(context.createParameterControl(context.PARAMETER_REGISTRY[`lfo_${mod}_inertia`], `lfo_${mod}_inertia`, obj, onUpdate, { small: true }));
+			const inertiaControl = context.createParameterControl(context.PARAMETER_REGISTRY[`lfo_${mod}_inertia`], `lfo_${mod}_inertia`, obj, onUpdate, { small: true });
+			group.appendChild(inertiaControl);
 
 			const freqControl = context.createParameterControl(context.PARAMETER_REGISTRY[`lfo_${mod}_freq`], `lfo_${mod}_freq`, obj, onUpdate, { small: true });
 			const freqLabel = freqControl.querySelector('label');
@@ -903,6 +907,7 @@ export const MenuTabs = {
 				referenceSpeedControl.style.display = isSpeed ? '' : 'none';
 				speedThresholdControl.style.display = isWalkableLFO ? '' : 'none';
 				instabilityReactivityControl.style.display = isGpsInstability ? '' : 'none';
+				inertiaControl.style.display = isLFO ? 'none' : '';
 				freqControl.style.display = isGpsInstability ? 'none' : '';
 
 				if (isSpeed) {
@@ -980,6 +985,9 @@ export const MenuTabs = {
 			dropdownsContainer.appendChild(sourceSelect);
 
 			const targetOptions = context.getAvailableFXModulationTargets(obj.params.fx);
+			if (!targetOptions.some(opt => opt.value === obj.params.lfo[mod].target)) {
+				obj.params.lfo[mod].target = targetOptions[0].value;
+			}
 			const targetSelect = createSelect(targetOptions, obj.params.lfo[mod].target, (e) => {
 				obj.params.lfo[mod].target = e.target.value;
 				if (onUpdate) onUpdate();
@@ -1024,7 +1032,8 @@ export const MenuTabs = {
 			group.appendChild(dropdownsContainer);
 
 			group.appendChild(context.createParameterControl(context.PARAMETER_REGISTRY[`lfo_${mod}_range`], `lfo_${mod}_range`, obj, onUpdate, { small: true }));
-			group.appendChild(context.createParameterControl(context.PARAMETER_REGISTRY[`lfo_${mod}_inertia`], `lfo_${mod}_inertia`, obj, onUpdate, { small: true }));
+			const inertiaControl = context.createParameterControl(context.PARAMETER_REGISTRY[`lfo_${mod}_inertia`], `lfo_${mod}_inertia`, obj, onUpdate, { small: true });
+			group.appendChild(inertiaControl);
 
 			const freqControl = context.createParameterControl(context.PARAMETER_REGISTRY[`lfo_${mod}_freq`], `lfo_${mod}_freq`, obj, onUpdate, { small: true });
 			const freqLabel = freqControl.querySelector('label');
@@ -1078,6 +1087,7 @@ export const MenuTabs = {
 				referenceSpeedControl.style.display = isSpeed ? '' : 'none';
 				speedThresholdControl.style.display = isWalkableLFO ? '' : 'none';
 				instabilityReactivityControl.style.display = isGpsInstability ? '' : 'none';
+				inertiaControl.style.display = isLFO ? 'none' : '';
 				freqControl.style.display = isGpsInstability ? 'none' : '';
 
 				if (isSpeed) {

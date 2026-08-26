@@ -5,7 +5,8 @@ const lastTimes = new Map();
 export function applyModShaping(modConfig, lfoValue, smoothingKey, mod, now) {
 	let value = lfoValue;
 
-	const inertia = modConfig.inertia || 0;
+	const isLFO = !modConfig.source || modConfig.source === 'lfo';
+	const inertia = isLFO ? 0 : (modConfig.inertia || 0);
 	if (inertia > 0) {
 		const timeKey = `${smoothingKey}_${mod}`;
 		const last = lastTimes.get(timeKey);

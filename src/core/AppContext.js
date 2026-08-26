@@ -77,7 +77,7 @@ export class AppContext {
 		this.addEventHandlers = null;
 		this.restoreFXChain = null;
 		this.autoLoadSoundFile = null;
-		this._applySoundFilePlaybackParams = null;
+		this.applySoundFilePlaybackParams = null;
 		this.processLFOs = null;
 		this.processPathLFOs = null;
 		this.createLayerEQNode = null;

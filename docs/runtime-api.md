@@ -195,11 +195,23 @@ console.log(state.sequencers);    // Array of sequencer objects
 
 ### `getContext()`
 
-Returns the internal engine context object, giving access to all managers and utilities.
+Returns the public engine context — a fixed set of managers a custom player is
+expected to need. Nothing else in the engine is reachable through it.
 
 ```javascript
 const ctx = runtimeEngine.getContext();
+// → { map, AppState, Selectors, LayerManager, GeolocationManager }
 ```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `map` | L.Map | The Leaflet map instance |
+| `AppState` | object | Central state store, with a subscription system |
+| `Selectors` | object | Read accessors over `AppState` (`getSounds()`, `getPaths()`, `getSequencers()`, …) |
+| `LayerManager` | object | Layer visibility and gain |
+| `GeolocationManager` | object | User position, GPS tracking, user marker |
+
+Returns `null` before `initialize()` has completed.
 
 See [Accessing Managers](#accessing-managers) below for details.
 
@@ -218,7 +230,7 @@ See [Accessing Managers](#accessing-managers) below for details.
 
 ## Accessing Managers
 
-Use `getContext()` to access the internal managers. These are the most useful for custom players:
+`getContext()` returns these managers:
 
 ### GeolocationManager
 
@@ -281,6 +293,57 @@ map.on('click', (e) => {
   console.log('Clicked at', e.latlng);
 });
 ```
+
+### Selectors
+
+Read accessors over `AppState`.
+
+```javascript
+const selectors = runtimeEngine.getContext().Selectors;
+
+selectors.getSounds();      // Sound objects
+selectors.getPaths();       // Control paths
+selectors.getSequencers();  // Sequencers
+```
+
+### Providing your own heading
+
+The runtime rotates the sound field — stereo bearing panning, HRTF source
+positions, the ambisonics listener and echo taps — around
+`AppState.audio.userDirection`, a compass bearing in degrees (0 = north).
+
+`GeolocationManager` fills it from the GPS course, which is accurate while the
+listener is moving but undefined when they stand still. Device orientation is
+deliberately **not** part of the runtime: on iOS
+`DeviceOrientationEvent.requestPermission()` must be called from a user
+gesture, so the compass belongs to your player's own UI, not to the engine.
+
+Write the value directly and the engine picks it up on its next update:
+
+```javascript
+const { AppState } = runtimeEngine.getContext();
+
+window.addEventListener('deviceorientationabsolute', (event) => {
+  if (event.alpha !== null) {
+    AppState.audio.userDirection = Math.round((360 - event.alpha) % 360);
+  }
+});
+```
+
+On iOS, request permission from a button first:
+
+```javascript
+button.addEventListener('click', async () => {
+  if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+    const response = await DeviceOrientationEvent.requestPermission();
+    if (response !== 'granted') return;
+  }
+  window.addEventListener('deviceorientation', handleOrientation);
+});
+```
+
+Anything can drive it — a compass, a headtracker, a slider, a fixed bearing.
+Leave it alone and the GPS course keeps it up to date.
 
 ### AppState
 

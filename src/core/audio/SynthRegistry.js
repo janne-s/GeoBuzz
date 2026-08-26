@@ -357,6 +357,23 @@ export function getParametersForSynth(synthType, role = 'sound') {
 	return parameters;
 }
 
+export function getAvailableModulationTargets(synthType, role) {
+	const synthParams = getParametersForSynth(synthType, role);
+
+	const modulatableParams = synthParams.filter(param => {
+		if (param.startsWith('lfo_') || param.startsWith('fx_')) {
+			return false;
+		}
+
+		const def = PARAMETER_REGISTRY[param];
+		if (!def) return false;
+
+		return def.type === 'range' || def.type === 'number';
+	});
+
+	return [...new Set(modulatableParams)];
+}
+
 export function getAvailableSynthTypes(role = 'sound') {
 	return Object.entries(SYNTH_REGISTRY)
 		.filter(([type, def]) => role !== 'modulator' || !def.audioOnly)

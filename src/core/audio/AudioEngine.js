@@ -5,7 +5,7 @@ import { Geometry } from '../geospatial/Geometry.js';
 import { EchoManager } from './EchoManager.js';
 import { LayerManager } from '../../layers/LayerManager.js';
 import { calcGain, calculateRelativePosition, calculateBearingPan, calculateSilencingGain } from './audioUtils.js';
-import { startLoopedPlayback, stopLoopedPlayback } from './SoundLifecycle.js';
+import { startLoopedPlayback, stopLoopedPlayback, startOneShotPlayback, stopOneShotPlayback, scheduleLoopFades } from './SoundLifecycle.js';
 import {
 	updateSmoothedPosition,
 	getSmoothedPosition as getSmoothedPosFromSmoother,
@@ -23,8 +23,10 @@ let lastOSCUpdateTime = 0;
 const OSC_UPDATE_INTERVAL = 1000 / 30; // 30 updates per second
 let loopActive = false;
 let lastSpeedPosition = null;
+let lastSpeedDistance = 0;
 let lastSpeedTime = 0;
 let computedSpeed = 0;
+let listenerAtOrigin = false;
 
 export function setContext(ctx) {
 	context = ctx;
@@ -109,14 +111,29 @@ export function getUserMovementSpeed() {
 
 function updateComputedSpeed(userPos) {
 	const now = performance.now();
-	if (lastSpeedPosition) {
-		const dt = (now - lastSpeedTime) / 1000;
-		if (dt > 0) {
-			const dist = Geometry.calculateDistanceMeters(lastSpeedPosition, userPos);
-			computedSpeed = dist / dt;
-		}
+
+	if (!lastSpeedPosition) {
+		lastSpeedPosition = { lat: userPos.lat, lng: userPos.lng };
+		lastSpeedTime = now;
+		return;
 	}
-	lastSpeedPosition = { lat: userPos.lat, lng: userPos.lng };
+
+	const dt = (now - lastSpeedTime) / 1000;
+	if (dt <= 0) return;
+
+	const dist = Geometry.calculateDistanceMeters(lastSpeedPosition, userPos);
+
+	if (dist < CONSTANTS.MIN_TRACKING_DISTANCE) {
+		computedSpeed = dt >= CONSTANTS.SPEED_IDLE_TIMEOUT
+			? 0
+			: Math.min(computedSpeed, lastSpeedDistance / dt);
+		return;
+	}
+
+	computedSpeed = dist / dt;
+	lastSpeedDistance = dist;
+	lastSpeedPosition.lat = userPos.lat;
+	lastSpeedPosition.lng = userPos.lng;
 	lastSpeedTime = now;
 }
 
@@ -159,7 +176,14 @@ export function updateAudio(userPos, now) {
 			totalDistanceTraveled += distance;
 		}
 	}
-	lastUserPosition = userPos ? { lat: userPos.lat, lng: userPos.lng } : null;
+	if (!userPos) {
+		lastUserPosition = null;
+	} else if (lastUserPosition) {
+		lastUserPosition.lat = userPos.lat;
+		lastUserPosition.lng = userPos.lng;
+	} else {
+		lastUserPosition = { lat: userPos.lat, lng: userPos.lng };
+	}
 
 	const silencingGain = calculateSilencingGain(audioPos);
 	LayerManager.applySilencingGain(silencingGain);
@@ -175,15 +199,24 @@ export function updateAudio(userPos, now) {
 		}
 	}
 
-	if (Selectors.getSpatialMode() === 'hrtf') {
-		Tone.Listener.positionX.value = 0;
-		Tone.Listener.positionY.value = 0;
-		Tone.Listener.positionZ.value = 0;
-	} else if (Selectors.getSpatialMode() === 'ambisonics') {
-		const AmbisonicsManager = context.AmbisonicsManager;
-		if (AmbisonicsManager) {
-			AmbisonicsManager.updateListener(audioPos, Selectors.getUserDirection());
-			AmbisonicsManager.updateAllSourcePositions(audioPos);
+	const spatialMode = Selectors.getSpatialMode();
+	const userDirection = Selectors.getUserDirection();
+
+	if (spatialMode === 'hrtf') {
+		if (!listenerAtOrigin) {
+			Tone.Listener.positionX.value = 0;
+			Tone.Listener.positionY.value = 0;
+			Tone.Listener.positionZ.value = 0;
+			listenerAtOrigin = true;
+		}
+	} else {
+		listenerAtOrigin = false;
+		if (spatialMode === 'ambisonics') {
+			const AmbisonicsManager = context.AmbisonicsManager;
+			if (AmbisonicsManager) {
+				AmbisonicsManager.updateListener(audioPos, userDirection);
+				AmbisonicsManager.updateAllSourcePositions(audioPos);
+			}
 		}
 	}
 
@@ -195,7 +228,7 @@ export function updateAudio(userPos, now) {
 		lastOSCUpdateTime = currentTime;
 		AppState.dispatch({
 			type: 'OSC_USER_POSITION_UPDATE',
-			payload: { userPos, userDirection: Selectors.getUserDirection() }
+			payload: { userPos, userDirection }
 		});
 	}
 
@@ -215,6 +248,8 @@ export function updateAudio(userPos, now) {
 
 		const isControlledBySequencer = s.controlledBySequencer || isSoundControlledBySequencer(s);
 
+		let isInside;
+
 		if (now !== undefined) {
 			if (s.pathRoles?.movement) {
 				const path = AppState.getPath(s.pathRoles.movement);
@@ -224,12 +259,14 @@ export function updateAudio(userPos, now) {
 			}
 
 			if (processLFOs) {
-				processLFOs(s, now);
+				isInside = processLFOs(s, now);
 			}
 		}
 
 		const soundPos = s.marker.getLatLng();
-		let isInside = Geometry.isPointInShape(audioPos, s);
+		if (isInside === undefined) {
+			isInside = Geometry.isPointInShape(audioPos, s);
+		}
 
 		const soundDistance = context.map ? context.map.distance(audioPos, soundPos) : 0;
 		const inDeadZone = isInDeadZone(soundDistance, s.maxDistance || 100);
@@ -237,7 +274,7 @@ export function updateAudio(userPos, now) {
 		if (shouldSendOSC) {
 			AppState.dispatch({
 				type: 'OSC_SOUND_UPDATE',
-				payload: { sound: s, soundPos, userPos: audioPos, userDirection: Selectors.getUserDirection() }
+				payload: { sound: s, soundPos, userPos: audioPos, userDirection }
 			});
 		}
 
@@ -264,22 +301,22 @@ export function updateAudio(userPos, now) {
 			}
 		}
 
-		if (Selectors.getSpatialMode() === 'hrtf') {
+		if (spatialMode === 'hrtf') {
 			if (s.useSpatialPanning && s.panner instanceof Tone.Panner3D && s.panner.positionX) {
-				const coords = calculateRelativePosition(soundPos, audioPos, Selectors.getUserDirection());
+				const coords = calculateRelativePosition(soundPos, audioPos, userDirection);
 				s.panner.positionX.value = coords.x;
 				s.panner.positionY.value = coords.y;
 				s.panner.positionZ.value = 0;
 			}
-		} else if (Selectors.getSpatialMode() === 'stereo') {
+		} else if (spatialMode === 'stereo') {
 			if (s.useSpatialPanning && s.panner) {
 				if (s.panner instanceof Tone.Panner3D && s.panner.positionX) {
-					const coords = calculateRelativePosition(soundPos, audioPos, Selectors.getUserDirection());
+					const coords = calculateRelativePosition(soundPos, audioPos, userDirection);
 					s.panner.positionX.rampTo(coords.x, CONSTANTS.PANNER_RAMP_TIME);
 					s.panner.positionY.rampTo(coords.y, CONSTANTS.PANNER_RAMP_TIME);
 					s.panner.positionZ.value = 0;
 				} else if (s.panner.pan) {
-					const panValue = calculateBearingPan(audioPos, soundPos, Selectors.getUserDirection());
+					const panValue = calculateBearingPan(audioPos, soundPos, userDirection);
 					s.panner.pan.rampTo(panValue, CONSTANTS.PANNER_RAMP_TIME);
 				}
 			}
@@ -347,7 +384,7 @@ export function updateAudio(userPos, now) {
 						if (isNaN(effectiveSpeed)) effectiveSpeed = baseSpeed;
 						if (s.synth.playbackRate !== effectiveSpeed) s.synth.playbackRate = effectiveSpeed;
 					}
-				} else if (s.synth.playbackRate !== s.params.speed) {
+				} else if (!s._previouslyModulatedParams?.has('speed') && s.synth.playbackRate !== s.params.speed) {
 					s.synth.playbackRate = s.params.speed || 1.0;
 				}
 
@@ -370,28 +407,16 @@ export function updateAudio(userPos, now) {
 						if (s.params.loop) {
 							startLoopedPlayback(s);
 						} else {
-							let offset = 0;
-							if (s.params.resumePlayback) {
-								if (s.playbackPosition >= s.soundDuration) s.playbackPosition = 0;
-								offset = s.playbackPosition;
-							}
-							s.synth.start(undefined, offset);
-							s.isPlaying = true;
-							s._playbackStartTime = Tone.now();
-							s.synth.onstop = () => { s.isPlaying = false; };
+							startOneShotPlayback(s);
 						}
 					} else if ((!isInside || !isMoving) && s.isPlaying) {
 						if (s.params.loop) {
 							stopLoopedPlayback(s);
 						} else {
-							if (s.params.resumePlayback) {
-								const elapsed = (Tone.now() - s._playbackStartTime) * (s.params.speed || 1.0);
-								s.playbackPosition += elapsed;
-								if (s.playbackPosition > s.soundDuration) s.playbackPosition = s.soundDuration;
-							}
-							s.isPlaying = false;
-							s.synth.stop(Tone.now());
+							stopOneShotPlayback(s);
 						}
+					} else if (s.params.loop && s._loopActive) {
+						scheduleLoopFades(s);
 					}
 				} else {
 					if (s.params.loop) {
@@ -399,30 +424,14 @@ export function updateAudio(userPos, now) {
 							startLoopedPlayback(s);
 						} else if (!isInside && s.isPlaying) {
 							stopLoopedPlayback(s);
+						} else if (s._loopActive) {
+							scheduleLoopFades(s);
 						}
 					} else {
 						if (isInside && !wasInside && !s.isPlaying) {
-							let offset = 0;
-							if (s.params.resumePlayback && s.playbackPosition > 0) {
-								if (s.playbackPosition >= s.soundDuration) s.playbackPosition = 0;
-								offset = s.playbackPosition;
-							}
-							s.synth.start(undefined, offset);
-							s.isPlaying = true;
-							s._playbackStartTime = Tone.now();
-							s.synth.onstop = () => {
-								if (!s.params.resumePlayback) s.playbackPosition = 0;
-							};
+							startOneShotPlayback(s);
 						} else if (!isInside && s.isPlaying) {
-							if (s.params.resumePlayback) {
-								const elapsed = (Tone.now() - s._playbackStartTime) * (s.params.speed || 1.0);
-								s.playbackPosition += elapsed;
-								if (s.playbackPosition > s.soundDuration) s.playbackPosition = s.soundDuration;
-							} else {
-								s.playbackPosition = 0;
-							}
-							s.isPlaying = false;
-							s.synth.stop(Tone.now());
+							stopOneShotPlayback(s);
 						}
 					}
 				}
@@ -603,6 +612,10 @@ export function audioUpdateLoop() {
 				}
 			}
 			if (positionsMayHaveChanged) break;
+		}
+		if (s._positionModulated || s._sizeModulated) {
+			positionsMayHaveChanged = true;
+			break;
 		}
 		const lfo = s.params?.lfo;
 		if (lfo) {
