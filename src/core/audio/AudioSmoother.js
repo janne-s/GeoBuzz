@@ -35,28 +35,6 @@ export function updateSmoothedPosition(rawPosition) {
 	return smoothedPosition;
 }
 
-export function getSmoothedDistance(rawDistance, soundId) {
-	const alpha = CONSTANTS.AUDIO_SMOOTHING_ALPHA;
-
-	if (!lastGains.has(soundId)) {
-		lastGains.set(soundId, { distance: rawDistance, gain: null });
-		return rawDistance;
-	}
-
-	const cached = lastGains.get(soundId);
-
-	if (alpha >= 1) {
-		cached.distance = rawDistance;
-		return rawDistance;
-	}
-
-	if (alpha > 0) {
-		cached.distance = cached.distance + alpha * (rawDistance - cached.distance);
-	}
-
-	return cached.distance;
-}
-
 export function isInDeadZone(distance, soundMaxDistance) {
 	const deadZoneRadius = CONSTANTS.AUDIO_DEAD_ZONE_RADIUS;
 	if (deadZoneRadius <= 0) return false;
@@ -88,13 +66,6 @@ export function clampGainDelta(targetGain, soundId) {
 
 	cached.gain = clampedGain;
 	return clampedGain;
-}
-
-export function getSoundSmoothedDistance(userPos, soundPos, soundId, map) {
-	if (!userPos || !soundPos) return 0;
-
-	const rawDistance = map ? map.distance(userPos, soundPos) : Geometry.calculateDistanceMeters(userPos, soundPos);
-	return getSmoothedDistance(rawDistance, soundId);
 }
 
 export function getSmoothedModulationValue(rawValue, soundId, modKey, alphaOverride) {

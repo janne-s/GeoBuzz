@@ -8,6 +8,7 @@
 
 ### Changed
 
+- Speed gate hold, its stand-still rule and the sampler grid speed ranges are now one shared implementation instead of six
 - Speed gate now opens and closes with the sound's attack and release instead of cutting
 - Sound files played by a sequencer follow their fade in and out
 

@@ -2,6 +2,7 @@ import { CONSTANTS } from '../constants.js';
 import { Selectors } from '../state/selectors.js';
 import { SYNTH_REGISTRY } from './SynthRegistry.js';
 import { getUserMovementSpeed } from './AudioEngine.js';
+import { isSpeedGateActive, getGridKeySpeedRange } from './SpeedGate.js';
 
 export class AudioNodeManager {
 	static createPanner(type, params = {}, spatialMode = 'off', useSpatialPanning = true) {
@@ -332,7 +333,7 @@ export class PolyphonyManager {
 			if (soundObj.params.samplerMode === 'single') {
 				const gateMin = soundObj.params.speedGateMin ?? 0;
 				const gateMax = soundObj.params.speedGateMax ?? 10;
-				if (gateMin > 0 || gateMax < 10) {
+				if (isSpeedGateActive(gateMin, gateMax)) {
 					const userSpeed = getUserMovementSpeed();
 					if (userSpeed < gateMin || userSpeed > gateMax) {
 						return;
@@ -472,11 +473,10 @@ export class PolyphonyManager {
 						const gridSample = soundObj.params.gridSamples[midiNote];
 
 						if (gridSample && gridSample.fileName) {
-							const speedMin = gridSample.speedMin ?? 0;
-							const speedMax = gridSample.speedMax ?? 10;
-							if (speedMin > 0 || speedMax < 10) {
+							const range = getGridKeySpeedRange(soundObj, midiNote);
+							if (isSpeedGateActive(range.min, range.max)) {
 								const userSpeed = getUserMovementSpeed();
-								if (userSpeed < speedMin || userSpeed > speedMax) {
+								if (userSpeed < range.min || userSpeed > range.max) {
 									return;
 								}
 							}

@@ -10,6 +10,7 @@ import { generateLFOWaveform } from '../../config/parameterRegistry.js';
 import { GpsInstabilityTracker } from '../geospatial/GpsInstabilityTracker.js';
 import { applySoundModulationPatches } from './SoundModulation.js';
 import { openSoundFile, closeSoundFile, scheduleLoopFades } from './SoundLifecycle.js';
+import { evaluateSpeedGate, createSpeedGateState } from './SpeedGate.js';
 import { applyModShaping } from './ModShaping.js';
 import { fxTailSeconds } from './FxTail.js';
 import { LayerManager } from '../../layers/LayerManager.js';
@@ -128,8 +129,7 @@ export class DistanceSequencer {
 		this._silencingGain = 1;
 		this._isMovingFastEnough = false;
 		this._releaseTimeoutId = null;
-		this._speedGateCommitted = undefined;
-		this._speedGateTransitionStart = null;
+		this._speedGateState = createSpeedGateState();
 
 		this.geoMode = false;
 		this.gridMode = false;
@@ -156,33 +156,7 @@ export class DistanceSequencer {
 
 	_evaluateSpeedGate(speed, nowMs) {
 		const inRange = speed >= this.speedGateMin && speed <= this.speedGateMax;
-		const hold = this.speedGateHold * 1000;
-		if (hold === 0) return inRange;
-
-		if (!inRange && speed < CONSTANTS.ZERO_SPEED_THRESHOLD) {
-			this._speedGateCommitted = false;
-			this._speedGateTransitionStart = null;
-			return false;
-		}
-
-		if (this._speedGateCommitted === undefined) {
-			this._speedGateCommitted = inRange;
-			this._speedGateTransitionStart = null;
-			return inRange;
-		}
-		if (inRange === this._speedGateCommitted) {
-			this._speedGateTransitionStart = null;
-			return inRange;
-		}
-		if (this._speedGateTransitionStart === null) {
-			this._speedGateTransitionStart = nowMs;
-		}
-		if (nowMs - this._speedGateTransitionStart >= hold) {
-			this._speedGateCommitted = inRange;
-			this._speedGateTransitionStart = null;
-			return inRange;
-		}
-		return this._speedGateCommitted;
+		return evaluateSpeedGate(this._speedGateState, inRange, this.speedGateHold, nowMs, speed);
 	}
 
 	_handleGateClosed() {
@@ -968,31 +942,10 @@ export class DistanceSequencer {
 			const gateMin = step?.speedGateMin?.[note] ?? CONSTANTS.SEQUENCER_SPEED_GATE_MIN;
 			const gateMax = step?.speedGateMax?.[note] ?? CONSTANTS.SEQUENCER_SPEED_GATE_MAX;
 			if (gateMin === CONSTANTS.SEQUENCER_SPEED_GATE_MIN && gateMax === CONSTANTS.SEQUENCER_SPEED_GATE_MAX) return true;
+			if (!track._noteHoldState[note]) track._noteHoldState[note] = createSpeedGateState();
+			const hold = step?.speedGateHold?.[note] ?? this.speedGateHold ?? 0;
 			const inRange = userSpeed >= gateMin && userSpeed <= gateMax;
-			const holdSec = step?.speedGateHold?.[note] ?? this.speedGateHold ?? 0;
-			const holdMs = holdSec * 1000;
-			if (holdMs === 0) return inRange;
-			if (!track._noteHoldState[note]) {
-				track._noteHoldState[note] = { committed: inRange, transitionStart: null };
-				return inRange;
-			}
-			const state = track._noteHoldState[note];
-			if (!inRange && userSpeed < CONSTANTS.ZERO_SPEED_THRESHOLD) {
-				state.committed = false;
-				state.transitionStart = null;
-				return false;
-			}
-			if (inRange === state.committed) {
-				state.transitionStart = null;
-				return inRange;
-			}
-			if (state.transitionStart === null) state.transitionStart = nowMs;
-			if (nowMs - state.transitionStart >= holdMs) {
-				state.committed = inRange;
-				state.transitionStart = null;
-				return inRange;
-			}
-			return state.committed;
+			return evaluateSpeedGate(track._noteHoldState[note], inRange, hold, nowMs, userSpeed);
 		};
 
 		for (const note of [...allNotesToTrigger]) {
@@ -1113,101 +1066,65 @@ export class DistanceSequencer {
 	}
 
 	_triggerRelease(track, midiNote, willHaveActiveNotes = false) {
-		if (track.instrumentType === 'synth') {
-			const soundObj = this._synthPool.get(track.id);
-			if (soundObj && soundObj.synth && !soundObj.synth.disposed) {
-				if (soundObj.type === 'SoundFile') {
-					closeSoundFile(soundObj);
-					if (!willHaveActiveNotes) {
-						track._releaseUntil = Tone.now() + (soundObj.params.fadeOut || 0);
-					}
-				} else if (soundObj.type === 'StreamPlayer') {
-					context.StreamManager.stopStream(soundObj);
-				} else if (soundObj.synth instanceof Tone.NoiseSynth) {
-					soundObj.synth.triggerRelease();
-					if (!willHaveActiveNotes) {
-						track._releaseUntil = Tone.now() + (soundObj.params.release || 0.1);
-					}
-				} else {
-					const note = Tone.Frequency(midiNote, 'midi').toNote();
+		const soundObj = track.instrumentType === 'synth'
+			? this._synthPool.get(track.id)
+			: track.instrumentType === 'sound'
+				? AppState.getSoundByPersistentId(track.instrumentId)
+				: null;
 
-					if (soundObj.synth instanceof Tone.Sampler) {
-						if (soundObj.synth._manualSources && soundObj.synth._manualSources.has(note)) {
-							const sources = soundObj.synth._manualSources.get(note);
-							const now = Tone.now();
-							const stopTime = now + (soundObj.synth.release || 0.1);
-							while (sources.length > 0) {
-								const source = sources.shift();
-								source.stop(stopTime);
-							}
-						}
+		if (!soundObj || !soundObj.synth || soundObj.synth.disposed) return;
 
-						if (soundObj.synth._activeNotes) {
-							soundObj.synth._activeNotes.delete(note);
-						}
-						soundObj.synth.triggerRelease(note);
-					} else if (soundObj.synth instanceof Tone.PolySynth) {
-						if (soundObj.synth.voice === Tone.NoiseSynth) {
-							soundObj.synth.triggerRelease();
-						} else {
-							soundObj.synth.triggerRelease([note]);
-						}
-					} else if (soundObj.synth.triggerRelease) {
-						soundObj.synth.triggerRelease();
-					}
-
-					if (!willHaveActiveNotes) {
-						track._releaseUntil = Tone.now() + (soundObj.params.release || 0.1);
-					}
-				}
+		const markRelease = seconds => {
+			if (!willHaveActiveNotes) {
+				track._releaseUntil = Tone.now() + seconds;
 			}
-		} else if (track.instrumentType === 'sound') {
-			const soundEl = AppState.getSoundByPersistentId(track.instrumentId);
-			if (soundEl && soundEl.synth && !soundEl.synth.disposed) {
-				if (soundEl.type === 'SoundFile') {
-					closeSoundFile(soundEl);
-					if (!willHaveActiveNotes) {
-						track._releaseUntil = Tone.now() + (soundEl.params.fadeOut || 0);
-					}
-				} else if (soundEl.synth instanceof Tone.NoiseSynth) {
-					soundEl.synth.triggerRelease();
-					if (!willHaveActiveNotes) {
-						track._releaseUntil = Tone.now() + (soundEl.params.release || 0.1);
-					}
-				} else {
-					const note = Tone.Frequency(midiNote, 'midi').toNote();
+		};
 
-					if (soundEl.synth instanceof Tone.Sampler) {
-						if (soundEl.synth._manualSources && soundEl.synth._manualSources.has(note)) {
-							const sources = soundEl.synth._manualSources.get(note);
-							const stopTime = Tone.now() + (soundEl.synth.release || 0.1);
-							while (sources.length > 0) {
-								const source = sources.shift();
-								if (source.loop) source.loop = false;
-								source.stop(stopTime);
-							}
-							soundEl.synth._manualSources.delete(note);
-						}
-						if (soundEl.synth._activeNotes) {
-							soundEl.synth._activeNotes.delete(note);
-						}
-						soundEl.synth.triggerRelease(note);
-					} else if (soundEl.synth instanceof Tone.PolySynth) {
-						if (soundEl.synth.voice === Tone.NoiseSynth) {
-							soundEl.synth.triggerRelease();
-						} else {
-							soundEl.synth.triggerRelease([note]);
-						}
-					} else if (soundEl.synth.triggerRelease) {
-						soundEl.synth.triggerRelease();
-					}
-
-					if (!willHaveActiveNotes) {
-						track._releaseUntil = Tone.now() + (soundEl.params.release || 0.1);
-					}
-				}
-			}
+		if (soundObj.type === 'SoundFile') {
+			closeSoundFile(soundObj);
+			markRelease(soundObj.params.fadeOut || 0);
+			return;
 		}
+
+		if (soundObj.type === 'StreamPlayer') {
+			context.StreamManager.stopStream(soundObj);
+			return;
+		}
+
+		if (soundObj.synth instanceof Tone.NoiseSynth) {
+			soundObj.synth.triggerRelease();
+			markRelease(soundObj.params.release || 0.1);
+			return;
+		}
+
+		const note = Tone.Frequency(midiNote, 'midi').toNote();
+
+		if (soundObj.synth instanceof Tone.Sampler) {
+			if (soundObj.synth._manualSources && soundObj.synth._manualSources.has(note)) {
+				const sources = soundObj.synth._manualSources.get(note);
+				const stopTime = Tone.now() + (soundObj.synth.release || 0.1);
+				while (sources.length > 0) {
+					const source = sources.shift();
+					if (source.loop) source.loop = false;
+					source.stop(stopTime);
+				}
+				soundObj.synth._manualSources.delete(note);
+			}
+			if (soundObj.synth._activeNotes) {
+				soundObj.synth._activeNotes.delete(note);
+			}
+			soundObj.synth.triggerRelease(note);
+		} else if (soundObj.synth instanceof Tone.PolySynth) {
+			if (soundObj.synth.voice === Tone.NoiseSynth) {
+				soundObj.synth.triggerRelease();
+			} else {
+				soundObj.synth.triggerRelease([note]);
+			}
+		} else if (soundObj.synth.triggerRelease) {
+			soundObj.synth.triggerRelease();
+		}
+
+		markRelease(soundObj.params.release || 0.1);
 	}
 
 	_releaseAllNotes() {
@@ -1234,8 +1151,7 @@ export class DistanceSequencer {
 		this.currentStep = -1;
 		this.lastPosition = null;
 		this.positionHistory = [];
-		this._speedGateCommitted = undefined;
-		this._speedGateTransitionStart = null;
+		this._speedGateState = createSpeedGateState();
 		this._releaseAllNotes();
 
 		this.tracks.forEach(track => {
