@@ -326,6 +326,7 @@ export function startOneShotPlayback(soundObj) {
 
 	soundObj.synth.onstop = () => {
 		soundObj.isPlaying = false;
+		soundObj._envelopeOpen = false;
 		if (!soundObj._stoppedManually) {
 			soundObj.playbackPosition = 0;
 		}
@@ -350,6 +351,89 @@ export function stopOneShotPlayback(soundObj) {
 	soundObj.synth.stop(Tone.now());
 }
 
+export function cancelFadeStop(obj) {
+	if (obj._fadeStopTimeoutId) {
+		clearTimeout(obj._fadeStopTimeoutId);
+		obj._fadeStopTimeoutId = null;
+	}
+}
+
+function stopSoundFileSource(obj) {
+	if (obj.params.loop) {
+		stopLoopedPlayback(obj);
+	} else {
+		stopOneShotPlayback(obj);
+	}
+}
+
+export function openSoundFile(obj) {
+	if (obj.type !== "SoundFile" || !obj.synth || !obj.synth.loaded) return;
+
+	cancelFadeStop(obj);
+
+	const fadeIn = Math.max(0, obj.params.fadeIn || 0);
+	const starting = !obj.isPlaying;
+	const env = obj.envelopeGain?.gain;
+
+	if (env) {
+		const now = Tone.now();
+		const from = starting ? 0 : env.value;
+		env.cancelAndHoldAtTime(now);
+		if (fadeIn > 0 && from < 1) {
+			env.setValueAtTime(from, now);
+			env.linearRampToValueAtTime(1, now + fadeIn * (1 - from));
+		} else {
+			env.setValueAtTime(1, now);
+		}
+	}
+
+	if (starting) {
+		if (obj.params.loop) {
+			startLoopedPlayback(obj);
+		} else {
+			startOneShotPlayback(obj);
+		}
+	}
+
+	obj._envelopeOpen = true;
+}
+
+export function closeSoundFile(obj) {
+	if (obj.type !== "SoundFile" || !obj.synth) return;
+
+	cancelFadeStop(obj);
+	obj._envelopeOpen = false;
+
+	const fadeOut = Math.max(0, obj.params.fadeOut || 0);
+	const env = obj.envelopeGain?.gain;
+
+	if (fadeOut <= 0 || !env || !obj.isPlaying) {
+		stopSoundFileSource(obj);
+		return;
+	}
+
+	const now = Tone.now();
+	const from = env.value;
+
+	if (from <= 0) {
+		stopSoundFileSource(obj);
+		return;
+	}
+
+	const duration = fadeOut * from;
+	env.cancelAndHoldAtTime(now);
+	env.setValueAtTime(from, now);
+	env.linearRampToValueAtTime(0, now + duration);
+
+	const delay = Math.max(0, (now + duration) - Tone.context.currentTime);
+
+	obj._fadeStopTimeoutId = setTimeout(() => {
+		obj._fadeStopTimeoutId = null;
+		if (obj._envelopeOpen || obj.synth?.disposed) return;
+		stopSoundFileSource(obj);
+	}, delay * 1000);
+}
+
 export function triggerPlayback(soundObj, userPos) {
 	if (soundObj.type !== "SoundFile" || !soundObj.synth.loaded) return;
 
@@ -361,11 +445,11 @@ export function triggerPlayback(soundObj, userPos) {
 
 	if (soundObj.params.loop) {
 		if (!soundObj.isPlaying) {
-			startLoopedPlayback(soundObj);
+			openSoundFile(soundObj);
 		}
 	} else {
 		if (!soundObj.wasInsideArea && !soundObj.isPlaying) {
-			startOneShotPlayback(soundObj);
+			openSoundFile(soundObj);
 			soundObj.wasInsideArea = true;
 		}
 	}

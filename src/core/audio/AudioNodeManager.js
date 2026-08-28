@@ -155,6 +155,12 @@ export class AudioNodeManager {
 				obj.isPlaying = false;
 			}
 
+			if (obj._fadeStopTimeoutId) {
+				clearTimeout(obj._fadeStopTimeoutId);
+				obj._fadeStopTimeoutId = null;
+			}
+			obj._envelopeOpen = false;
+
 			if (obj.envelopeTimeoutId) {
 				clearTimeout(obj.envelopeTimeoutId);
 				obj.envelopeTimeoutId = null;

@@ -31,7 +31,7 @@ import { processLFOs, processPathLFOs, setContext as setLFOProcessorContext } fr
 import { updateSynthParam, setContext as setParameterUpdaterContext } from '../core/audio/ParameterUpdater.js';
 import { setContext as setDistanceSequencerContext } from '../core/audio/DistanceSequencer.js';
 import { createFullSoundInstance, setContext as setSoundCreationContext } from '../core/audio/SoundCreation.js';
-import { destroySound, startLoopedPlayback, stopLoopedPlayback, upgradeSynthToPolyphonic, applySoundFilePlaybackParams, setContext as setSoundLifecycleContext } from '../core/audio/SoundLifecycle.js';
+import { destroySound, startLoopedPlayback, stopLoopedPlayback, upgradeSynthToPolyphonic, applySoundFilePlaybackParams, cancelFadeStop, setContext as setSoundLifecycleContext } from '../core/audio/SoundLifecycle.js';
 import { DEFAULT_LFO_STRUCTURE, DEFAULT_FX_STRUCTURE, DEFAULT_EQ_STRUCTURE } from '../config/defaults.js';
 import { PARAMETER_REGISTRY } from '../config/parameterRegistry.js';
 import { deepClone, isCircularPath } from '../core/utils/math.js';
@@ -1105,6 +1105,8 @@ export class RuntimeEngine {
 					sound.isPlaying = false;
 				}
 			}
+			cancelFadeStop(sound);
+			sound._envelopeOpen = false;
 			sound.wasInsideArea = false;
 		});
 

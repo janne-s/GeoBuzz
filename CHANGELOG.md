@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-27
+
+### Fixed
+
+- Sound file fade in and out now apply when a speed gate or an area boundary starts or stops the sound, and a loop keeps running across them
+
 ## 2026-08-26
 
 ### Changed

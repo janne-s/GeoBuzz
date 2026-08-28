@@ -3,7 +3,7 @@ import { Selectors } from '../state/selectors.js';
 import { AppState } from '../state/StateManager.js';
 import { Geometry } from '../geospatial/Geometry.js';
 import { calculatePartials } from './SynthRegistry.js';
-import { applySoundFilePlaybackParams } from './SoundLifecycle.js';
+import { applySoundFilePlaybackParams, cancelFadeStop } from './SoundLifecycle.js';
 import { isGranularMode } from '../utils/typeChecks.js';
 
 let GeolocationManager = null;
@@ -236,6 +236,8 @@ const PARAM_HANDLERS = {
 	},
 	loop: (obj, value, isModulation) => {
 		if (obj.type === "SoundFile" && obj.synth?.loaded) {
+			cancelFadeStop(obj);
+			obj._envelopeOpen = false;
 			obj._loopActive = false;
 			obj.synth.loop = false;
 			if (obj.gain) {

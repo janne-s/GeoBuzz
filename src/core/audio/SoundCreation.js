@@ -5,7 +5,7 @@ import { Geometry } from '../geospatial/Geometry.js';
 import { AudioNodeManager } from './AudioNodeManager.js';
 import { StreamManager } from './StreamManager.js';
 import { getSynthCapabilities, initializeSynthParameters } from './SynthRegistry.js';
-import { startOneShotPlayback } from './SoundLifecycle.js';
+import { openSoundFile, cancelFadeStop } from './SoundLifecycle.js';
 import { deepClone } from '../utils/math.js';
 import { isFileSynth } from '../utils/typeChecks.js';
 import { DEFAULT_LFO_STRUCTURE, DEFAULT_FX_STRUCTURE, DEFAULT_EQ_STRUCTURE } from '../../config/defaults.js';
@@ -221,6 +221,8 @@ export function setSequencerControl(sound, controlled) {
 		const stopLoopedPlayback = context.stopLoopedPlayback;
 
 		if (sound.type === 'SoundFile') {
+			cancelFadeStop(sound);
+			sound._envelopeOpen = false;
 			if (sound._loopActive && stopLoopedPlayback) {
 				stopLoopedPlayback(sound);
 			} else if (sound.synth && sound.synth.state === 'started') {
@@ -285,11 +287,8 @@ export function setSequencerControl(sound, controlled) {
 
 				if (isInside) {
 					if (sound.type === 'SoundFile' && sound.synth && sound.synth.loaded) {
-						const startLoopedPlayback = context.startLoopedPlayback;
-						if (sound.params.loop && startLoopedPlayback) {
-							startLoopedPlayback(sound);
-						} else if (!sound.params.speedAdvance) {
-							startOneShotPlayback(sound);
+						if (sound.params.loop || !sound.params.speedAdvance) {
+							openSoundFile(sound);
 						}
 					} else if (sound.type !== 'SoundFile') {
 						NoteManager.trigger(sound);

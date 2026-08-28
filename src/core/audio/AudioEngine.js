@@ -5,7 +5,7 @@ import { Geometry } from '../geospatial/Geometry.js';
 import { EchoManager } from './EchoManager.js';
 import { LayerManager } from '../../layers/LayerManager.js';
 import { calcGain, calculateRelativePosition, calculateBearingPan, calculateSilencingGain } from './audioUtils.js';
-import { startLoopedPlayback, stopLoopedPlayback, startOneShotPlayback, stopOneShotPlayback, scheduleLoopFades } from './SoundLifecycle.js';
+import { scheduleLoopFades, openSoundFile, closeSoundFile } from './SoundLifecycle.js';
 import {
 	updateSmoothedPosition,
 	getSmoothedPosition as getSmoothedPosFromSmoother,
@@ -437,37 +437,27 @@ export function updateAudio(userPos, now, forcePositionWork = true) {
 					const userSpeed = getUserMovementSpeed();
 					const isMoving = userSpeed > s.params.speedAdvanceThreshold;
 
-					if (isInside && isMoving && !s.isPlaying) {
-						if (s.params.loop) {
-							startLoopedPlayback(s);
-						} else {
-							startOneShotPlayback(s);
-						}
-					} else if ((!isInside || !isMoving) && s.isPlaying) {
-						if (s.params.loop) {
-							stopLoopedPlayback(s);
-						} else {
-							stopOneShotPlayback(s);
-						}
-					} else if (s.params.loop && s._loopActive) {
-						scheduleLoopFades(s);
+					if (isInside && isMoving && !s._envelopeOpen) {
+						openSoundFile(s);
+					} else if ((!isInside || !isMoving) && s._envelopeOpen) {
+						closeSoundFile(s);
+					}
+				} else if (s.params.loop) {
+					if (isInside && !s._envelopeOpen) {
+						openSoundFile(s);
+					} else if (!isInside && s._envelopeOpen) {
+						closeSoundFile(s);
 					}
 				} else {
-					if (s.params.loop) {
-						if (isInside && !s.isPlaying) {
-							startLoopedPlayback(s);
-						} else if (!isInside && s.isPlaying) {
-							stopLoopedPlayback(s);
-						} else if (s._loopActive) {
-							scheduleLoopFades(s);
-						}
-					} else {
-						if (isInside && !wasInside && !s.isPlaying) {
-							startOneShotPlayback(s);
-						} else if (!isInside && s.isPlaying) {
-							stopOneShotPlayback(s);
-						}
+					if (isInside && !wasInside && !s._envelopeOpen) {
+						openSoundFile(s);
+					} else if (!isInside && s._envelopeOpen) {
+						closeSoundFile(s);
 					}
+				}
+
+				if (s._loopActive) {
+					scheduleLoopFades(s);
 				}
 			} else if (s.type !== "SoundFile" && NoteManager && !isControlledBySequencer) {
 				if (isInside && !s.isPlaying) {
@@ -554,9 +544,14 @@ export function updateAudio(userPos, now, forcePositionWork = true) {
 				}
 			}
 
-			const gainRampTime = (effectiveGain === 0 && s.params.releaseMode === 'release') ?
-				(s.params.release || 0.5) :
-				CONSTANTS.GAIN_RAMP_TIME;
+			let gainRampTime = CONSTANTS.GAIN_RAMP_TIME;
+			if (effectiveGain === 0) {
+				if (s.params.releaseMode === 'release') {
+					gainRampTime = s.params.release || 0.5;
+				} else if (s.type === "SoundFile" && elementGain > 0 && s.params.fadeOut > 0) {
+					gainRampTime = Math.max(gainRampTime, s.params.fadeOut);
+				}
+			}
 			s.gain.gain.rampTo(effectiveGain, gainRampTime);
 		}
 	}
