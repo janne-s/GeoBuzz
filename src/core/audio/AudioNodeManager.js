@@ -358,16 +358,23 @@ export class PolyphonyManager {
 			this.triggerPolyphonic(soundObj.synth, playbackSource.values, true, soundObj);
 		}
 
-		if (soundObj.envelopeGain && !soundObj._skipEnvelope) {
+		if (soundObj.envelopeGain) {
 			const now = Tone.now();
 			const attack = soundObj.params.attack || 0.01;
 			const decay = soundObj.params.decay || 0.2;
 			const sustainLevel = soundObj.params.sustain ?? CONSTANTS.DEFAULT_SOUND.sustain;
+			const gain = soundObj.envelopeGain.gain;
+			const inReleaseTail = soundObj._envelopeReleaseUntil > now;
+			const from = inReleaseTail ? Math.min(Math.max(gain.value, 0), 1) : 0;
+			const attackTime = attack * (1 - from);
+			soundObj._envelopeReleaseUntil = 0;
 
-			soundObj.envelopeGain.gain.cancelScheduledValues(now);
-			soundObj.envelopeGain.gain.setValueAtTime(0, now);
-			soundObj.envelopeGain.gain.linearRampToValueAtTime(1.0, now + attack);
-			soundObj.envelopeGain.gain.linearRampToValueAtTime(sustainLevel, now + attack + decay);
+			gain.cancelAndHoldAtTime(now);
+			gain.setValueAtTime(from, now);
+			if (attackTime > 0) {
+				gain.linearRampToValueAtTime(1.0, now + attackTime);
+			}
+			gain.linearRampToValueAtTime(sustainLevel, now + attackTime + decay);
 		}
 	}
 
@@ -375,9 +382,11 @@ export class PolyphonyManager {
 		if (!soundObj || !soundObj.synth || !soundObj.params) return;
 		if (soundObj.synth.disposed) return;
 
+		soundObj._envelopeReleaseUntil = Tone.now() + (soundObj.params.release || 0.1);
+
 		if (soundObj.type === 'NoiseSynth') {
 			this.triggerPolyphonic(soundObj.synth, [], false, soundObj);
-			if (soundObj.envelopeGain && !soundObj._skipEnvelope) {
+			if (soundObj.envelopeGain) {
 				PolyphonyManager.exponentialRelease(soundObj.envelopeGain.gain, soundObj.params.release || 0.1);
 			}
 			return;
@@ -398,7 +407,7 @@ export class PolyphonyManager {
 			this.triggerPolyphonic(soundObj.synth, playbackSource.values, false, soundObj);
 		}
 
-		if (soundObj.envelopeGain && !soundObj._skipEnvelope) {
+		if (soundObj.envelopeGain) {
 			PolyphonyManager.exponentialRelease(soundObj.envelopeGain.gain, soundObj.params.release || 0.1);
 		}
 	}
@@ -406,7 +415,7 @@ export class PolyphonyManager {
 	static exponentialRelease(gainParam, duration) {
 		const now = Tone.now();
 		const currentValue = Math.max(0.001, gainParam.value);
-		gainParam.cancelScheduledValues(now);
+		gainParam.cancelAndHoldAtTime(now);
 		gainParam.setValueAtTime(currentValue, now);
 		gainParam.exponentialRampToValueAtTime(0.001, now + duration);
 		gainParam.setValueAtTime(0, now + duration);

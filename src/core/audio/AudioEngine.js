@@ -93,6 +93,13 @@ export function getTotalDistanceTraveled() {
 	return totalDistanceTraveled;
 }
 
+export function resetSpeedTracking() {
+	computedSpeed = 0;
+	lastSpeedDistance = 0;
+	lastSpeedPosition = null;
+	lastSpeedTime = 0;
+}
+
 export function resetTotalDistance() {
 	totalDistanceTraveled = 0;
 	lastUserPosition = null;
@@ -123,6 +130,13 @@ function updateComputedSpeed(userPos) {
 	if (dt <= 0) return;
 
 	const dist = Geometry.calculateDistanceMeters(lastSpeedPosition, userPos);
+
+	if (dist >= CONSTANTS.SEQUENCER_GPS_JUMP_THRESHOLD) {
+		resetSpeedTracking();
+		lastSpeedPosition = { lat: userPos.lat, lng: userPos.lng };
+		lastSpeedTime = now;
+		return;
+	}
 
 	if (dist < CONSTANTS.MIN_TRACKING_DISTANCE) {
 		computedSpeed = dt >= CONSTANTS.SPEED_IDLE_TIMEOUT
@@ -378,6 +392,7 @@ export function updateAudio(userPos, now, forcePositionWork = true) {
 
 		const clampedGain = clampGainDelta(targetGain, s.id);
 		const effectiveGain = (clampedGain > 0 ? clampedGain : 0) * silencingGain;
+
 		LayerManager.reportActivity(s.layers, effectiveGain);
 
 		if (s.type === "StreamPlayer") {
@@ -455,10 +470,6 @@ export function updateAudio(userPos, now, forcePositionWork = true) {
 						closeSoundFile(s);
 					}
 				}
-
-				if (s._loopActive) {
-					scheduleLoopFades(s);
-				}
 			} else if (s.type !== "SoundFile" && NoteManager && !isControlledBySequencer) {
 				if (isInside && !s.isPlaying) {
 					s.isPlaying = true;
@@ -534,10 +545,11 @@ export function updateAudio(userPos, now, forcePositionWork = true) {
 						const rawInRange = !hasSpeedGate || (userSpeed >= gateMin && userSpeed <= gateMax);
 						const inRange = evaluateSpeedGateWithHold(s, rawInRange, performance.now(), userSpeed);
 						if (inRange !== (s._speedGateOpen !== false)) {
-							s._skipEnvelope = true;
-							NoteManager.release(s);
-							if (inRange) NoteManager.trigger(s);
-							s._skipEnvelope = false;
+							if (inRange) {
+								NoteManager.trigger(s);
+							} else {
+								NoteManager.release(s);
+							}
 						}
 						s._speedGateOpen = inRange;
 					}
@@ -664,11 +676,18 @@ export function audioUpdateLoop() {
 		}
 	}
 
+	for (let i = 0; i < sounds.length; i++) {
+		if (sounds[i]._loopActive) {
+			scheduleLoopFades(sounds[i]);
+		}
+	}
+
 	const sequencers = Selectors.getSequencers();
 	for (let i = 0; i < sequencers.length; i++) {
 		if (sequencers[i].enabled) {
 			sequencers[i].processPendingSteps();
 			sequencers[i].processModulation();
+			sequencers[i].scheduleTrackLoopFades();
 		}
 	}
 

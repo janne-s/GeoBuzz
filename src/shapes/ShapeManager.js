@@ -178,6 +178,7 @@ export class ShapeManager {
 
 		const { polygon } = Geometry.createLineElements(obj.linePoints, obj.lineTolerance, obj.color, obj.smoothing);
 		obj.polygon = polygon.addTo(context.map);
+		Geometry.updateLineSpineVisual(obj, context.map);
 
 		this.createLinePointMarkers(obj);
 		this.setupLineClickEffects(obj);
@@ -297,6 +298,8 @@ export class ShapeManager {
 	}
 
 	static removePolygonElements(obj) {
+		Geometry.removeLineSpineVisual(obj, context.map);
+
 		if (obj.polygon) {
 			context.map.removeLayer(obj.polygon);
 			obj.polygon = null;
@@ -311,6 +314,8 @@ export class ShapeManager {
 	}
 
 	static removeAllShapeElements(obj) {
+		Geometry.removeLineSpineVisual(obj, context.map);
+
 		if (obj.circle) {
 			context.map.removeLayer(obj.circle);
 			obj.circle = null;

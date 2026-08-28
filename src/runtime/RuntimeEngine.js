@@ -24,14 +24,14 @@ import { LayerManager } from '../layers/LayerManager.js';
 import { CoordinateTransform } from '../core/utils/coordinates.js';
 import { Geometry } from '../core/geospatial/Geometry.js';
 import { PathZoneChecker } from '../core/geospatial/PathZoneChecker.js';
-import { startAudioLoop, setContext as setAudioEngineContext, updateAudio, getUserMovementSpeed } from '../core/audio/AudioEngine.js';
+import { startAudioLoop, setContext as setAudioEngineContext, updateAudio, getUserMovementSpeed, resetSpeedTracking } from '../core/audio/AudioEngine.js';
 import { calcGain, calculatePathGain, calculateRelativePosition, calculateBearingPan, setContext as setAudioUtilsContext } from '../core/audio/audioUtils.js';
-import { applySettings as applyAudioSmootherSettings, setContext as setAudioSmootherContext } from '../core/audio/AudioSmoother.js';
+import { applySettings as applyAudioSmootherSettings, setContext as setAudioSmootherContext, resetSmoothedPosition } from '../core/audio/AudioSmoother.js';
 import { processLFOs, processPathLFOs, setContext as setLFOProcessorContext } from '../core/audio/LFOProcessor.js';
 import { updateSynthParam, setContext as setParameterUpdaterContext } from '../core/audio/ParameterUpdater.js';
 import { setContext as setDistanceSequencerContext } from '../core/audio/DistanceSequencer.js';
 import { createFullSoundInstance, setContext as setSoundCreationContext } from '../core/audio/SoundCreation.js';
-import { destroySound, startLoopedPlayback, stopLoopedPlayback, upgradeSynthToPolyphonic, applySoundFilePlaybackParams, cancelFadeStop, setContext as setSoundLifecycleContext } from '../core/audio/SoundLifecycle.js';
+import { destroySound, startLoopedPlayback, stopLoopedPlayback, upgradeSynthToPolyphonic, applySoundFilePlaybackParams, cancelFadeStop, scheduleLoopFades, setContext as setSoundLifecycleContext } from '../core/audio/SoundLifecycle.js';
 import { DEFAULT_LFO_STRUCTURE, DEFAULT_FX_STRUCTURE, DEFAULT_EQ_STRUCTURE } from '../config/defaults.js';
 import { PARAMETER_REGISTRY } from '../config/parameterRegistry.js';
 import { deepClone, isCircularPath } from '../core/utils/math.js';
@@ -279,6 +279,8 @@ export class RuntimeEngine {
 				audioFunctions: {
 					updateAudio: (userPos) => { if (self.isPlaying) updateAudio(userPos); },
 					resetAreaTracking,
+					resetSmoothedPosition,
+					resetSpeedTracking,
 					attachDragHandlers: () => {
 					},
 					showUserMenu: () => {}
@@ -981,6 +983,18 @@ export class RuntimeEngine {
 			           (lfo.y?.freq > 0 && lfo.y?.range > 0) ||
 			           (lfo.size?.freq > 0 && lfo.size?.range > 0))) {
 				positionsMayHaveChanged = true;
+			}
+		});
+
+		Selectors.getSounds().forEach(s => {
+			if (s._loopActive) {
+				scheduleLoopFades(s);
+			}
+		});
+
+		Selectors.getSequencers().forEach(seq => {
+			if (seq.enabled) {
+				seq.scheduleTrackLoopFades();
 			}
 		});
 

@@ -9,6 +9,7 @@ import { deepClone } from '../utils/math.js';
 import { generateLFOWaveform } from '../../config/parameterRegistry.js';
 import { GpsInstabilityTracker } from '../geospatial/GpsInstabilityTracker.js';
 import { applySoundModulationPatches } from './SoundModulation.js';
+import { openSoundFile, closeSoundFile, scheduleLoopFades } from './SoundLifecycle.js';
 import { applyModShaping } from './ModShaping.js';
 import { fxTailSeconds } from './FxTail.js';
 import { LayerManager } from '../../layers/LayerManager.js';
@@ -448,7 +449,10 @@ export class DistanceSequencer {
 	_trackTailSeconds(track) {
 		const soundObj = this._synthPool.get(track.id);
 		const release = soundObj?.params?.release ?? 0.1;
-		return fxTailSeconds(soundObj?.params?.fx, release);
+		const tail = soundObj?.type === 'SoundFile'
+			? Math.max(release, soundObj?.params?.fadeOut ?? 0)
+			: release;
+		return fxTailSeconds(soundObj?.params?.fx, tail);
 	}
 
 	_wakeTrackAudio(track, soundObj) {
@@ -556,6 +560,14 @@ export class DistanceSequencer {
 			while (pending.length > 0 && pending[0] <= now) {
 				pending.shift();
 				this.advanceTrackStep(track);
+			}
+		});
+	}
+
+	scheduleTrackLoopFades() {
+		this._synthPool.forEach(soundObj => {
+			if (soundObj?._loopActive) {
+				scheduleLoopFades(soundObj);
 			}
 		});
 	}
@@ -1052,15 +1064,7 @@ export class DistanceSequencer {
 			const avgVelocity = Object.values(velocity).reduce((sum, v) => sum + v, 0) / Object.keys(velocity).length || 0.8;
 
 			if (soundObj.type === 'SoundFile' && soundObj.synth.loaded) {
-				if (soundObj.envelopeGain) {
-					soundObj.envelopeGain.gain.setValueAtTime(avgVelocity, Tone.now());
-				}
-				if (soundObj.params.loop) {
-					context.startLoopedPlayback(soundObj);
-				} else {
-					soundObj.synth.start();
-				}
-				soundObj.isPlaying = true;
+				openSoundFile(soundObj, avgVelocity);
 			} else if (soundObj.type === 'StreamPlayer') {
 				if (soundObj.envelopeGain) {
 					soundObj.envelopeGain.gain.setValueAtTime(avgVelocity, Tone.now());
@@ -1113,10 +1117,9 @@ export class DistanceSequencer {
 			const soundObj = this._synthPool.get(track.id);
 			if (soundObj && soundObj.synth && !soundObj.synth.disposed) {
 				if (soundObj.type === 'SoundFile') {
-					if (soundObj._loopActive) {
-						context.stopLoopedPlayback(soundObj);
-					} else if (soundObj.synth.state === 'started') {
-						soundObj.synth.stop();
+					closeSoundFile(soundObj);
+					if (!willHaveActiveNotes) {
+						track._releaseUntil = Tone.now() + (soundObj.params.fadeOut || 0);
 					}
 				} else if (soundObj.type === 'StreamPlayer') {
 					context.StreamManager.stopStream(soundObj);
@@ -1162,12 +1165,10 @@ export class DistanceSequencer {
 			const soundEl = AppState.getSoundByPersistentId(track.instrumentId);
 			if (soundEl && soundEl.synth && !soundEl.synth.disposed) {
 				if (soundEl.type === 'SoundFile') {
-					if (soundEl._loopActive) {
-						context.stopLoopedPlayback(soundEl);
-					} else if (soundEl.synth.state === 'started') {
-						soundEl.synth.stop();
+					closeSoundFile(soundEl);
+					if (!willHaveActiveNotes) {
+						track._releaseUntil = Tone.now() + (soundEl.params.fadeOut || 0);
 					}
-					soundEl.isPlaying = false;
 				} else if (soundEl.synth instanceof Tone.NoiseSynth) {
 					soundEl.synth.triggerRelease();
 					if (!willHaveActiveNotes) {
@@ -1177,6 +1178,16 @@ export class DistanceSequencer {
 					const note = Tone.Frequency(midiNote, 'midi').toNote();
 
 					if (soundEl.synth instanceof Tone.Sampler) {
+						if (soundEl.synth._manualSources && soundEl.synth._manualSources.has(note)) {
+							const sources = soundEl.synth._manualSources.get(note);
+							const stopTime = Tone.now() + (soundEl.synth.release || 0.1);
+							while (sources.length > 0) {
+								const source = sources.shift();
+								if (source.loop) source.loop = false;
+								source.stop(stopTime);
+							}
+							soundEl.synth._manualSources.delete(note);
+						}
 						if (soundEl.synth._activeNotes) {
 							soundEl.synth._activeNotes.delete(note);
 						}

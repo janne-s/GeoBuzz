@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-08-28
+
+### Added
+
+- Line elements always show their centre line, not only in centreline mode
+
+### Changed
+
+- Speed gate now opens and closes with the sound's attack and release instead of cutting
+- Sound files played by a sequencer follow their fade in and out
+
+### Fixed
+
+- Division volume origin had no gradient on line elements
+- Going to a Buzz spiked movement speed, saturating speed-driven modulation for several seconds
+- Looping sound files went silent after two seconds when the listener stood still
+- A looping sampler on a sequencer track never stopped when the speed gate closed
+
 ## 2026-08-27
 
 ### Fixed

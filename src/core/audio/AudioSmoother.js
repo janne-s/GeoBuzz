@@ -73,15 +73,13 @@ export function clampGainDelta(targetGain, soundId) {
 	}
 
 	if (!lastGains.has(soundId)) {
-		lastGains.set(soundId, { distance: 0, gain: targetGain });
-		return targetGain;
+		lastGains.set(soundId, { distance: 0, gain: 0 });
 	}
 
 	const cached = lastGains.get(soundId);
 
 	if (cached.gain === null) {
-		cached.gain = targetGain;
-		return targetGain;
+		cached.gain = 0;
 	}
 
 	const delta = targetGain - cached.gain;

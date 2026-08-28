@@ -724,6 +724,7 @@ export const Geometry = {
 		const pts = obj.smoothing > 0 ? this.smoothPoints(newPoints, obj.smoothing) : newPoints;
 		const corridorPoints = this.generateSoundLineCorridorWithSemicircles(pts, obj.lineTolerance);
 		if (obj.polygon) obj.polygon.setLatLngs(corridorPoints);
+		if (obj._lineSpine) obj._lineSpine.setLatLngs(pts);
 
 		if (obj.linePointMarkers && obj.linePointMarkers.length > 0) {
 			obj.linePointMarkers.forEach((marker, i) => marker.setLatLng(newPoints[i]));
@@ -801,6 +802,7 @@ export const Geometry = {
 		const pts = this.getEffectiveLinePoints(obj);
 		const corridorPoints = this.generateSoundLineCorridorWithSemicircles(pts, obj.lineTolerance);
 		if (obj.polygon) obj.polygon.setLatLngs(corridorPoints);
+		if (obj._lineSpine) obj._lineSpine.setLatLngs(pts);
 	},
 
 	resizeCircle(obj, newRadius) {
@@ -1155,14 +1157,18 @@ export const Geometry = {
 	},
 
 	getRaycastMaxDistance(obj, line, userPos) {
-		if (!line) return 1;
+		const fallback = Math.max(1, obj.shapeType === 'line'
+			? (obj.lineTolerance || CONSTANTS.DEFAULT_LINE_TOLERANCE)
+			: (obj.maxDistance || 1));
+
+		if (!line) return fallback;
 
 		const closestOnLine = this.getClosestPointOnLine(userPos, line.start, line.end);
 		const dx = userPos.lng - closestOnLine.lng;
 		const dy = userPos.lat - closestOnLine.lat;
 		const len = Math.sqrt(dx * dx + dy * dy);
 
-		if (len < 1e-10) return 1;
+		if (len < 1e-10) return fallback;
 
 		const rayDir = { lat: dy / len, lng: dx / len };
 
@@ -1179,7 +1185,7 @@ export const Geometry = {
 			const c = ox * ox / (radiusLng * radiusLng) + oy * oy / (radiusLat * radiusLat) - 1;
 
 			const discriminant = b * b - 4 * a * c;
-			if (discriminant < 0) return 1;
+			if (discriminant < 0) return fallback;
 
 			const sqrtD = Math.sqrt(discriminant);
 			const t = (-b + sqrtD) / (2 * a);
@@ -1201,7 +1207,7 @@ export const Geometry = {
 			const c = ox * ox / (aLng * aLng) + oy * oy / (aLat * aLat) - 1;
 
 			const discriminant = b * b - 4 * a * c;
-			if (discriminant < 0) return 1;
+			if (discriminant < 0) return fallback;
 
 			const sqrtD = Math.sqrt(discriminant);
 			const t = (-b + sqrtD) / (2 * a);
@@ -1210,23 +1216,29 @@ export const Geometry = {
 				const intersection = L.latLng(closestOnLine.lat + rayDir.lat * t, closestOnLine.lng + rayDir.lng * t);
 				return _map ? _map.distance(closestOnLine, intersection) : this.calculateDistanceMeters(closestOnLine, intersection);
 			}
-		} else if (obj.vertices && obj.vertices.length >= 3) {
-			let nearestDist = Infinity;
+		} else {
+			const boundary = obj.shapeType === 'line' && obj.linePoints && obj.linePoints.length >= 2
+				? this.generateSoundLineCorridorWithSemicircles(this.getEffectiveLinePoints(obj), obj.lineTolerance)
+				: obj.vertices;
 
-			for (let i = 0; i < obj.vertices.length; i++) {
-				const start = obj.vertices[i];
-				const end = obj.vertices[(i + 1) % obj.vertices.length];
-				const intersection = this.raySegmentIntersection(closestOnLine, rayDir, start, end);
-				if (intersection) {
-					const dist = _map ? _map.distance(closestOnLine, intersection) : this.calculateDistanceMeters(closestOnLine, intersection);
-					if (dist < nearestDist) nearestDist = dist;
+			if (boundary && boundary.length >= 3) {
+				let nearestDist = Infinity;
+
+				for (let i = 0; i < boundary.length; i++) {
+					const start = boundary[i];
+					const end = boundary[(i + 1) % boundary.length];
+					const intersection = this.raySegmentIntersection(closestOnLine, rayDir, start, end);
+					if (intersection) {
+						const dist = _map ? _map.distance(closestOnLine, intersection) : this.calculateDistanceMeters(closestOnLine, intersection);
+						if (dist < nearestDist) nearestDist = dist;
+					}
 				}
-			}
 
-			if (nearestDist < Infinity) return nearestDist;
+				if (nearestDist < Infinity) return nearestDist;
+			}
 		}
 
-		return 1;
+		return fallback;
 	},
 
 	getDivisionVolume(userPos, obj) {
@@ -1264,23 +1276,20 @@ export const Geometry = {
 	updateDivisionLineVisual(obj, map) {
 		const volumeOrigin = obj.volumeOrigin || 'icon';
 
+		this.updateLineSpineVisual(obj, map);
+
 		if (volumeOrigin === 'icon') {
-			this.removeDivisionLineVisual(obj, map);
+			if (obj._divisionLine) {
+				map.removeLayer(obj._divisionLine);
+				obj._divisionLine = null;
+			}
 			return;
 		}
 
 		if (volumeOrigin === 'centerline' && obj.shapeType === 'line' && obj.linePoints) {
-			const pts = this.getEffectiveLinePoints(obj);
 			if (obj._divisionLine) {
-				obj._divisionLine.setLatLngs(pts);
-			} else {
-				obj._divisionLine = L.polyline(pts, {
-					color: obj.color || '#666',
-					weight: 2,
-					opacity: 0.6,
-					dashArray: '6, 4',
-					pane: 'soundArea'
-				}).addTo(map);
+				map.removeLayer(obj._divisionLine);
+				obj._divisionLine = null;
 			}
 			return;
 		}
@@ -1338,6 +1347,37 @@ export const Geometry = {
 		if (obj._divisionLine) {
 			map.removeLayer(obj._divisionLine);
 			obj._divisionLine = null;
+		}
+		this.removeLineSpineVisual(obj, map);
+	},
+
+	updateLineSpineVisual(obj, map) {
+		if (!map || obj.shapeType !== 'line' || !obj.linePoints || obj.linePoints.length < 2) {
+			this.removeLineSpineVisual(obj, map);
+			return;
+		}
+
+		const pts = this.getEffectiveLinePoints(obj);
+
+		if (obj._lineSpine) {
+			obj._lineSpine.setLatLngs(pts);
+			obj._lineSpine.setStyle({ color: obj.color || '#666' });
+			return;
+		}
+
+		obj._lineSpine = L.polyline(pts, {
+			color: obj.color || '#666',
+			weight: 2,
+			opacity: 0.7,
+			interactive: false,
+			pane: 'soundArea'
+		}).addTo(map);
+	},
+
+	removeLineSpineVisual(obj, map) {
+		if (obj._lineSpine) {
+			if (map) map.removeLayer(obj._lineSpine);
+			obj._lineSpine = null;
 		}
 	}
 };

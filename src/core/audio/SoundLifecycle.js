@@ -366,7 +366,7 @@ function stopSoundFileSource(obj) {
 	}
 }
 
-export function openSoundFile(obj) {
+export function openSoundFile(obj, level = 1) {
 	if (obj.type !== "SoundFile" || !obj.synth || !obj.synth.loaded) return;
 
 	cancelFadeStop(obj);
@@ -379,11 +379,11 @@ export function openSoundFile(obj) {
 		const now = Tone.now();
 		const from = starting ? 0 : env.value;
 		env.cancelAndHoldAtTime(now);
-		if (fadeIn > 0 && from < 1) {
+		if (fadeIn > 0 && level > 0 && from < level) {
 			env.setValueAtTime(from, now);
-			env.linearRampToValueAtTime(1, now + fadeIn * (1 - from));
+			env.linearRampToValueAtTime(level, now + fadeIn * (level - from) / level);
 		} else {
-			env.setValueAtTime(1, now);
+			env.setValueAtTime(level, now);
 		}
 	}
 
@@ -395,6 +395,7 @@ export function openSoundFile(obj) {
 		}
 	}
 
+	obj._envelopeLevel = level;
 	obj._envelopeOpen = true;
 }
 
@@ -420,7 +421,8 @@ export function closeSoundFile(obj) {
 		return;
 	}
 
-	const duration = fadeOut * from;
+	const level = obj._envelopeLevel > 0 ? obj._envelopeLevel : 1;
+	const duration = fadeOut * Math.min(from / level, 1);
 	env.cancelAndHoldAtTime(now);
 	env.setValueAtTime(from, now);
 	env.linearRampToValueAtTime(0, now + duration);

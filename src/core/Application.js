@@ -28,7 +28,7 @@ import { createEffect, createLayerFXNodes } from './audio/FXManager.js';
 import { isPathAudioActive } from './audio/audioUtils.js';
 import { AmbisonicsManager } from './audio/AmbisonicsManager.js';
 import { EchoManager } from './audio/EchoManager.js';
-import { updateAudio, getUserMovementSpeed, startAudioLoop, stopAudioLoop } from './audio/AudioEngine.js';
+import { updateAudio, getUserMovementSpeed, startAudioLoop, stopAudioLoop, resetSpeedTracking } from './audio/AudioEngine.js';
 import { updateSynthParam } from './audio/ParameterUpdater.js';
 import { addSound, addSoundLine, addSoundOval, loadSound, createSoundObject, createFullSoundInstance } from './audio/SoundCreation.js';
 import { destroySound, startLoopedPlayback, stopLoopedPlayback, upgradeSynthToPolyphonic, triggerPlayback, applySoundFilePlaybackParams } from './audio/SoundLifecycle.js';
@@ -124,7 +124,7 @@ import { setContext as setLFOProcessorContext } from './audio/LFOProcessor.js';
 import { setContext as setEchoManagerContext } from './audio/EchoManager.js';
 import { setContext as setDistanceSequencerContext } from './audio/DistanceSequencer.js';
 import { setContext as setAudioUtilsContext } from './audio/audioUtils.js';
-import { setContext as setAudioSmootherContext, clearSoundCache } from './audio/AudioSmoother.js';
+import { setContext as setAudioSmootherContext, clearSoundCache, resetSmoothedPosition } from './audio/AudioSmoother.js';
 import { setUIEventHandlersContext } from '../events/UIEventHandler.js';
 import { setStorageAdapterContext } from '../persistence/StorageAdapter.js';
 import { setDragHandlersContext } from '../interactions/DragHandlers.js';
@@ -2041,6 +2041,8 @@ appContext.initialize({
 		updateAudio,
 		startAudioLoop,
 		resetAreaTracking,
+		resetSmoothedPosition,
+		resetSpeedTracking,
 		attachDragHandlers,
 		destroySound,
 		startLoopedPlayback,

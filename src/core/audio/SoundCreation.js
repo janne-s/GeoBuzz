@@ -134,6 +134,7 @@ export async function createFullSoundInstance(data, options = { onMap: true }) {
 			if (obj.linePoints && Array.isArray(obj.linePoints) && obj.linePoints.length >= 2) {
 				const { polygon } = Geometry.createLineElements(obj.linePoints, obj.lineTolerance, obj.color, obj.smoothing);
 				obj.polygon = polygon.addTo(context.map);
+				Geometry.updateLineSpineVisual(obj, context.map);
 			}
 		} else if (obj.shapeType === "oval") {
 			if (obj.ovalCenter) {

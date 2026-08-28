@@ -444,6 +444,8 @@ class GeolocationManagerClass {
 			dragend: () => {
 				if (!this.followGPS) {
 					const position = this.userMarker.getLatLng();
+					this.context?.audioFunctions.resetSmoothedPosition?.();
+					this.context?.audioFunctions.resetSpeedTracking?.();
 					this.context?.AppState.dispatch({
 						type: 'USER_POSITION_CHANGED',
 						payload: { position }
@@ -504,6 +506,9 @@ class GeolocationManagerClass {
 			padding: CONSTANTS.CONTENT_FIT_PADDING,
 			maxZoom: CONSTANTS.DEFAULT_USER_ZOOM
 		});
+
+		this.context.audioFunctions?.resetSmoothedPosition?.();
+		this.context.audioFunctions?.resetSpeedTracking?.();
 
 		this.context.AppState?.dispatch({
 			type: 'USER_POSITION_CHANGED',
