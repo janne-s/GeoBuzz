@@ -117,6 +117,7 @@ export const SYNTH_REGISTRY = {
 		label: "Basic Synth",
 		...SynthTemplates.basic,
 		supportsPolyphony: true,
+		hasOwnEnvelope: true,
 		factory: (params) => {
 			const baseOptions = {
 				oscillator: createOscillatorConfig(params),
@@ -140,6 +141,7 @@ export const SYNTH_REGISTRY = {
 		...SynthTemplates.modulated,
 		icon: 'fa-satellite-dish',
 		supportsPolyphony: true,
+		hasOwnEnvelope: true,
 		factory: (params) => {
 			const baseOptions = {
 				oscillator: createOscillatorConfig(params),
@@ -167,6 +169,7 @@ export const SYNTH_REGISTRY = {
 		label: "FM Synth",
 		...SynthTemplates.modulated,
 		supportsPolyphony: true,
+		hasOwnEnvelope: true,
 		factory: (params) => {
 			const baseOptions = {
 				oscillator: createOscillatorConfig(params),
@@ -194,6 +197,7 @@ export const SYNTH_REGISTRY = {
 		...SynthTemplates.basic,
 		icon: 'fa-layer-group',
 		supportsPolyphony: true,
+		hasOwnEnvelope: true,
 		factory: (params) => {
 			const waveform = sanitizeFatWaveform(params.waveform || 'sawtooth');
 			const baseOptions = {
@@ -227,6 +231,7 @@ export const SYNTH_REGISTRY = {
 		...SynthTemplates.basic,
 		icon: 'fa-water',
 		supportsPolyphony: false,
+		hasOwnEnvelope: true,
 		factory: (params) => {
 			const baseOptions = {
 				noise: { type: params.noiseType || 'white' },

@@ -359,7 +359,11 @@ export class PolyphonyManager {
 			this.triggerPolyphonic(soundObj.synth, playbackSource.values, true, soundObj);
 		}
 
-		if (soundObj.envelopeGain) {
+		if (soundObj.envelopeGain && SYNTH_REGISTRY[soundObj.type]?.hasOwnEnvelope) {
+			const now = Tone.now();
+			soundObj.envelopeGain.gain.cancelAndHoldAtTime(now);
+			soundObj.envelopeGain.gain.setValueAtTime(1, now);
+		} else if (soundObj.envelopeGain) {
 			const now = Tone.now();
 			const attack = soundObj.params.attack || 0.01;
 			const decay = soundObj.params.decay || 0.2;
@@ -387,9 +391,6 @@ export class PolyphonyManager {
 
 		if (soundObj.type === 'NoiseSynth') {
 			this.triggerPolyphonic(soundObj.synth, [], false, soundObj);
-			if (soundObj.envelopeGain) {
-				PolyphonyManager.exponentialRelease(soundObj.envelopeGain.gain, soundObj.params.release || 0.1);
-			}
 			return;
 		}
 
@@ -408,7 +409,7 @@ export class PolyphonyManager {
 			this.triggerPolyphonic(soundObj.synth, playbackSource.values, false, soundObj);
 		}
 
-		if (soundObj.envelopeGain) {
+		if (soundObj.envelopeGain && !SYNTH_REGISTRY[soundObj.type]?.hasOwnEnvelope) {
 			PolyphonyManager.exponentialRelease(soundObj.envelopeGain.gain, soundObj.params.release || 0.1);
 		}
 	}

@@ -14,6 +14,7 @@
 
 ### Fixed
 
+- The envelope ran twice on synths that carry their own, halving sustain and doubling the attack curve
 - Division volume origin had no gradient on line elements
 - Going to a Buzz spiked movement speed, saturating speed-driven modulation for several seconds
 - Looping sound files went silent after two seconds when the listener stood still
