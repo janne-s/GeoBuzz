@@ -42,7 +42,6 @@ class MasterBusClass {
 		this.muted = false;
 		this.lastSampleTime = 0;
 		this.clipUntil = 0;
-		this.sessionPeakDb = CONSTANTS.MASTER_METER_FLOOR_DB;
 		this.sessionMinRmsDb = null;
 		this.sessionMaxRmsDb = null;
 		this._persist = debounce(() => this._write(), CONSTANTS.MASTER_MONITOR_PERSIST_MS);
@@ -147,15 +146,9 @@ class MasterBusClass {
 		this._persist();
 	}
 
-	resetStats() {
-		this.sessionPeakDb = CONSTANTS.MASTER_METER_FLOOR_DB;
+	resetRange() {
 		this.sessionMinRmsDb = null;
 		this.sessionMaxRmsDb = null;
-		this.clipUntil = 0;
-		this.channels.forEach(channel => {
-			channel.holdDb = CONSTANTS.MASTER_METER_FLOOR_DB;
-			channel.holdUntil = 0;
-		});
 	}
 
 	update() {
@@ -223,7 +216,6 @@ class MasterBusClass {
 		const peakDb = Math.max(this.channels[0].peakDb, this.channels[1].peakDb);
 		const rmsDb = Math.max(this.channels[0].rmsDb, this.channels[1].rmsDb);
 
-		if (peakDb > this.sessionPeakDb) this.sessionPeakDb = peakDb;
 		if (rmsDb > CONSTANTS.MASTER_METER_STATS_GATE_DB) {
 			if (this.sessionMinRmsDb === null || rmsDb < this.sessionMinRmsDb) this.sessionMinRmsDb = rmsDb;
 			if (this.sessionMaxRmsDb === null || rmsDb > this.sessionMaxRmsDb) this.sessionMaxRmsDb = rmsDb;
@@ -254,7 +246,6 @@ class MasterBusClass {
 			rmsDb,
 			crestDb: peakDb - rmsDb,
 			clipping,
-			sessionPeakDb: this.sessionPeakDb,
 			sessionMinRmsDb: this.sessionMinRmsDb,
 			sessionMaxRmsDb: this.sessionMaxRmsDb
 		};

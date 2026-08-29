@@ -4,6 +4,7 @@ import { Selectors } from '../../core/state/selectors.js';
 import { COLORS, CONSTANTS } from '../../core/constants.js';
 import { PARAMETER_REGISTRY } from '../../config/parameterRegistry.js';
 import { appContext } from '../../core/AppContext.js';
+import { clampMenuPosition } from './HeaderBuilder.js';
 
 let context = null;
 
@@ -598,6 +599,7 @@ export function createIconPlacementDropdown(obj) {
 }
 
 export function createMenuStructure(point) {
+	let restorePosition = null;
 	const overlay = createElement('div', 'menu-overlay');
 	overlay.onclick = context.closeAllMenus;
 	document.body.appendChild(overlay);
@@ -609,8 +611,10 @@ export function createMenuStructure(point) {
 		menu.style.left = `${lastMenuRect.left + 30}px`;
 		menu.style.top = `${lastMenuRect.top + 30}px`;
 	} else if (Selectors.getLastMenuPosition()) {
-		menu.style.left = `${Selectors.getLastMenuPosition().x}px`;
-		menu.style.top = `${Selectors.getLastMenuPosition().y}px`;
+		const last = Selectors.getLastMenuPosition();
+		menu.style.left = `${last.x}px`;
+		menu.style.top = `${last.y}px`;
+		restorePosition = last;
 	} else {
 		menu.classList.add('centered-context-menu');
 	}
@@ -623,6 +627,14 @@ export function createMenuStructure(point) {
 		type: 'UI_MENU_OPENED',
 		payload: { menu, overlay }
 	});
+
+	if (restorePosition) {
+		requestAnimationFrame(() => {
+			const clamped = clampMenuPosition(restorePosition.x, restorePosition.y, menu);
+			menu.style.left = `${clamped.left}px`;
+			menu.style.top = `${clamped.top}px`;
+		});
+	}
 
 	return { menu, overlay };
 }

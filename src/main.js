@@ -22,6 +22,7 @@ import { DEFAULT_LFO_STRUCTURE, DEFAULT_FX_STRUCTURE, DEFAULT_EQ_STRUCTURE, DEFA
 import { AudioNodeManager, PolyphonyManager } from './core/audio/AudioNodeManager.js';
 import { StreamManager } from './core/audio/StreamManager.js';
 import { AmbisonicsManager } from './core/audio/AmbisonicsManager.js';
+import { MasterBus } from './core/audio/MasterBus.js';
 import { SYNTH_REGISTRY, FX_REGISTRY, getSynthCapabilities, getParametersForSynth, getAvailableSynthTypes, initializeSynthParameters } from './core/audio/SynthRegistry.js';
 import { DistanceSequencer } from './core/audio/DistanceSequencer.js';
 import { EchoManager } from './core/audio/EchoManager.js';
@@ -144,6 +145,7 @@ export const GeoBuzz = {
 		PolyphonyManager,
 		StreamManager: new StreamManager(),
 		AmbisonicsManager: new AmbisonicsManager(),
+		MasterBus,
 		SYNTH_REGISTRY,
 		FX_REGISTRY,
 		getSynthCapabilities,

@@ -1,12 +1,23 @@
 import { AppState } from '../../core/state/StateManager.js';
 import { Selectors } from '../../core/state/selectors.js';
 import { createElement } from '../domHelpers.js';
+import { CONSTANTS } from '../../core/constants.js';
 import { appContext } from '../../core/AppContext.js';
 
 let context = null;
 
 export function setContext(appCtx) {
 	context = appCtx;
+}
+
+export function clampMenuPosition(left, top, menu) {
+	const width = menu.offsetWidth || 0;
+	const margin = CONSTANTS.MENU_DRAG_MIN_VISIBLE;
+
+	return {
+		left: Math.round(Math.min(Math.max(left, margin - width), window.innerWidth - margin)),
+		top: Math.round(Math.min(Math.max(top, 0), window.innerHeight - margin))
+	};
 }
 
 export function createCloseButton(onClose) {
@@ -45,8 +56,9 @@ export function createDraggableHeader(menu, title = 'Sound Settings', elementNav
 		if (!isDragging) return;
 		const dx = e.clientX - startClientX;
 		const dy = e.clientY - startClientY;
-		menu.style.left = `${Math.round(startLeft + dx)}px`;
-		menu.style.top = `${Math.round(startTop + dy)}px`;
+		const position = clampMenuPosition(startLeft + dx, startTop + dy, menu);
+		menu.style.left = `${position.left}px`;
+		menu.style.top = `${position.top}px`;
 	}
 
 	function onMouseUp() {
@@ -60,9 +72,10 @@ export function createDraggableHeader(menu, title = 'Sound Settings', elementNav
 		document.removeEventListener('mouseup', onMouseUp);
 	}
 
-	header.addEventListener('mousedown', (e) => {
-		if (e.target.closest('.menu-close-btn, select, input, .element-nav-dropdown')) return;
-		if (context.innerWidth <= 768) return;
+	function beginDrag(e) {
+		if (isDragging) return;
+		if (e.target.closest(CONSTANTS.MENU_DRAG_IGNORE_SELECTOR)) return;
+		if (window.innerWidth <= 768) return;
 		if (e.button !== 0) return;
 
 		e.preventDefault();
@@ -82,7 +95,10 @@ export function createDraggableHeader(menu, title = 'Sound Settings', elementNav
 
 		document.addEventListener('mousemove', onMouseMove);
 		document.addEventListener('mouseup', onMouseUp);
-	});
+	}
+
+	header.addEventListener('mousedown', beginDrag);
+	menu.addEventListener('mousedown', beginDrag);
 
 	const cleanup = () => {
 		if (isDragging) {

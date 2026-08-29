@@ -2,10 +2,22 @@
 
 ## 2026-08-29
 
+### Added
+
+- Context menus can be dragged from anywhere on the menu, not just the header
+- Clicking Range in the master meter starts a new range
+- Exported buzz player URLs are listed in the files menu, with a copy button
+
 ### Changed
 
 - File operations and settings are now two separate side menus
 - Audio smoothing, GPS accuracy and parameter customization moved from the user marker to the settings menu
+- Buzz title, author and description are remembered and saved with the buzz
+
+### Fixed
+
+- Scandinavian letters in a buzz title produced a mangled export filename
+- A dragged menu could end up above the top of the window and out of reach
 
 ## 2026-08-28
 

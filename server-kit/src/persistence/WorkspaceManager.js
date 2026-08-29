@@ -66,6 +66,81 @@ export class WorkspaceManager {
 		}
 	}
 
+	static async updateExportedBuzzList() {
+		const list = document.getElementById('exportedBuzzList');
+		if (!list) return;
+
+		const workspaceId = this.context.Selectors.getWorkspaceId();
+		if (!workspaceId) return;
+
+		let exports = [];
+		try {
+			const data = await Backend.files.listExports(workspaceId);
+			exports = data.exports || [];
+		} catch (error) {
+			list.textContent = 'Could not load exported buzzes.';
+			console.warn('Exported buzz list failed:', error);
+			return;
+		}
+
+		list.innerHTML = '';
+
+		if (!exports.length) {
+			list.textContent = 'No exported buzzes yet.';
+			return;
+		}
+
+		const fragment = document.createDocumentFragment();
+
+		exports.forEach(exportInfo => {
+			const row = document.createElement('div');
+			row.className = 'exported-buzz-row';
+
+			const title = document.createElement('span');
+			title.className = 'exported-buzz-title';
+			title.textContent = exportInfo.title || exportInfo.name;
+			title.title = exportInfo.url;
+			row.appendChild(title);
+
+			const group = document.createElement('div');
+			group.className = 'input-group';
+
+			const url = document.createElement('input');
+			url.type = 'text';
+			url.className = 'workspace-url';
+			url.readOnly = true;
+			url.value = exportInfo.url;
+			group.appendChild(url);
+
+			const copyBtn = document.createElement('button');
+			copyBtn.className = 'btn-icon';
+			copyBtn.title = 'Copy player URL';
+			copyBtn.innerHTML = '<i class="fas fa-copy"></i>';
+			copyBtn.onclick = async () => {
+				try {
+					await navigator.clipboard.writeText(exportInfo.url);
+					copyBtn.innerHTML = '<i class="fas fa-check"></i>';
+					setTimeout(() => { copyBtn.innerHTML = '<i class="fas fa-copy"></i>'; }, 1500);
+				} catch (error) {
+					url.select();
+				}
+			};
+			group.appendChild(copyBtn);
+
+			const openBtn = document.createElement('button');
+			openBtn.className = 'btn-icon';
+			openBtn.title = 'Open player';
+			openBtn.innerHTML = '<i class="fas fa-arrow-up-right-from-square"></i>';
+			openBtn.onclick = () => window.open(exportInfo.url, '_blank', 'noopener');
+			group.appendChild(openBtn);
+
+			row.appendChild(group);
+			fragment.appendChild(row);
+		});
+
+		list.appendChild(fragment);
+	}
+
 	static updateMenuCounts() {
 		const layerCount = document.getElementById('layerCount');
 		const elementCount = document.getElementById('elementCount');

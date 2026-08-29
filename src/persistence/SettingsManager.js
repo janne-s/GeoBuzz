@@ -21,6 +21,7 @@ export class SettingsManager {
 
 		return {
 			version: CONSTANTS.SAVE_FORMAT_VERSION,
+			meta: { ...this.context.AppState.buzzMeta },
 			relativePositioning: relativePositioning,
 			mapStyle: this.context.mapManager.getCurrentStyle(),
 			colorIndex: this.context.AppState.ui.colorIndex,
@@ -315,6 +316,14 @@ export class SettingsManager {
 				oscEnableToggle.checked = true;
 				this.context.OSCManager.connect();
 			}
+		}
+
+		if (settings.meta) {
+			this.context.AppState.buzzMeta = {
+				title: settings.meta.title || '',
+				author: settings.meta.author || '',
+				description: settings.meta.description || ''
+			};
 		}
 
 		const relativePositioningToggle = document.getElementById('relativePositioningToggle');

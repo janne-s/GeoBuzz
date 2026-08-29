@@ -145,6 +145,9 @@ export const CONSTANTS = {
 	REMOTE_BUZZ_DISTANCE_M: 2000,
 	MAX_TILE_NATIVE_ZOOM: 18,
 	MAX_MAP_ZOOM: 19,
+	MENU_DRAG_MIN_VISIBLE: 60,
+	MENU_DRAG_IGNORE_SELECTOR: 'button, input, select, textarea, a, label, canvas, .menu-close-btn, .element-nav-dropdown, .collapsible-section-header, .tab-bar, .dual-range-container, .keyboard-container',
+
 	MARKER_CLICK_THRESHOLD: 10,
 	POLYGON_VERTEX_CLICK_THRESHOLD_TOUCH: 25,
 	POLYGON_EDGE_THRESHOLD: 0.01,

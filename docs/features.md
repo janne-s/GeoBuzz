@@ -696,6 +696,12 @@ When multiple scene change zones overlap, the most recently entered zone determi
 | **Workspace URL** | Current workspace address |
 | **Copy Workspace** | Copy URL to clipboard for sharing |
 
+#### Exported Buzzes (server-kit only)
+
+| Item | Description |
+|------|-------------|
+| **Player URL** | Public URL of each buzz exported to this workspace, with copy and open buttons |
+
 #### Sound Files
 
 | Item | Description |
@@ -961,8 +967,7 @@ visibility, master volume and mute state persist in browser storage per device.
 | **Peak** | Current peak level in dBFS |
 | **RMS** | Current RMS level in dBFS |
 | **Crest** | Peak minus RMS in dB — instantaneous dynamic range |
-| **Range** | Lowest and highest RMS seen since the last reset — dynamic range across a whole walk or simulation |
-| **Reset** | Clears peak hold and the range statistics |
+| **Range** | Lowest and highest RMS seen since the last reset — dynamic range across a whole walk or simulation. Click it to start a new range |
 
 ### Monitor Controls
 

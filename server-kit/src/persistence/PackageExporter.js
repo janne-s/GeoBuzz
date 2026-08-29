@@ -16,6 +16,7 @@
 
 import { SettingsManager } from './SettingsManager.js';
 import { collectRuntimeModules } from './runtimeModules.js';
+import { toFileSlug } from '../core/utils/filenames.js';
 
 let context = null;
 
@@ -76,7 +77,7 @@ export const PackageExporter = {
 			zip.file('buzz.json', JSON.stringify(buzzData, null, 2));
 
 			const title = meta.title || 'Untitled Buzz';
-			const filename = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+			const filename = toFileSlug(title);
 			const version = context?.constants?.VERSION || '1.0';
 
 			const htmlContent = await this.loadTemplate('src/persistence/templates/runtime-player.html', {
@@ -317,7 +318,7 @@ export const PackageExporter = {
 			this.updateBuzzDataPaths(buzzData);
 
 			const title = meta.title || 'Untitled Buzz';
-			const filename = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+			const filename = toFileSlug(title);
 			const version = context?.constants?.VERSION || '1.0';
 
 			const htmlContent = await this.loadTemplate('src/persistence/templates/runtime-player.html', {

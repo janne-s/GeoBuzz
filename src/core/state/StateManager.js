@@ -14,6 +14,12 @@ export class StateManager {
 		this._sequencersMap = new Map();
 		this._subscribers = [];
 
+		this.buzzMeta = {
+			title: '',
+			author: '',
+			description: ''
+		};
+
 		this.workspace = {
 			id: null,
 			isAudioReady: false,

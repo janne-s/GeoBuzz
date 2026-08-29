@@ -16,6 +16,10 @@ function levelToPercent(db) {
 	return ((db - floor) / -floor) * 100;
 }
 
+function setText(element, text) {
+	if (element.textContent !== text) element.textContent = text;
+}
+
 function formatDb(db) {
 	if (db === null || db <= CONSTANTS.MASTER_METER_FLOOR_DB) return '−∞';
 	return db.toFixed(1);
@@ -106,11 +110,10 @@ function buildPanel() {
 	const rmsOut = createReadout('RMS');
 	const crestOut = createReadout('Crest');
 	const rangeOut = createReadout('Range');
-	const resetBtn = createButton('<i class="fas fa-rotate-left"></i>', () => {
-		MasterBus.resetStats();
-	}, 'master-reset-btn');
-	resetBtn.title = 'Reset peak hold and range';
-	readout.append(peakOut.cell, rmsOut.cell, crestOut.cell, rangeOut.cell, resetBtn);
+	rangeOut.cell.classList.add('master-readout-resettable');
+	rangeOut.cell.title = 'Click to start a new range';
+	rangeOut.cell.addEventListener('pointerdown', () => MasterBus.resetRange());
+	readout.append(peakOut.cell, rmsOut.cell, crestOut.cell, rangeOut.cell);
 
 	const note = createElement('p', 'master-panel-note');
 	note.textContent = 'Editor reference only — not saved into the buzz';
@@ -129,7 +132,7 @@ function syncControls() {
 		: '<i class="fas fa-volume-high"></i>';
 	elements.muteBtn.classList.toggle('active', muted);
 	elements.slider.value = MasterBus.getVolumeDb();
-	elements.volumeValue.textContent = `${MasterBus.getVolumeDb().toFixed(1)} dB`;
+	setText(elements.volumeValue, `${MasterBus.getVolumeDb().toFixed(1)} dB`);
 }
 
 function renderChannel(target, channel) {
@@ -144,14 +147,14 @@ function render() {
 	renderChannel(elements.left, reading.channels[0]);
 	renderChannel(elements.right, reading.channels[1]);
 
-	elements.peakOut.value.textContent = formatDb(reading.peakDb);
-	elements.rmsOut.value.textContent = formatDb(reading.rmsDb);
-	elements.crestOut.value.textContent = reading.rmsDb <= CONSTANTS.MASTER_METER_FLOOR_DB
+	setText(elements.peakOut.value, formatDb(reading.peakDb));
+	setText(elements.rmsOut.value, formatDb(reading.rmsDb));
+	setText(elements.crestOut.value, reading.rmsDb <= CONSTANTS.MASTER_METER_FLOOR_DB
 		? '—'
-		: reading.crestDb.toFixed(1);
-	elements.rangeOut.value.textContent = reading.sessionMinRmsDb === null
+		: reading.crestDb.toFixed(1));
+	setText(elements.rangeOut.value, reading.sessionMinRmsDb === null
 		? '—'
-		: `${reading.sessionMinRmsDb.toFixed(0)}…${reading.sessionMaxRmsDb.toFixed(0)}`;
+		: `${reading.sessionMinRmsDb.toFixed(0)}…${reading.sessionMaxRmsDb.toFixed(0)}`);
 
 	elements.clip.classList.toggle('active', reading.clipping);
 }

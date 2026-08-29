@@ -3,6 +3,7 @@ import { Selectors } from '../core/state/selectors.js';
 import { GeolocationManager } from '../core/geospatial/GeolocationManager.js';
 import { LayerManager } from '../layers/LayerManager.js';
 import { ModalSystem } from '../ui/ModalSystem.js';
+import { toFileSlug } from '../core/utils/filenames.js';
 
 let context = null;
 
@@ -260,19 +261,20 @@ export function createUIEventHandlers({
 		},
 
 		'#exportBuzzZipBtn': async () => {
-			const title = await ModalSystem.prompt('Buzz Title:', 'Untitled Buzz', 'Export Buzz ZIP');
+			const remembered = AppState.buzzMeta;
+			const title = await ModalSystem.prompt('Buzz Title:', remembered.title || 'Untitled Buzz', 'Export Buzz ZIP');
 			if (title === null) {
 				helperMenu.classList.remove('active');
 				return;
 			}
 
-			const author = await ModalSystem.prompt('Author Name:', 'Anonymous', 'Export Buzz ZIP');
+			const author = await ModalSystem.prompt('Author Name:', remembered.author || 'Anonymous', 'Export Buzz ZIP');
 			if (author === null) {
 				helperMenu.classList.remove('active');
 				return;
 			}
 
-			const description = await ModalSystem.prompt('Description (optional):', '', 'Export Buzz ZIP');
+			const description = await ModalSystem.prompt('Description (optional):', remembered.description || '', 'Export Buzz ZIP');
 			if (description === null) {
 				helperMenu.classList.remove('active');
 				return;
@@ -284,10 +286,13 @@ export function createUIEventHandlers({
 				description: description || ''
 			};
 
+			AppState.buzzMeta = { ...meta };
+			saveWorkspaceSettings();
+
 			try {
 				await context.packageExporter.export(meta);
 
-				const filename = meta.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.zip';
+				const filename = toFileSlug(meta.title) + '.zip';
 				await ModalSystem.alert(
 					`Buzz package exported!\n\nFile: ${filename}\n\nContains:\n• buzz.json (your buzz data)\n• index.html (player boilerplate - customize!)\n• player-styles.css (customize!)\n• src/ (GeoBuzz Runtime Engine)\n• README.txt (customization guide)\n\nThe player is a customizable boilerplate.\nSee README.txt for API docs and tips!`,
 					'Export Complete'
