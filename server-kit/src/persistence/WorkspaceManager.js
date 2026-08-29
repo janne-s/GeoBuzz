@@ -78,7 +78,7 @@ export class WorkspaceManager {
 			const data = await Backend.files.listExports(workspaceId);
 			exports = data.exports || [];
 		} catch (error) {
-			list.textContent = 'Could not load exported buzzes.';
+			this.setExportedBuzzMessage(list, 'Could not load exported buzzes.');
 			console.warn('Exported buzz list failed:', error);
 			return;
 		}
@@ -86,7 +86,7 @@ export class WorkspaceManager {
 		list.innerHTML = '';
 
 		if (!exports.length) {
-			list.textContent = 'No exported buzzes yet.';
+			this.setExportedBuzzMessage(list, 'No exported buzzes yet.');
 			return;
 		}
 
@@ -139,6 +139,14 @@ export class WorkspaceManager {
 		});
 
 		list.appendChild(fragment);
+	}
+
+	static setExportedBuzzMessage(list, text) {
+		list.innerHTML = '';
+		const message = document.createElement('p');
+		message.className = 'exported-buzz-empty';
+		message.textContent = text;
+		list.appendChild(message);
 	}
 
 	static updateMenuCounts() {

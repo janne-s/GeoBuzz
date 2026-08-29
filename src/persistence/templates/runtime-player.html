@@ -190,11 +190,10 @@
 				// Get references
 				const state = runtimeEngine.getState();
 				const sounds = state.sounds;
-				const sequencers = state.sequencers;
 				const map = runtimeEngine.getContext().map;
 				geolocationManager = runtimeEngine.getContext().GeolocationManager;
 
-				updateSoundsList(sounds, sequencers);
+				updateSoundsList(sounds, buzzData.sequencers || []);
 
 				// Setup map pan detection
 				let isProgrammaticMove = false;

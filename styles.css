@@ -4578,6 +4578,14 @@ input:checked+.slider:before {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-md);
+	font-size: var(--font-base);
+}
+
+.exported-buzz-empty {
+	margin: 0;
+	font-size: var(--font-xs);
+	color: var(--color-text-muted);
+	font-style: italic;
 }
 
 .exported-buzz-row {

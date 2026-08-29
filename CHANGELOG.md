@@ -18,6 +18,7 @@
 
 - Scandinavian letters in a buzz title produced a mangled export filename
 - A dragged menu could end up above the top of the window and out of reach
+- The exported player listed distance sequencers only after playback had started
 
 ## 2026-08-28
 
