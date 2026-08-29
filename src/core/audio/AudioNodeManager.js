@@ -294,29 +294,29 @@ export class PolyphonyManager {
 	}
 
 	static trigger(soundObj, source = null) {
-		if (!soundObj || !soundObj.synth || !soundObj.params) return;
-		if (soundObj.synth.disposed) return;
+		if (!soundObj || !soundObj.synth || !soundObj.params) return false;
+		if (soundObj.synth.disposed) return false;
 
 		if (soundObj.type === 'Sampler' && soundObj.params.samplerMode === 'single' && !soundObj.params.soundFile) {
-			return;
+			return false;
 		}
 
 		if (soundObj.type === 'Sampler' && soundObj.params.samplerMode === 'grid') {
 			const hasAnySamples = soundObj.params.gridSamples && Object.keys(soundObj.params.gridSamples).length > 0;
 			if (!hasAnySamples) {
-				return;
+				return false;
 			}
 		}
 
 		if (soundObj.type === 'Sampler') {
 			const hasSelectedNotes = soundObj.params.selectedNotes && soundObj.params.selectedNotes.length > 0;
 			if (!hasSelectedNotes) {
-				return;
+				return false;
 			}
 
 			const hasBuffers = soundObj.synth._buffers && soundObj.synth._buffers._buffers && soundObj.synth._buffers._buffers.size > 0;
 			if (!hasBuffers) {
-				return;
+				return false;
 			}
 
 			let allLoaded = true;
@@ -327,7 +327,7 @@ export class PolyphonyManager {
 			});
 
 			if (!allLoaded) {
-				return;
+				return false;
 			}
 
 			if (soundObj.params.samplerMode === 'single') {
@@ -336,7 +336,7 @@ export class PolyphonyManager {
 				if (isSpeedGateActive(gateMin, gateMax)) {
 					const userSpeed = getUserMovementSpeed();
 					if (userSpeed < gateMin || userSpeed > gateMax) {
-						return;
+						return false;
 					}
 				}
 			}
@@ -344,13 +344,13 @@ export class PolyphonyManager {
 
 		if (soundObj.type === 'NoiseSynth') {
 			this.triggerPolyphonic(soundObj.synth, [], true, soundObj);
-			return;
+			return true;
 		}
 
 		const playbackSource = source || this.determinePlaybackSource(soundObj);
 
 		if (!playbackSource) {
-			return;
+			return false;
 		}
 
 		if (playbackSource.type === 'frequency') {
@@ -381,6 +381,8 @@ export class PolyphonyManager {
 			}
 			gain.linearRampToValueAtTime(sustainLevel, now + attackTime + decay);
 		}
+
+		return true;
 	}
 
 	static release(soundObj, source = null) {

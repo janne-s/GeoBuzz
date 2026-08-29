@@ -50,14 +50,12 @@ export function clampGainDelta(targetGain, soundId) {
 		return targetGain;
 	}
 
-	if (!lastGains.has(soundId)) {
-		lastGains.set(soundId, { distance: 0, gain: 0 });
-	}
+	const cacheKey = `${soundId}`;
+	const cached = lastGains.get(cacheKey);
 
-	const cached = lastGains.get(soundId);
-
-	if (cached.gain === null) {
-		cached.gain = 0;
+	if (!cached || cached.gain === null) {
+		lastGains.set(cacheKey, { distance: 0, gain: targetGain });
+		return targetGain;
 	}
 
 	const delta = targetGain - cached.gain;
@@ -92,9 +90,10 @@ export function getSmoothedModulationValue(rawValue, soundId, modKey, alphaOverr
 }
 
 export function clearSoundCache(soundId) {
+	const prefix = `${soundId}`;
 	const keysToDelete = [];
 	for (const key of lastGains.keys()) {
-		if (key === soundId || key.startsWith(`${soundId}_`)) {
+		if (key === prefix || key.startsWith(`${prefix}_`)) {
 			keysToDelete.push(key);
 		}
 	}

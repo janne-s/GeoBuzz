@@ -54,6 +54,7 @@ import { createElement, createButton, createSelect } from '../ui/domHelpers.js';
 import { ModalSystem } from '../ui/ModalSystem.js';
 import { MenuManager } from '../ui/controllers/MenuManager.js';
 import { SequencerUIManager } from '../ui/SequencerUIManager.js';
+import { initMasterPanel, toggleMasterPanel } from '../ui/MasterPanel.js';
 import { createDraggableHeader, createElementNavigationDropdown, createCloseButton } from '../ui/controllers/HeaderBuilder.js';
 import { createParameterControl, updateFrequencyModeIndicators, updateNodeParameter } from '../ui/controllers/ParameterControls.js';
 import { UIBuilder, createCollapsibleSection, createColorPicker, createHeaderControls, createParamsContainer, createActionButtons, createSpatialSection, createExitBehaviorDropdown, createVolumeModelDropdown, createIconPlacementDropdown, createMenuStructure, createSourceTypeDropdown, createRoleDropdown, createShapeDropdown, createPanningDropdown, createLabelInput, createTabBar, createDeleteButton, createSwitch, createRadioButton, addSideMenuCloseButtons } from '../ui/controllers/UIBuilder.js';
@@ -61,6 +62,7 @@ import { MenuTabs } from '../ui/components/MenuTabsRegistry.js';
 import * as PathMenuManager from '../ui/menus/PathMenuManager.js';
 import * as SoundMenuManager from '../ui/menus/SoundMenuManager.js';
 import * as UserMenuManager from '../ui/menus/UserMenuManager.js';
+import * as SettingsMenuManager from '../ui/menus/SettingsMenuManager.js';
 import * as LayerMenuManager from '../ui/menus/LayerMenuManager.js';
 import * as DialogManager from '../ui/menus/DialogManager.js';
 
@@ -1665,23 +1667,25 @@ async function setSpatialMode(newMode) {
 
 	const userPos = GeolocationManager.getUserPosition();
 
-	for (const sound of Selectors.getSounds()) {
-		await rebuildSoundAudioChain(sound);
+	try {
+		for (const sound of Selectors.getSounds()) {
+			await rebuildSoundAudioChain(sound);
 
-		if (sound.echoNodes && sound.echoNodes.size > 0) {
-			EchoManager.cleanup(sound);
+			if (sound.echoNodes && sound.echoNodes.size > 0) {
+				EchoManager.cleanup(sound);
 
-			if (userPos) {
-				EchoManager.update(sound, userPos);
+				if (userPos) {
+					EchoManager.update(sound, userPos);
+				}
 			}
 		}
-	}
 
-	if (oldMode === 'ambisonics' && newMode !== 'ambisonics') {
-		appContext.AmbisonicsManager.dispose();
+		if (oldMode === 'ambisonics' && newMode !== 'ambisonics') {
+			appContext.AmbisonicsManager.dispose();
+		}
+	} finally {
+		AppState.audio.isRebuildingChains = false;
 	}
-
-	AppState.audio.isRebuildingChains = false;
 
 	if (userPos) {
 		resetAreaTracking(userPos);
@@ -1727,7 +1731,7 @@ async function rebuildSoundAudioChain(soundObj) {
 	}
 
 	soundObj.params = currentParams;
-	if (currentType === 'SoundFile' && soundFile) {
+	if ((currentType === 'SoundFile' || currentType === 'Sampler') && soundFile) {
 		await autoLoadSoundFile(soundObj, soundFile);
 		applySoundFilePlaybackParams(soundObj, false);
 	}
@@ -1888,6 +1892,7 @@ const controlMenu = document.getElementById('controlMenu');
 
 const Menus = {
 	helper: { toggle: document.getElementById('helperMenuToggle'), menu: helperMenu },
+	settings: { toggle: document.getElementById('settingsMenuToggle'), menu: document.getElementById('settingsMenu') },
 	elements: { toggle: document.getElementById('elementsMenuToggle'), menu: document.getElementById('elementsMenu') },
 	control: { toggle: document.getElementById('controlMenuToggle'), menu: controlMenu },
 	sequencing: { toggle: document.getElementById('sequencingMenuToggle'), menu: document.getElementById('sequencingMenu') },
@@ -2346,6 +2351,7 @@ setShapeManagerContext(appContext);
 PathMenuManager.setContext(appContext);
 SoundMenuManager.setContext(appContext);
 UserMenuManager.setContext(appContext);
+SettingsMenuManager.setContext(appContext);
 LayerMenuManager.setContext(appContext);
 DialogManager.setContext(appContext);
 setSelectionControllerContext(appContext);
@@ -2353,6 +2359,8 @@ setSelectionActionsContext(appContext);
 setDragSelectHandlerContext(appContext);
 setSelectionUIBuilderContext(appContext);
 SelectionUIBuilder.initialize(map);
+SettingsMenuManager.initSettingsMenu();
+initMasterPanel();
 
 startAudioLoop();
 
@@ -2383,6 +2391,7 @@ const EVENT_HANDLERS = {
 		stopSimulation,
 		detachUserFromPath,
 		getRouteAndAnimate,
+		toggleMasterPanel,
 		helperMenu,
 		controlMenu,
 		Menus

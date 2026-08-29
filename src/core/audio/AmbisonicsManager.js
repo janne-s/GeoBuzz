@@ -1,5 +1,6 @@
 import { CONSTANTS } from '../constants.js';
 import { Selectors } from '../state/selectors.js';
+import { MasterBus } from './MasterBus.js';
 
 export class AmbisonicsManager {
 	constructor() {
@@ -50,7 +51,7 @@ export class AmbisonicsManager {
 			this.outputGain = this.audioContext.createGain();
 			this.outputGain.gain.value = CONSTANTS.AMBISONIC_GAIN_BOOST;
 			this.scene.output.connect(this.outputGain);
-			this.outputGain.connect(this.audioContext.destination);
+			MasterBus.connectSource(this.outputGain);
 
 			if (this._appStateRef && this._appStateRef.audio && this._appStateRef.audio.ambisonics) {
 				this._appStateRef.audio.ambisonics.scene = this.scene;

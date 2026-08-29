@@ -29,6 +29,7 @@ export function createUIEventHandlers({
 	stopSimulation,
 	detachUserFromPath,
 	getRouteAndAnimate,
+	toggleMasterPanel,
 	helperMenu,
 	controlMenu,
 	Menus
@@ -119,6 +120,11 @@ export function createUIEventHandlers({
 		},
 
 		'#loadBtn': () => document.getElementById('loadInput').click(),
+
+		'#masterPanelBtn': () => {
+			toggleMasterPanel();
+			helperMenu.classList.remove('active');
+		},
 
 		'#manageSoundsBtn': () => {
 			showFileManagerDialog();

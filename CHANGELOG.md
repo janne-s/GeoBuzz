@@ -1,9 +1,17 @@
 # Changelog
 
+## 2026-08-29
+
+### Changed
+
+- File operations and settings are now two separate side menus
+- Audio smoothing, GPS accuracy and parameter customization moved from the user marker to the settings menu
+
 ## 2026-08-28
 
 ### Added
 
+- Master meter panel with level, dynamics readout, monitoring volume and mute
 - Line elements always show their centre line, not only in centreline mode
 
 ### Changed
@@ -14,6 +22,9 @@
 
 ### Fixed
 
+- Switching spatial panning mode threw an error once sounds had been playing
+- Sounds inside an area went silent after a spatial panning change until the listener walked out and back in
+- A single-file sampler lost its sound when spatial panning mode changed
 - The envelope ran twice on synths that carry their own, halving sustain and doubling the attack curve
 - Division volume origin had no gradient on line elements
 - Going to a Buzz spiked movement speed, saturating speed-driven modulation for several seconds

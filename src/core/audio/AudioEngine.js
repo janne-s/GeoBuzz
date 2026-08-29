@@ -428,8 +428,7 @@ export function updateAudio(userPos, now, forcePositionWork = true) {
 				}
 			} else if (s.type !== "SoundFile" && NoteManager && !isControlledBySequencer) {
 				if (isInside && !s.isPlaying) {
-					s.isPlaying = true;
-					NoteManager.trigger(s);
+					s.isPlaying = NoteManager.trigger(s) !== false;
 				} else if (!isInside && s.isPlaying) {
 					s.isPlaying = false;
 					NoteManager.release(s);
@@ -566,6 +565,11 @@ export function audioUpdateLoop() {
 		document.addEventListener('click', resumeOnInteraction, { once: true });
 		document.addEventListener('touchstart', resumeOnInteraction, { once: true });
 		document.addEventListener('keydown', resumeOnInteraction, { once: true });
+	}
+
+	if (AppState.audio.isRebuildingChains) {
+		AppState.intervals.audioUpdate = requestAnimationFrame(audioUpdateLoop);
+		return;
 	}
 
 	const processPathLFOs = context.processPathLFOs;

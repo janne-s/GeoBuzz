@@ -17,12 +17,12 @@
 
 	<!-- Helper Menu - File operations, workspace, settings -->
 	<button id="helperMenuToggle" class="menu-toggle helper-menu-toggle">
-		<i class="fas fa-tools"></i>
+		<i class="fas fa-folder-open"></i>
 	</button>
 
 	<div id="helperMenu" class="side-menu helper-menu">
 		<div class="menu-section">
-			<h3 class="section-title flex-center"><i class="fas fa-folder-open"></i> Settings</h3>
+			<h3 class="section-title flex-center"><i class="fas fa-file-arrow-down"></i> Buzz File</h3>
 			<button id="saveBtn" class="menu-btn flex-center">
 				<i class="fas fa-save"></i>
 				<span>Save to File</span>
@@ -76,18 +76,35 @@
 		</div>
 
 		<div class="menu-section">
-			<h3 class="section-title flex-center"><i class="fas fa-map"></i> Map Style</h3>
-			<select id="mapStyleSelect" class="map-style-select">
-			</select>
-		</div>
-
-		<div class="menu-section">
 			<h3 class="section-title flex-center"><i class="fas fa-music"></i> Sound Files</h3>
 			<button id="manageSoundsBtn" class="menu-btn flex-center">
 				<i class="fas fa-folder-open"></i>
 				<span>Manage Files and Buzzes</span>
 			</button>
 		</div>
+	</div>
+
+	<button id="settingsMenuToggle" class="menu-toggle settings-menu-toggle">
+		<i class="fas fa-gear"></i>
+	</button>
+
+	<div id="settingsMenu" class="side-menu settings-menu">
+		<div class="menu-section">
+			<h3 class="section-title flex-center"><i class="fas fa-map"></i> Map Style</h3>
+			<select id="mapStyleSelect" class="map-style-select">
+			</select>
+		</div>
+
+		<div class="menu-section">
+			<h3 class="section-title flex-center"><i class="fas fa-wave-square"></i> Monitoring</h3>
+			<button id="masterPanelBtn" class="menu-btn flex-center">
+				<i class="fas fa-sliders"></i>
+				<span>Master Meter</span>
+			</button>
+			<p class="help-text">Editor reference only — never part of the buzz</p>
+		</div>
+
+		<div id="settingsDynamicSections"></div>
 	</div>
 
 	<button id="elementsMenuToggle" class="menu-toggle elements-menu-toggle">

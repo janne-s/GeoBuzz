@@ -837,6 +837,7 @@ export function createRadioButton(name, value, label, isChecked, onChange) {
 export function addSideMenuCloseButtons() {
 	const sideMenus = [
 		{ menuId: 'helperMenu', toggleId: 'helperMenuToggle' },
+		{ menuId: 'settingsMenu', toggleId: 'settingsMenuToggle' },
 		{ menuId: 'elementsMenu', toggleId: 'elementsMenuToggle' },
 		{ menuId: 'controlMenu', toggleId: 'controlMenuToggle' },
 		{ menuId: 'sequencingMenu', toggleId: 'sequencingMenuToggle' },

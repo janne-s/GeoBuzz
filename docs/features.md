@@ -665,9 +665,9 @@ When multiple scene change zones overlap, the most recently entered zone determi
 
 ## Side Menus
 
-### Helper Menu (Wrench Icon)
+### Files Menu (Folder Icon)
 
-#### Settings Section
+#### Buzz File
 
 | Item | Description |
 |------|-------------|
@@ -696,17 +696,40 @@ When multiple scene change zones overlap, the most recently entered zone determi
 | **Workspace URL** | Current workspace address |
 | **Copy Workspace** | Copy URL to clipboard for sharing |
 
+#### Sound Files
+
+| Item | Description |
+|------|-------------|
+| **Manage Files and Buzzes** | Open file management dialog |
+
+---
+
+### Settings Menu (Gear Icon)
+
 #### Map Style
 
 | Item | Description |
 |------|-------------|
 | **Map Style Select** | Choose base map tile provider |
 
-#### Sound Files
+#### Monitoring
 
 | Item | Description |
 |------|-------------|
-| **Manage Files and Buzzes** | Open file management dialog |
+| **Master Meter** | Show or hide the master monitor panel |
+
+#### Parameters
+
+| Item | Description |
+|------|-------------|
+| **Customize Parameters** | Open parameter customization |
+
+#### Tuning
+
+| Item | Description |
+|------|-------------|
+| **Audio Smoothing** | Position smoothing, max gain change, dead zone |
+| **GPS Accuracy** | GPS responsiveness |
 
 ---
 
@@ -910,6 +933,49 @@ Accessed via "Manage Files and Buzzes" in Helper Menu.
 
 ---
 
+## Master Monitor Panel
+
+An editor-only reference meter for judging output level and dynamics. It is not
+part of a Buzz: nothing it shows or controls is saved into `buzz.json` or
+carried into an exported package.
+
+Opened from **Helper Menu → Monitoring → Master Meter**. The panel docks to the
+bottom-left of the map and stays open while you edit or run a simulation. Its
+visibility, master volume and mute state persist in browser storage per device.
+
+### Level Display
+
+| Element | Description |
+|---------|-------------|
+| **L / R bars** | Per-channel level, measured before the master volume control |
+| **Solid bar** | RMS level (perceived loudness) |
+| **Faded bar** | Peak level (fast attack, slow decay) |
+| **Marker line** | Peak hold, falls back after two seconds |
+| **Shaded band** | -18 to -12 dBFS target region |
+| **CLIP** | Lights when a sample reaches full scale, holds for 1.5 s |
+
+### Readout
+
+| Value | Description |
+|-------|-------------|
+| **Peak** | Current peak level in dBFS |
+| **RMS** | Current RMS level in dBFS |
+| **Crest** | Peak minus RMS in dB — instantaneous dynamic range |
+| **Range** | Lowest and highest RMS seen since the last reset — dynamic range across a whole walk or simulation |
+| **Reset** | Clears peak hold and the range statistics |
+
+### Monitor Controls
+
+| Control | Description |
+|---------|-------------|
+| **Mute** | Silences monitoring; the meter keeps reading, since it measures before this control |
+| **Volume** | Monitoring level, -40 to +12 dB |
+
+Because the meter is measured before the volume control, its numbers describe
+the Buzz itself and do not change when you adjust monitoring level.
+
+---
+
 ## User Settings Menu
 
 Click the user marker on the map to access.
@@ -968,7 +1034,6 @@ If paths exist in the composition, the user menu shows a "Simulate Along Path" d
 | Setting | Description |
 |---------|-------------|
 | **Show/Hide Accuracy** | Toggle GPS accuracy display |
-| **Customize Parameters** | Open parameter customization |
 
 ### Spatial Panning
 
@@ -989,20 +1054,6 @@ When Ambisonics mode selected:
 | **Min Distance** | Distance for full volume |
 | **Stereo Width** | Stereo field width |
 | **Stereo Spread** | Distance for full stereo |
-
-### Audio Smoothing
-
-| Parameter | Description |
-|-----------|-------------|
-| **Position Smoothing** | Location interpolation |
-| **Max Gain Change** | Volume change limiting |
-| **Dead Zone** | Minimum distance moved per update before position is recalculated. Filters out GPS jitter when standing still |
-
-### GPS Accuracy
-
-| Parameter | Description |
-|-----------|-------------|
-| **GPS Responsiveness** | How quickly position tracks new GPS readings vs. how much noise filtering is applied |
 
 ### Listener Direction
 
