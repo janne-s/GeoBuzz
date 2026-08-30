@@ -6,6 +6,10 @@
 
 - Inertia setting for echo paths, smoothing how fast the reflection distance follows
 
+### Changed
+
+- Master meter Range reads unsmoothed RMS with no silence gate, and shows session peak
+
 ### Fixed
 
 - A sequencer with a speed gate hold never opened its gate while walking

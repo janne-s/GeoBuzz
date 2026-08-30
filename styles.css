@@ -4545,13 +4545,19 @@ input:checked+.slider:before {
 
 .master-panel-readout {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: flex-end;
 	gap: var(--spacing-sm);
 	user-select: none;
 	-webkit-user-select: none;
 }
 
-.master-readout-cell:last-child {
+.master-readout-cell:nth-child(4) {
+	text-align: right;
+}
+
+.master-readout-cell:nth-child(5) {
+	flex-basis: 100%;
 	text-align: right;
 }
 

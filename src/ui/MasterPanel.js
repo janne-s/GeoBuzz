@@ -110,10 +110,15 @@ function buildPanel() {
 	const rmsOut = createReadout('RMS');
 	const crestOut = createReadout('Crest');
 	const rangeOut = createReadout('Range');
-	rangeOut.cell.classList.add('master-readout-resettable');
-	rangeOut.cell.title = 'Click to start a new range';
-	rangeOut.cell.addEventListener('pointerdown', () => MasterBus.resetRange());
-	readout.append(peakOut.cell, rmsOut.cell, crestOut.cell, rangeOut.cell);
+	const peakMaxOut = createReadout('Peak max');
+
+	[rangeOut, peakMaxOut].forEach(out => {
+		out.cell.classList.add('master-readout-resettable');
+		out.cell.title = 'Click to start a new range';
+		out.cell.addEventListener('pointerdown', () => MasterBus.resetRange());
+	});
+
+	readout.append(peakOut.cell, rmsOut.cell, crestOut.cell, rangeOut.cell, peakMaxOut.cell);
 
 	const note = createElement('p', 'master-panel-note');
 	note.textContent = 'Editor reference only — not saved into the buzz';
@@ -121,7 +126,7 @@ function buildPanel() {
 	panel.append(header, controls, meter, readout, note);
 	document.body.appendChild(panel);
 
-	elements = { clip, muteBtn, slider, volumeValue, left, right, peakOut, rmsOut, crestOut, rangeOut };
+	elements = { clip, muteBtn, slider, volumeValue, left, right, peakOut, rmsOut, crestOut, rangeOut, peakMaxOut };
 	syncControls();
 }
 
@@ -155,6 +160,9 @@ function render() {
 	setText(elements.rangeOut.value, reading.sessionMinRmsDb === null
 		? '—'
 		: `${reading.sessionMinRmsDb.toFixed(0)}…${reading.sessionMaxRmsDb.toFixed(0)}`);
+	setText(elements.peakMaxOut.value, reading.sessionPeakDb === null
+		? '—'
+		: formatDb(reading.sessionPeakDb));
 
 	elements.clip.classList.toggle('active', reading.clipping);
 }

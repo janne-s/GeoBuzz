@@ -44,6 +44,7 @@ class MasterBusClass {
 		this.clipUntil = 0;
 		this.sessionMinRmsDb = null;
 		this.sessionMaxRmsDb = null;
+		this.sessionPeakDb = null;
 		this._persist = debounce(() => this._write(), CONSTANTS.MASTER_MONITOR_PERSIST_MS);
 		this._restore();
 	}
@@ -149,6 +150,7 @@ class MasterBusClass {
 	resetRange() {
 		this.sessionMinRmsDb = null;
 		this.sessionMaxRmsDb = null;
+		this.sessionPeakDb = null;
 	}
 
 	update() {
@@ -165,6 +167,7 @@ class MasterBusClass {
 		this.lastSampleTime = now;
 
 		let blockPeak = 0;
+		let blockRmsDb = CONSTANTS.MASTER_METER_FLOOR_DB;
 
 		for (let index = 0; index < this.analysers.length; index++) {
 			const buffer = this.buffers[index];
@@ -183,6 +186,7 @@ class MasterBusClass {
 			const channel = this.channels[index];
 			const peakDb = toDb(peak);
 			const rmsDb = toDb(Math.sqrt(sumSquares / buffer.length));
+			if (rmsDb > blockRmsDb) blockRmsDb = rmsDb;
 
 			if (peakDb >= channel.peakDb) {
 				channel.peakDb = peakDb;
@@ -216,10 +220,11 @@ class MasterBusClass {
 		const peakDb = Math.max(this.channels[0].peakDb, this.channels[1].peakDb);
 		const rmsDb = Math.max(this.channels[0].rmsDb, this.channels[1].rmsDb);
 
-		if (rmsDb > CONSTANTS.MASTER_METER_STATS_GATE_DB) {
-			if (this.sessionMinRmsDb === null || rmsDb < this.sessionMinRmsDb) this.sessionMinRmsDb = rmsDb;
-			if (this.sessionMaxRmsDb === null || rmsDb > this.sessionMaxRmsDb) this.sessionMaxRmsDb = rmsDb;
-		}
+		if (this.sessionMinRmsDb === null || blockRmsDb < this.sessionMinRmsDb) this.sessionMinRmsDb = blockRmsDb;
+		if (this.sessionMaxRmsDb === null || blockRmsDb > this.sessionMaxRmsDb) this.sessionMaxRmsDb = blockRmsDb;
+
+		const blockPeakDb = toDb(blockPeak);
+		if (this.sessionPeakDb === null || blockPeakDb > this.sessionPeakDb) this.sessionPeakDb = blockPeakDb;
 
 		return this._reading(now < this.clipUntil);
 	}
@@ -247,7 +252,8 @@ class MasterBusClass {
 			crestDb: peakDb - rmsDb,
 			clipping,
 			sessionMinRmsDb: this.sessionMinRmsDb,
-			sessionMaxRmsDb: this.sessionMaxRmsDb
+			sessionMaxRmsDb: this.sessionMaxRmsDb,
+			sessionPeakDb: this.sessionPeakDb
 		};
 	}
 
