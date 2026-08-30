@@ -120,7 +120,7 @@ export class DistanceSequencer {
 		this.lastStepDistance = 0;
 		this.currentStep = -1;
 		this.isActive = false;
-		this.insideArea = true;
+		this.insideArea = false;
 		this.lastPosition = null;
 		this.positionHistory = [];
 
@@ -434,6 +434,21 @@ export class DistanceSequencer {
 			clearTimeout(track._bypassTimeout);
 			track._bypassTimeout = null;
 		}
+
+		if (track._bypassFading && !track._audioBypassed) {
+			track._bypassFading = false;
+			if (soundObj?.gain && !soundObj.gain.disposed) {
+				const resumeAt = Tone.now();
+				soundObj.gain.gain.cancelScheduledValues(resumeAt);
+				soundObj.gain.gain.setValueAtTime(soundObj.gain.gain.value, resumeAt);
+				soundObj.gain.gain.linearRampToValueAtTime(
+					this._trackGainValue(soundObj),
+					resumeAt + CONSTANTS.FX_BYPASS_RAMP_TIME
+				);
+			}
+			return;
+		}
+
 		if (!track._audioBypassed || !soundObj?.gain || soundObj.gain.disposed) return;
 
 		track._audioBypassed = false;
@@ -470,8 +485,25 @@ export class DistanceSequencer {
 			const soundObj = this._synthPool.get(track.id);
 			if (!soundObj?.gain || soundObj.gain.disposed) return;
 
-			soundObj.gain.disconnect();
-			track._audioBypassed = true;
+			track._bypassFading = true;
+
+			const fadeAt = Tone.now();
+			soundObj.gain.gain.cancelScheduledValues(fadeAt);
+			soundObj.gain.gain.setValueAtTime(soundObj.gain.gain.value, fadeAt);
+			soundObj.gain.gain.linearRampToValueAtTime(0, fadeAt + CONSTANTS.SEQUENCER_BYPASS_FADE);
+
+			setTimeout(() => {
+				if (!track._bypassFading) return;
+				track._bypassFading = false;
+
+				if (!soundObj.gain || soundObj.gain.disposed) return;
+				if (soundObj.synth && !soundObj.synth.disposed && soundObj.synth.releaseAll) {
+					soundObj.synth.releaseAll();
+				}
+
+				soundObj.gain.disconnect();
+				track._audioBypassed = true;
+			}, CONSTANTS.SEQUENCER_BYPASS_FADE * 1000);
 		}, this._trackTailSeconds(track) * 1000);
 	}
 
@@ -480,6 +512,7 @@ export class DistanceSequencer {
 			clearTimeout(track._bypassTimeout);
 			track._bypassTimeout = null;
 		}
+		track._bypassFading = false;
 		track._audioBypassed = false;
 	}
 
@@ -898,10 +931,14 @@ export class DistanceSequencer {
 	onTrackStepTrigger(track, stepIndex) {
 		if (!track.steps[stepIndex]) {
 			console.warn(`Step ${stepIndex} does not exist for track ${track.id}`);
+			this.releaseTrackNotes(track);
 			return;
 		}
 
-		if (!this.isTrackAudible(track)) return;
+		if (!this.isTrackAudible(track)) {
+			this.releaseTrackNotes(track);
+			return;
+		}
 
 		this._processTrackModulation(track);
 

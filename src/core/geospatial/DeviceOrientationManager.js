@@ -1,5 +1,6 @@
 import { CONSTANTS } from '../constants.js';
 import { OrientationKalmanFilter } from './OrientationKalmanFilter.js';
+import { updateDirectionUI } from '../../paths/PathEditor.js';
 
 class DeviceOrientationManagerClass {
 	constructor() {
@@ -144,20 +145,13 @@ class DeviceOrientationManagerClass {
 			this.context.AppState.audio.userDirection = filtered.heading;
 			this.context.GeolocationManager?.updateDirectionIndicator(filtered.heading);
 
-			const directionSlider = document.querySelector('.direction-slider');
-			if (directionSlider) {
-				directionSlider.value = filtered.heading;
-				const arrow = document.querySelector('.direction-arrow');
-				const degreeDisplay = document.querySelector('.degree-display');
-				if (arrow) arrow.style.transform = `rotate(${filtered.heading - 45}deg)`;
-				if (degreeDisplay) degreeDisplay.textContent = `${filtered.heading}°`;
+			updateDirectionUI(filtered.heading);
 
-				const sourceNote = document.querySelector('.orientation-source-note');
-				if (sourceNote) {
-					sourceNote.textContent = this._activeSource === 'relative'
-						? '(Relative orientation — compass unavailable)'
-						: '';
-				}
+			const sourceNote = document.querySelector('.orientation-source-note');
+			if (sourceNote) {
+				sourceNote.textContent = this._activeSource === 'relative'
+					? '(Relative orientation — compass unavailable)'
+					: '';
 			}
 
 			if (this.context.AppState.dispatch) {

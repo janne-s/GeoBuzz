@@ -89,6 +89,7 @@ await runtimeEngine.initialize({
 |--------|------|---------|-------------|
 | `mapContainer` | HTMLElement | `document.getElementById('map')` | Container element for the Leaflet map |
 | `mapConfig` | Object | `{ center: [0,0], zoom: 2 }` | Leaflet [map options](https://leafletjs.com/reference.html#map-option) |
+| `startGeolocation` | boolean | `true` | Set to `false` to skip starting GPS tracking during `initialize()`. The player then calls `getContext().GeolocationManager.setupGeolocation()` itself — typically from the user gesture that starts playback, so the permission prompt appears when the listener chooses to begin rather than on page load. |
 
 **Throws** if the map container is not found.
 
@@ -111,6 +112,8 @@ await runtimeEngine.loadBuzz(buzzData);
 **Does NOT start audio** — call `start()` for that.
 
 If `buzzData.relativePositioning` is `true`, the engine waits for a GPS fix and places all elements relative to the user's current position.
+
+This works whichever way the buzz was saved. A buzz saved in relative mode carries `offsetX`/`offsetY` (and `pointOffsets`) fields, and those are applied directly. A buzz saved with absolute coordinates has no offsets, so the engine takes the centre of the buzz's own geometry as its anchor and moves the whole layout to the listener, preserving every internal distance. Setting the flag on an absolute buzz used to load it unchanged at its stored coordinates.
 
 ---
 
@@ -245,7 +248,7 @@ const pos = geo.getUserPosition();
 
 // Get detailed status
 const info = geo.getStatusInfo();
-// → { status: 'watching', followGPS: true, hasMarker: true, position: LatLng }
+// → { status: 'active', followGPS: true, hasMarker: true, position: LatLng, accuracy: 12.4 }
 
 // Toggle between GPS tracking and manual (draggable) positioning
 geo.toggleFollowGPS();       // Toggle
@@ -391,7 +394,7 @@ The `buzz.json` file loaded by `loadBuzz()` has this top-level structure:
     "sounds": true,
     "control": true
   },
-  "relativePositioning": false,       // If true, coordinates are offsets from user
+  "relativePositioning": false,       // If true, the layout is placed around the listener
   "sounds": [ ... ],                  // Sound definitions
   "controlPaths": [ ... ],            // Path definitions
   "sequencers": [ ... ],              // Sequencer definitions

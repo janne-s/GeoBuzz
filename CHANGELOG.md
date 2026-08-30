@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-08-30
+
+### Added
+
+- Inertia setting for echo paths, smoothing how fast the reflection distance follows
+
+### Fixed
+
+- A single GPS timeout jumped the map to the world view even with a known position
+- Silencers and distance did not attenuate echo reflections in an exported buzz
+- Echo delay jumped with every position update, pitching the reflection like tape
+- A sequencer track could leave notes sounding when a step was skipped
+- A sequencer track was cut off instantly when its audio was bypassed
+
 ## 2026-08-29
 
 ### Added
@@ -7,6 +21,8 @@
 - Context menus can be dragged from anywhere on the menu, not just the header
 - Clicking Range in the master meter starts a new range
 - Exported buzz player URLs are listed in the files menu, with a copy button
+- RuntimeEngine option to start geolocation later than initialize()
+- GPS accuracy is included in GeolocationManager.getStatusInfo()
 
 ### Changed
 
@@ -18,6 +34,9 @@
 
 - Scandinavian letters in a buzz title produced a mangled export filename
 - A dragged menu could end up above the top of the window and out of reach
+- Relative positioning did nothing for a buzz saved with absolute coordinates
+- Sequencers reported being inside their area before the first position update
+- The direction indicator was updated by four separate copies of the same code
 - The exported player listed distance sequencers only after playback had started
 
 ## 2026-08-28

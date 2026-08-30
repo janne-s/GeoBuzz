@@ -307,7 +307,9 @@ export class RuntimeEngine {
 			setEchoManagerContext(engineContext);
 			GeolocationManager.setContext(engineContext);
 			GeolocationManager.init();
-			GeolocationManager.setupGeolocation();
+			if (options.startGeolocation !== false) {
+				GeolocationManager.setupGeolocation();
+			}
 
 			AppState.subscribe((action) => {
 				switch (action.type) {
@@ -330,8 +332,8 @@ export class RuntimeEngine {
 						break;
 					}
 					case 'AUDIO_ECHO_UPDATE_REQUESTED': {
-						const { sound, userPos } = action.payload;
-						EchoManager.update(sound, userPos);
+						const { sound, userPos, silencingGain, elementGain } = action.payload;
+						EchoManager.update(sound, userPos, silencingGain, elementGain);
 						break;
 					}
 				}
@@ -385,16 +387,29 @@ export class RuntimeEngine {
 				LayerManager.layers.control = buzzData.defaultLayerStates.control ?? true;
 			}
 
-			if (buzzData.relativePositioning) {
+			let layout = buzzData;
+			let isRelative = buzzData.relativePositioning || false;
+
+			if (isRelative) {
 				await GeolocationManager.waitForLocation();
+
+				if (!CoordinateTransform.hasStoredOffsets(buzzData)) {
+					const anchor = GeolocationManager.getUserPosition();
+					if (anchor) {
+						layout = CoordinateTransform.anchorBuzzTo(buzzData, anchor);
+					} else {
+						console.warn('Relative positioning requested but no user position is available; loading the stored coordinates instead.');
+					}
+					isRelative = false;
+				}
 			}
 
-			if (buzzData.controlPaths) {
-				await this.loadControlPaths(buzzData.controlPaths, buzzData.relativePositioning || false);
+			if (layout.controlPaths) {
+				await this.loadControlPaths(layout.controlPaths, isRelative);
 			}
 
-			if (buzzData.sounds) {
-				await this.loadSoundVisuals(buzzData.sounds, buzzData.relativePositioning || false);
+			if (layout.sounds) {
+				await this.loadSoundVisuals(layout.sounds, isRelative);
 			}
 
 			if (!GeolocationManager.getUserPosition()) {

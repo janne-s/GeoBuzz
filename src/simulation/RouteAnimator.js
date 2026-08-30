@@ -6,6 +6,7 @@ import { toRadians, toDegrees } from '../core/utils/math.js';
 import { CONSTANTS } from '../core/constants.js';
 import { Geometry } from '../core/geospatial/Geometry.js';
 import { simulationSpeedMs } from './SimulationSpeed.js';
+import { updateDirectionUI } from '../paths/PathEditor.js';
 
 let roadGraph = null;
 let graphBBox = null;
@@ -221,14 +222,7 @@ export const RouteAnimator = {
 				const newHeading = Math.round(this.calculateBearing(lastPosition.lat, lastPosition.lng, newPosition.lat, newPosition.lng));
 				AppState.audio.userDirection = newHeading;
 
-				const directionSlider = document.querySelector('.direction-slider');
-				if (directionSlider) {
-					directionSlider.value = newHeading;
-					const arrow = document.querySelector('.direction-arrow');
-					const degreeDisplay = document.querySelector('.degree-display');
-					if (arrow) arrow.style.transform = `rotate(${newHeading - 45}deg)`;
-					if (degreeDisplay) degreeDisplay.textContent = `${newHeading}°`;
-				}
+				updateDirectionUI(newHeading);
 			}
 			AppState.simulation.animationState.lastPosition = newPosition;
 

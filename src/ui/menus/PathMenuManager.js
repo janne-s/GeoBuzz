@@ -232,6 +232,25 @@ export function renderPathSettingsTab(path, container) {
 				reflectGroup.append(reflectLabel, reflectSlider, reflectDisplay);
 				content.appendChild(reflectGroup);
 
+				const inertiaGroup = createElement('div', 'parameter-control');
+				const inertiaLabel = createElement('label');
+				inertiaLabel.textContent = 'Inertia';
+				const inertiaSlider = createElement('input');
+				inertiaSlider.type = 'range';
+				inertiaSlider.min = 0;
+				inertiaSlider.max = 5;
+				inertiaSlider.step = 0.1;
+				inertiaSlider.value = path.params.echo.inertia !== undefined ? path.params.echo.inertia : CONSTANTS.ECHO_INERTIA;
+				const inertiaDisplay = createElement('span', 'value-display');
+				inertiaDisplay.textContent = `${parseFloat(inertiaSlider.value).toFixed(1)}s`;
+				inertiaSlider.oninput = () => {
+					const value = parseFloat(inertiaSlider.value);
+					path.params.echo.inertia = value;
+					inertiaDisplay.textContent = `${value.toFixed(1)}s`;
+				};
+				inertiaGroup.append(inertiaLabel, inertiaSlider, inertiaDisplay);
+				content.appendChild(inertiaGroup);
+
 				const removeBtn = createButton('Remove Echo Effect', () => {
 					delete path.params.echo;
 					AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
@@ -253,7 +272,8 @@ export function renderPathSettingsTab(path, container) {
 			path.params.echo = {
 				enabled: true,
 				reflectivity: CONSTANTS.ECHO_REFLECTIVITY,
-				level: CONSTANTS.ECHO_LEVEL
+				level: CONSTANTS.ECHO_LEVEL,
+				inertia: CONSTANTS.ECHO_INERTIA
 			};
 			AppState.dispatch({ type: 'PATH_UPDATED', payload: { path } });
 			const parentContainer = container.closest('.params-container');

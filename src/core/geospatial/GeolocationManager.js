@@ -2,6 +2,7 @@ import { CONSTANTS } from '../constants.js';
 import { KalmanFilter } from './KalmanFilter.js';
 import { GpsInstabilityTracker } from './GpsInstabilityTracker.js';
 import { isTouchDevice } from '../utils/typeChecks.js';
+import { updateDirectionUI } from '../../paths/PathEditor.js';
 
 class GeolocationManagerClass {
 	constructor() {
@@ -261,6 +262,9 @@ class GeolocationManagerClass {
 	setupFallback() {
 		try {
 			if (this.followGPS && this.context?.map) {
+				const userPos = this.getUserPosition();
+				if (userPos && !(userPos.lat === 0 && userPos.lng === 0)) return;
+
 				this.context.map.setView([0, 0], CONSTANTS.DEFAULT_FALLBACK_ZOOM);
 				if (!this.userMarker) {
 					this.createUserMarker(L.latLng(0, 0));
@@ -368,14 +372,7 @@ class GeolocationManagerClass {
 
 				this.updateDirectionIndicator(newHeading);
 
-				const directionSlider = document.querySelector('.direction-slider');
-				if (directionSlider) {
-					directionSlider.value = newHeading;
-					const arrow = document.querySelector('.direction-arrow');
-					const degreeDisplay = document.querySelector('.degree-display');
-					if (arrow) arrow.style.transform = `rotate(${newHeading - 45}deg)`;
-					if (degreeDisplay) degreeDisplay.textContent = `${newHeading}°`;
-				}
+				updateDirectionUI(newHeading);
 			}
 
 			this.context?.audioFunctions.updateAudio?.(this.userMarker.getLatLng());
@@ -524,7 +521,8 @@ class GeolocationManagerClass {
 			status: this.status,
 			followGPS: this.followGPS,
 			hasMarker: !!this.userMarker,
-			position: this.userMarker ? this.userMarker.getLatLng() : null
+			position: this.userMarker ? this.userMarker.getLatLng() : null,
+			accuracy: this._lastFilteredPosition ? this._lastFilteredPosition.accuracy : null
 		};
 	}
 

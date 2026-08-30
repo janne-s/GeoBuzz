@@ -55,16 +55,17 @@ class EchoManagerClass {
 			const distSourceToWall = context.map.distance(sourcePos, reflectionPoint);
 			const distWallToListener = context.map.distance(reflectionPoint, userPos);
 			const totalDist = distSourceToWall + distWallToListener;
-			const delayTime = totalDist / CONSTANTS.SPEED_OF_SOUND_MS;
+
+			let nodeData = sound.echoNodes.get(path.id);
+			const followedDist = this.followDistance(nodeData, totalDist, path.params.echo.inertia);
+			const delayTime = followedDist / CONSTANTS.SPEED_OF_SOUND_MS;
 
 			const maxAudibleDistance = CONSTANTS.ECHO_MAX_AUDIBLE_DISTANCE;
-			const distanceAttenuation = Math.max(0, 1 - (totalDist / maxAudibleDistance));
+			const distanceAttenuation = Math.max(0, 1 - (followedDist / maxAudibleDistance));
 			const echoLevel = path.params.echo.level !== undefined ? path.params.echo.level : 0.1;
 
 			const pathGain = pathContributes(path, 'echo') ? 1 : 0;
 			const gainValue = distanceAttenuation * echoLevel * soundAreaGain * silencingGain * elementGain * pathGain;
-
-			let nodeData = sound.echoNodes.get(path.id);
 
 			if (!nodeData) {
 				const delayNode = new Tone.FeedbackDelay({
@@ -121,6 +122,9 @@ class EchoManagerClass {
 
 				if (sound._echoBypassed) this._disconnectTap(nodeData);
 			}
+
+			nodeData.smoothedDist = followedDist;
+			nodeData.smoothedAt = performance.now() / 1000;
 
 			nodeData.delay.delayTime.rampTo(delayTime, 0.1);
 			nodeData.delay.feedback.value = Math.max(0, Math.min(0.95, path.params.echo.reflectivity));
@@ -233,6 +237,17 @@ class EchoManagerClass {
 			}
 			sound.echoNodes.clear();
 		}
+	}
+
+	followDistance(nodeData, distance, inertia) {
+		const tau = inertia !== undefined ? inertia : CONSTANTS.ECHO_INERTIA;
+		if (!nodeData || tau <= 0 || nodeData.smoothedDist === undefined) return distance;
+
+		const dt = performance.now() / 1000 - nodeData.smoothedAt;
+		if (!(dt > 0)) return nodeData.smoothedDist;
+
+		const alpha = 1 - Math.exp(-dt / tau);
+		return nodeData.smoothedDist + (distance - nodeData.smoothedDist) * alpha;
 	}
 
 	findClosestPointOnPath(point, path) {
