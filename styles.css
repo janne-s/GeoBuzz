@@ -170,11 +170,11 @@ input[type="radio"] {
    BASEMAP TINTS
    ======================================== */
 
-.map-tint-dark {
+.map-tint-dark .leaflet-tile {
 	filter: invert(1) grayscale(1) brightness(0.66) contrast(0.7);
 }
 
-.map-tint-light {
+.map-tint-light .leaflet-tile {
 	filter: grayscale(0.8) brightness(1.04) contrast(0.9);
 }
 

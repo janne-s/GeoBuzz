@@ -221,7 +221,8 @@ export class DistanceSequencer {
 
 		if (distance < CONSTANTS.SEQUENCER_MIN_DELTA) {
 			if (elapsed >= CONSTANTS.SEQUENCER_IDLE_SAMPLE_SECONDS) {
-				if (!this._evaluateSpeedGate(distance / elapsed, currentPos.timestamp)) {
+				const idleSpeed = distance / elapsed;
+				if (idleSpeed < this.speedGateMin || idleSpeed > this.speedGateMax) {
 					this._handleGateClosed();
 				}
 			}
@@ -327,7 +328,8 @@ export class DistanceSequencer {
 	async _getSynth(track) {
 		if (!this._synthPool.has(track.id)) {
 			const params = track.synthParams || initializeSynthParameters(track.synthType, 'sound', {}, context.PARAMETER_REGISTRY);
-			const polyphony = Math.max(params.polyphony || 1, CONSTANTS.SEQUENCER_TRACK_POLYPHONY);
+			const authoredPolyphony = params.polyphony;
+			const polyphony = Math.max(authoredPolyphony || 1, CONSTANTS.SEQUENCER_TRACK_POLYPHONY);
 
 			const soundObj = await context.createFullSoundInstance({
 				type: track.synthType,
@@ -338,6 +340,9 @@ export class DistanceSequencer {
 			}, { onMap: false });
 
 			if (soundObj) {
+				soundObj._runtimePolyphony = polyphony;
+				if (authoredPolyphony !== undefined) soundObj.params.polyphony = authoredPolyphony;
+
 				soundObj.gain.gain.setValueAtTime(this._trackGainValue(soundObj), Tone.now());
 
 				const neutralEnvelope = { decay: 0, sustain: 1 };

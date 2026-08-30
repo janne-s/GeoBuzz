@@ -1,9 +1,12 @@
-export async function resolveSoundUrl(workspaceId, filename) {
+function soundPath(workspaceId, filename) {
 	if (filename.includes('/')) return filename;
-	return `workspaces/${workspaceId}/sounds/${filename}`;
+	return workspaceId ? `workspaces/${workspaceId}/sounds/${filename}` : `sounds/${filename}`;
+}
+
+export async function resolveSoundUrl(workspaceId, filename) {
+	return soundPath(workspaceId, filename);
 }
 
 export function resolveSoundUrlSync(workspaceId, filename) {
-	if (filename.includes('/')) return filename;
-	return `workspaces/${workspaceId}/sounds/${filename}`;
+	return soundPath(workspaceId, filename);
 }

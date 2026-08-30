@@ -8,6 +8,10 @@
 
 ### Fixed
 
+- A sequencer with a speed gate hold never opened its gate while walking
+- A polyphony set for a sequencer track synth was overwritten on the next reload
+- An exported player could not find its sounds after buzz.json was replaced from the editor
+- Panning the map revealed unstyled bright tiles at the edge of the dark basemap
 - A single GPS timeout jumped the map to the world view even with a known position
 - Silencers and distance did not attenuate echo reflections in an exported buzz
 - Echo delay jumped with every position update, pitching the reflection like tape

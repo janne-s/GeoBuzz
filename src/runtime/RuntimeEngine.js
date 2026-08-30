@@ -582,7 +582,7 @@ export class RuntimeEngine {
 
 		return new Promise(async (resolve, reject) => {
 			try {
-				const fileUrl = filename;
+				const fileUrl = filename.includes('/') ? filename : `sounds/${filename}`;
 
 				if (!sound.synth || sound.synth.disposed) {
 					return reject(new Error("Synth not available or disposed"));
