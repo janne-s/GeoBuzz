@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-08-31
+
+### Added
+
+- GPS noise slider in the simulation controls
+
+### Fixed
+
+- GPS position filtering broke down at the highest GPS Accuracy setting
+- Simulation panel Go and Cancel buttons fell onto separate rows on narrow screens
+- Map elements could draw in the wrong order in the editor
+
 ## 2026-08-30
 
 ### Added

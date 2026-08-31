@@ -1,5 +1,5 @@
 import { CONSTANTS } from '../constants.js';
-import { KalmanFilter } from './KalmanFilter.js';
+import { KalmanFilter, gpsSmoothingToFilterOptions } from './KalmanFilter.js';
 import { GpsInstabilityTracker } from './GpsInstabilityTracker.js';
 import { isTouchDevice } from '../utils/typeChecks.js';
 import { updateDirectionUI } from '../../paths/PathEditor.js';
@@ -50,10 +50,7 @@ class GeolocationManagerClass {
 
 	setGpsSmoothing(t) {
 		this._gpsSmoothingValue = t;
-		this.geoFilter.updateOptions({
-			sigmaAcc: Math.pow(10, 2 * t - 1),
-			windowSize: Math.round(5 - 4 * t)
-		});
+		this.geoFilter.updateOptions(gpsSmoothingToFilterOptions(t));
 	}
 
 	getGpsSmoothing() {

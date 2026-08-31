@@ -360,24 +360,39 @@
 			<i class="fas fa-map-signs"></i>
 			<span id="simulationStatusText">Place a target.</span>
 		</div>
-		<div class="simulation-speed">
-			<label for="speedSelect">Speed:</label>
-			<select id="speedSelect">
-				<option value="5" selected>Walking (5 km/h)</option>
-				<option value="12">Running (12 km/h)</option>
-				<option value="20">Cycling (20 km/h)</option>
-				<option value="35">Bus (35 km/h)</option>
-			</select>
+		<div class="simulation-actions">
+			<div class="simulation-speed">
+				<label for="speedSelect">Speed:</label>
+				<select id="speedSelect">
+					<option value="5" selected>Walking (5 km/h)</option>
+					<option value="12">Running (12 km/h)</option>
+					<option value="20">Cycling (20 km/h)</option>
+					<option value="35">Bus (35 km/h)</option>
+				</select>
+			</div>
+			<button id="calculateRouteBtn" class="simulation-go-btn">
+				<i class="fas fa-play"></i><span class="simulation-btn-label">Go</span>
+			</button>
+			<button id="cancelSimulationBtn" class="simulation-cancel-btn">
+				<i class="fas fa-times"></i><span class="simulation-btn-label">Cancel</span>
+			</button>
 		</div>
-		<button id="calculateRouteBtn" class="simulation-go-btn">Go</button>
-		<button id="cancelSimulationBtn" class="simulation-cancel-btn">Cancel</button>
 		<div class="simulation-tuning">
-			<label for="simSpeedScale">Scale:</label>
-			<input type="range" id="simSpeedScale" min="0.25" max="3" step="0.05" value="1">
-			<span id="simSpeedScaleValue" class="simulation-value">1.00&times;</span>
-			<label for="simVariability">Variability:</label>
-			<input type="range" id="simVariability" min="0" max="1" step="0.05" value="0">
-			<span id="simVariabilityValue" class="simulation-value">0.00</span>
+			<div class="simulation-tuning-item">
+				<label for="simSpeedScale">Scale:</label>
+				<input type="range" id="simSpeedScale" min="0.25" max="3" step="0.05" value="1">
+				<span id="simSpeedScaleValue" class="simulation-value">1.00&times;</span>
+			</div>
+			<div class="simulation-tuning-item">
+				<label for="simVariability">Variability:</label>
+				<input type="range" id="simVariability" min="0" max="1" step="0.05" value="0">
+				<span id="simVariabilityValue" class="simulation-value">0.00</span>
+			</div>
+			<div class="simulation-tuning-item">
+				<label for="simNoise">Noise:</label>
+				<input type="range" id="simNoise" min="0" max="20" step="0.5" value="0">
+				<span id="simNoiseValue" class="simulation-value">0.0&nbsp;m</span>
+			</div>
 		</div>
 	</div>
 

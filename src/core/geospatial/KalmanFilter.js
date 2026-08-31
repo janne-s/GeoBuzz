@@ -1,5 +1,12 @@
 import { CONSTANTS } from '../constants.js';
 
+export function gpsSmoothingToFilterOptions(t) {
+	return {
+		sigmaAcc: Math.pow(10, 2 * t - 1),
+		windowSize: Math.round(5 - 4 * t)
+	};
+}
+
 export class KalmanFilter {
 	constructor(options = {}) {
 		this.options = {
@@ -68,19 +75,20 @@ export class KalmanFilter {
 			[0, 0, 0, 1]
 		];
 
-		const G = [
-			[0.5 * dt * dt, 0],
-			[0, 0.5 * dt * dt],
-			[dt, 0],
-			[0, dt]
-		];
+		const posGain = 0.5 * dt * dt;
+		const velGain = dt;
+		const accVariance = currentSigmaAcc * currentSigmaAcc;
+
+		const qPos = posGain * posGain * accVariance;
+		const qCross = posGain * velGain * accVariance;
+		const qVel = velGain * velGain * accVariance;
 
 		const Q = [
-			[G[0][0], G[0][1]],
-			[G[1][0], G[1][1]],
-			[G[2][0], G[2][1]],
-			[G[3][0], G[3][1]]
-		].map(row => row.map(val => val * currentSigmaAcc * currentSigmaAcc));
+			[qPos, 0, qCross, 0],
+			[0, qPos, 0, qCross],
+			[qCross, 0, qVel, 0],
+			[0, qCross, 0, qVel]
+		];
 
 		const x_prime = [
 			F[0][0] * this.x[0] + F[0][2] * this.x[2],
@@ -157,16 +165,20 @@ export class KalmanFilter {
 		this.x[3] += K[3][0] * y[0] + K[3][1] * y[1];
 
 		const I_KH = [
-			[1 - K[0][0], -K[0][1]],
-			[-K[1][0], 1 - K[1][1]],
-			[-K[2][0], -K[2][1]],
-			[-K[3][0], -K[3][1]]
+			[1 - K[0][0], -K[0][1], 0, 0],
+			[-K[1][0], 1 - K[1][1], 0, 0],
+			[-K[2][0], -K[2][1], 1, 0],
+			[-K[3][0], -K[3][1], 0, 1]
 		];
 
-		const P_new = JSON.parse(JSON.stringify(this.P));
+		const P_prior = this.P.map(row => row.slice());
 		for (let i = 0; i < 4; i++) {
 			for (let j = 0; j < 4; j++) {
-				this.P[i][j] = I_KH[i][0] * P_new[0][j] + I_KH[i][1] * P_new[1][j];
+				let sum = 0;
+				for (let k = 0; k < 4; k++) {
+					sum += I_KH[i][k] * P_prior[k][j];
+				}
+				this.P[i][j] = sum;
 			}
 		}
 	}

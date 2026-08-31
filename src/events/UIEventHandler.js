@@ -376,6 +376,12 @@ export function createUIEventHandlers({
 			if (display) display.textContent = AppState.simulation.speedVariability.toFixed(2);
 		},
 
+		'#simNoise:input': (e) => {
+			AppState.simulation.positionNoise = parseFloat(e.target.value);
+			const display = document.getElementById('simNoiseValue');
+			if (display) display.textContent = `${AppState.simulation.positionNoise.toFixed(1)}\u00a0m`;
+		},
+
 		'#calculateRouteBtn': () => {
 			if (Selectors.getSimulationTarget()) {
 				getRouteAndAnimate();

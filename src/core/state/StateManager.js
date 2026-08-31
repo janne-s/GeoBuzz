@@ -82,6 +82,7 @@ export class StateManager {
 			speedKmh: 5,
 			speedScale: 1,
 			speedVariability: 0,
+			positionNoise: 0,
 			animationState: {
 				startTime: 0,
 				frameId: null,
@@ -96,7 +97,8 @@ export class StateManager {
 				startTime: 0,
 				distance: 0,
 				direction: 1,
-				behavior: 'forward'
+				behavior: 'forward',
+				lastPosition: null
 			}
 		};
 

@@ -62,6 +62,12 @@ export function resetTotalDistance() {
 }
 
 export function getUserMovementSpeed() {
+	const isSimulating = Selectors.getUserAttachedPathId() || Selectors.isSimulationActive();
+
+	if (isSimulating && Selectors.getSimulationNoise() > 0) {
+		return computedSpeed;
+	}
+
 	if (Selectors.getUserAttachedPathId()) {
 		return AppState.simulation.currentEffectiveSpeed || 0;
 	}

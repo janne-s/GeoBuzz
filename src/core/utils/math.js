@@ -2,6 +2,12 @@ export const toRadians = (deg) => deg * Math.PI / 180;
 
 export const toDegrees = (rad) => rad * 180 / Math.PI;
 
+export function gaussianRandom() {
+	let u = 0;
+	while (u === 0) u = Math.random();
+	return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * Math.random());
+}
+
 export function deepClone(obj, hash = new WeakMap()) {
 	if (obj === null || typeof obj !== 'object') return obj;
 

@@ -23,6 +23,7 @@ import { EchoManager, setContext as setEchoManagerContext } from '../core/audio/
 import { LayerManager } from '../layers/LayerManager.js';
 import { CoordinateTransform } from '../core/utils/coordinates.js';
 import { Geometry } from '../core/geospatial/Geometry.js';
+import { createMapPanes } from '../map/mapPanes.js';
 import { PathZoneChecker } from '../core/geospatial/PathZoneChecker.js';
 import { startAudioLoop, setContext as setAudioEngineContext, updateAudio, getUserMovementSpeed, resetSpeedTracking } from '../core/audio/AudioEngine.js';
 import { calcGain, calculatePathGain, calculateRelativePosition, calculateBearingPan, setContext as setAudioUtilsContext } from '../core/audio/audioUtils.js';
@@ -214,16 +215,7 @@ export class RuntimeEngine {
 				maxNativeZoom: CONSTANTS.MAX_TILE_NATIVE_ZOOM
 			}).addTo(this.map);
 
-			this.map.createPane('soundArea');
-			this.map.getPane('soundArea').style.zIndex = CONSTANTS.MAP_PANE_Z.SOUND_AREA;
-			this.map.createPane('controlPathBack');
-			this.map.getPane('controlPathBack').style.zIndex = CONSTANTS.MAP_PANE_Z.CONTROL_PATH_BACK;
-			this.map.createPane('controlPathFront');
-			this.map.getPane('controlPathFront').style.zIndex = CONSTANTS.MAP_PANE_Z.CONTROL_PATH_FRONT;
-			this.map.createPane('soundElement');
-			this.map.getPane('soundElement').style.zIndex = CONSTANTS.MAP_PANE_Z.SOUND_ELEMENT;
-			this.map.createPane('userMarker');
-			this.map.getPane('userMarker').style.zIndex = CONSTANTS.MAP_PANE_Z.USER_MARKER;
+			createMapPanes(this.map);
 
 			AudioContextManager.initialize();
 

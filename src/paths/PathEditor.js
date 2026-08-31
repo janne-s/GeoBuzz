@@ -6,6 +6,7 @@ import { isCircularPath } from '../core/utils/math.js';
 import { isLinearPath } from '../core/utils/typeChecks.js';
 import { calculateBearing } from '../core/audio/audioUtils.js';
 import { simulationSpeedMs } from '../simulation/SimulationSpeed.js';
+import { GpsNoise } from '../simulation/GpsNoise.js';
 
 export function deleteControlPath(path, options = {}) {
 	const { map, refreshList, updateCounts } = options;
@@ -132,17 +133,18 @@ export function animateUserOnPath(currentTime, options = {}) {
 	}
 
 	const delta = currentTime - AppState.simulation.userPathAnimationState.lastUpdateTime;
-	if (delta < CONSTANTS.SIMULATION_UPDATE_INTERVAL_MS) {
+	if (delta < GpsNoise.reportIntervalMs()) {
 		AppState.simulation.userPathAnimationState.frameId = requestAnimationFrame((t) => animateUserOnPath(t, options));
 		return;
 	}
 	AppState.simulation.userPathAnimationState.lastUpdateTime = currentTime;
 
-	const baseSpeedMs = simulationSpeedMs(delta / 1000);
+	const dt = delta / 1000;
+	const baseSpeedMs = simulationSpeedMs(dt);
 	const effectiveSpeedMs = baseSpeedMs * (path.relativeSpeed ?? 1.0);
 
 	AppState.simulation.currentEffectiveSpeed = effectiveSpeedMs;
-	const distanceToMove = effectiveSpeedMs * (delta / 1000);
+	const distanceToMove = effectiveSpeedMs * dt;
 	const totalPathLength = computePathLength(path);
 	const behavior = AppState.simulation.userPathAnimationState.behavior || 'forward';
 
@@ -172,22 +174,25 @@ export function animateUserOnPath(currentTime, options = {}) {
 		} else if (AppState.simulation.userPathAnimationState.distance >= totalPathLength || AppState.simulation.userPathAnimationState.distance < 0) {
 			AppState.simulation.userPathAnimationState.distance = Math.max(0, Math.min(totalPathLength, AppState.simulation.userPathAnimationState.distance));
 			const finalPosition = getPointAtDistance(path, AppState.simulation.userPathAnimationState.distance, { getSmoothedPoints, CONSTANTS });
-			if (finalPosition) userMarker.setLatLng(finalPosition);
+			if (finalPosition) userMarker.setLatLng(GpsNoise.apply(finalPosition, dt));
 			detachUser();
 			return;
 		}
 	}
 
 	const newPosition = getPointAtDistance(path, AppState.simulation.userPathAnimationState.distance, { getSmoothedPoints, CONSTANTS });
-	const lastPosition = userMarker.getLatLng();
+	const lastPosition = AppState.simulation.userPathAnimationState.lastPosition || userMarker.getLatLng();
 
 	if (newPosition) {
 		if (lastPosition && (newPosition.lat !== lastPosition.lat || newPosition.lng !== lastPosition.lng)) {
 			AppState.audio.userDirection = Math.round(calculateBearing(lastPosition.lat, lastPosition.lng, newPosition.lat, newPosition.lng));
 			updateDirectionUI(Selectors.getUserDirection());
 		}
-		userMarker.setLatLng(newPosition);
-		updateAudio(newPosition);
+		AppState.simulation.userPathAnimationState.lastPosition = newPosition;
+
+		const reportedPosition = GpsNoise.apply(newPosition, dt);
+		userMarker.setLatLng(reportedPosition);
+		updateAudio(reportedPosition);
 	}
 
 	AppState.simulation.userPathAnimationState.frameId = requestAnimationFrame((t) => animateUserOnPath(t, options));

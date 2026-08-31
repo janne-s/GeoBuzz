@@ -2,6 +2,7 @@ import { AppState } from '../core/state/StateManager.js';
 import { Selectors } from '../core/state/selectors.js';
 import { GeolocationManager } from '../core/geospatial/GeolocationManager.js';
 import { CONSTANTS } from '../core/constants.js';
+import { GpsNoise } from './GpsNoise.js';
 
 export const SimulationController = {
 	showControls(mode, options = {}) {
@@ -19,11 +20,11 @@ export const SimulationController = {
 		switch (mode) {
 			case 'point-to-point-placement':
 				statusText.textContent = "Place a target.";
-				goBtn.style.display = 'block';
+				goBtn.style.display = '';
 				break;
 			case 'point-to-point-ready':
 				statusText.textContent = "Drag to adjust, then press Go.";
-				goBtn.style.display = 'block';
+				goBtn.style.display = '';
 				break;
 			case 'path':
 				statusText.innerHTML = `Simulating on path: <strong>${options.pathName || ''}</strong>`;
@@ -55,6 +56,7 @@ export const SimulationController = {
 
 	stop(map, placeTargetHandler) {
 		this.releaseSequencers();
+		GpsNoise.reset();
 		AppState.dispatch({ type: 'SIMULATION_STOPPED' });
 		AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 		if (AppState.simulation.animationState.frameId) {

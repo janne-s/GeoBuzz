@@ -4,6 +4,7 @@ import { Geometry } from '../core/geospatial/Geometry.js';
 import { PATH_COLORS, CONSTANTS } from '../core/constants.js';
 import { setTemporaryFlag, deepClone, centripetalCatmullRomPoint } from '../core/utils/math.js';
 import { DEFAULT_LFO_STRUCTURE } from '../config/defaults.js';
+import { GpsNoise } from '../simulation/GpsNoise.js';
 
 export function createControlPath(type, data = {}, options = {}) {
 	const { renderPath, refreshList, updateCounts } = options;
@@ -243,8 +244,10 @@ export function attachUserToPath(pathId, options = {}) {
 		lastUpdateTime: performance.now(),
 		distance: 0,
 		direction: 1,
-		behavior: 'forward'
+		behavior: 'forward',
+		lastPosition: null
 	};
+	GpsNoise.reset();
 
 	if (AppState.simulation.userPathAnimationState.frameId) {
 		cancelAnimationFrame(AppState.simulation.userPathAnimationState.frameId);
@@ -259,5 +262,6 @@ export function detachUserFromPath(showSimulationControls) {
 	}
 	AppState.simulation.userAttachedPathId = null;
 	AppState.simulation.currentEffectiveSpeed = 0;
+	GpsNoise.reset();
 	showSimulationControls('off');
 }

@@ -2,6 +2,7 @@ import { CONSTANTS } from '../core/constants.js';
 import { tileLayers } from '../config/registries.js';
 import { AppState } from '../core/state/StateManager.js';
 import { Selectors } from '../core/state/selectors.js';
+import { createMapPanes } from './mapPanes.js';
 
 export class MapManager {
 	constructor() {
@@ -16,11 +17,7 @@ export class MapManager {
 			maxZoom: CONSTANTS.MAX_MAP_ZOOM
 		}).setView([0, 0], CONSTANTS.DEFAULT_FALLBACK_ZOOM);
 
-		this.map.createPane('soundArea');
-		this.map.createPane('controlPathBack');
-		this.map.createPane('controlPathFront');
-		this.map.createPane('soundElement');
-		this.map.createPane('userMarker');
+		createMapPanes(this.map);
 
 		this.currentTileLayer = this.createTileLayer(this.currentMapStyle).addTo(this.map);
 

@@ -3,9 +3,9 @@ import { Selectors } from '../core/state/selectors.js';
 import { GeolocationManager } from '../core/geospatial/GeolocationManager.js';
 import { updateAudio } from '../core/audio/AudioEngine.js';
 import { toRadians, toDegrees } from '../core/utils/math.js';
-import { CONSTANTS } from '../core/constants.js';
 import { Geometry } from '../core/geospatial/Geometry.js';
 import { simulationSpeedMs } from './SimulationSpeed.js';
+import { GpsNoise } from './GpsNoise.js';
 import { updateDirectionUI } from '../paths/PathEditor.js';
 
 let roadGraph = null;
@@ -196,7 +196,7 @@ export const RouteAnimator = {
 		if (!Selectors.isSimulationActive()) return;
 
 		const delta = currentTime - AppState.simulation.animationState.lastUpdateTime;
-		if (delta < CONSTANTS.SIMULATION_UPDATE_INTERVAL_MS) {
+		if (delta < GpsNoise.reportIntervalMs()) {
 			AppState.simulation.animationState.frameId = requestAnimationFrame((t) => this.animateMovement(t, stopSimulation));
 			return;
 		}
@@ -210,8 +210,9 @@ export const RouteAnimator = {
 		const userMarker = GeolocationManager.getUserMarker();
 		if (distanceTravelled >= Selectors.getSimulationRoute().totalDistance) {
 			const finalPos = Selectors.getSimulationRoute().points[Selectors.getSimulationRoute().points.length - 1];
-			userMarker.setLatLng(finalPos);
-			updateAudio(finalPos, Tone.now());
+			const reportedFinalPos = GpsNoise.apply(finalPos, dt);
+			userMarker.setLatLng(reportedFinalPos);
+			updateAudio(reportedFinalPos, Tone.now());
 
 			stopSimulation();
 		} else {
@@ -226,8 +227,9 @@ export const RouteAnimator = {
 			}
 			AppState.simulation.animationState.lastPosition = newPosition;
 
-			userMarker.setLatLng(newPosition);
-			updateAudio(newPosition, Tone.now());
+			const reportedPosition = GpsNoise.apply(newPosition, dt);
+			userMarker.setLatLng(reportedPosition);
+			updateAudio(reportedPosition, Tone.now());
 
 			AppState.simulation.animationState.frameId = requestAnimationFrame((t) => this.animateMovement(t, stopSimulation));
 		}
@@ -280,6 +282,7 @@ export const RouteAnimator = {
 			AppState.simulation.animationState.lastUpdateTime = AppState.simulation.animationState.startTime;
 			AppState.simulation.animationState.distance = 0;
 			AppState.simulation.animationState.speedOffset = 0;
+			GpsNoise.reset();
 			AppState.simulation.animationState.frameId = requestAnimationFrame((t) => this.animateMovement(t, stopSimulation));
 
 		} catch (error) {
@@ -297,6 +300,7 @@ export const RouteAnimator = {
 			AppState.simulation.animationState.lastUpdateTime = AppState.simulation.animationState.startTime;
 			AppState.simulation.animationState.distance = 0;
 			AppState.simulation.animationState.speedOffset = 0;
+			GpsNoise.reset();
 			AppState.simulation.animationState.frameId = requestAnimationFrame((t) => this.animateMovement(t, stopSimulation));
 		}
 	}
