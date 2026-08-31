@@ -4,6 +4,16 @@ import { SYNTH_REGISTRY } from './SynthRegistry.js';
 import { getUserMovementSpeed } from './AudioEngine.js';
 import { isSpeedGateActive, getGridKeySpeedRange } from './SpeedGate.js';
 
+const RELEASE_CURVE = (() => {
+	const points = CONSTANTS.RELEASE_CURVE_POINTS;
+	const rate = Math.log(10) * (CONSTANTS.RELEASE_CURVE_FLOOR_DB / 20);
+	const floor = Math.exp(-rate);
+	return Array.from({ length: points }, (_, i) => {
+		const progress = i / (points - 1);
+		return (Math.exp(-rate * progress) - floor) / (1 - floor);
+	});
+})();
+
 export class AudioNodeManager {
 	static createPanner(type, params = {}, spatialMode = 'off', useSpatialPanning = true) {
 		if (spatialMode === 'hrtf' && useSpatialPanning) {
@@ -81,10 +91,12 @@ export class AudioNodeManager {
 
 	static getEnvelopeParams(params) {
 		return {
-			attack: params.attack || CONSTANTS.DEFAULT_SOUND.attack,
-			decay: params.decay || CONSTANTS.DEFAULT_SOUND.decay,
-			sustain: params.sustain || CONSTANTS.DEFAULT_SOUND.sustain,
-			release: params.release || CONSTANTS.DEFAULT_SOUND.release
+			attack: params.attack ?? CONSTANTS.DEFAULT_SOUND.attack,
+			decay: params.decay ?? CONSTANTS.DEFAULT_SOUND.decay,
+			decayCurve: 'linear',
+			sustain: params.sustain ?? CONSTANTS.DEFAULT_SOUND.sustain,
+			release: params.release ?? CONSTANTS.DEFAULT_SOUND.release,
+			releaseCurve: RELEASE_CURVE
 		};
 	}
 
@@ -591,8 +603,7 @@ export class PolyphonyManager {
 				notesToPlay.forEach(note => {
 					if (synth._manualSources && synth._manualSources.has(note)) {
 						const sources = synth._manualSources.get(note);
-						const now = Tone.now();
-						const stopTime = now + (synth.release || 0.1);
+						const stopTime = Tone.now();
 						while (sources.length > 0) {
 							const source = sources.shift();
 							if (source.loop) {

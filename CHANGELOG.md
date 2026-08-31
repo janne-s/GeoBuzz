@@ -12,6 +12,10 @@
 
 ### Fixed
 
+- Long release times faded out in a few seconds instead of over the set time
+- Long decay times fell to the sustain level in a few seconds instead of over the set time
+- Sequencer tracks ignored their synth's decay and sustain after a reload
+- A looping sampler in a sequencer played at full volume for its release time before fading
 - A sequencer with a speed gate hold never opened its gate while walking
 - A polyphony set for a sequencer track synth was overwritten on the next reload
 - An exported player could not find its sounds after buzz.json was replaced from the editor

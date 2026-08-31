@@ -345,12 +345,6 @@ export class DistanceSequencer {
 
 				soundObj.gain.gain.setValueAtTime(this._trackGainValue(soundObj), Tone.now());
 
-				const neutralEnvelope = { decay: 0, sustain: 1 };
-				if (soundObj.synth instanceof Tone.PolySynth) {
-					soundObj.synth.set({ envelope: neutralEnvelope });
-				} else if (soundObj.synth?.envelope) {
-					Object.assign(soundObj.synth.envelope, neutralEnvelope);
-				}
 				if (soundObj.type === 'Sampler') {
 					soundObj.synth.attack = soundObj.params.attack ?? 0;
 				}
@@ -1144,7 +1138,7 @@ export class DistanceSequencer {
 		if (soundObj.synth instanceof Tone.Sampler) {
 			if (soundObj.synth._manualSources && soundObj.synth._manualSources.has(note)) {
 				const sources = soundObj.synth._manualSources.get(note);
-				const stopTime = Tone.now() + (soundObj.synth.release || 0.1);
+				const stopTime = Tone.now();
 				while (sources.length > 0) {
 					const source = sources.shift();
 					if (source.loop) source.loop = false;
