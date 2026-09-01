@@ -241,6 +241,7 @@
 ### Changed
 
 - Server-kit replaces sound URL resolution instead of two large files
+- Spatial speed gate now acts as a hard clip on grid mode per-key speed ranges
 
 ### Fixed
 
@@ -267,6 +268,7 @@
 - A user-position icon now always appears at the fallback location (0,0) once geolocation fails or is unsupported
 - User marker in the exported player now matches the editor's
 - Speed gate dual slider is now grey, matching the sliders around it
+- Rewrote the live instance welcome modal copy: what GeoBuzz is, the 7-day inactive-workspace deletion, and that location access is needed
 
 ### Fixed
 
