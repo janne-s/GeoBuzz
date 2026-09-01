@@ -6,12 +6,17 @@
 
 - Go to Buzz is offered when your location cannot be found
 
+### Changed
+
+- Simulation panel sliders are longer and sit next to their values
+
 ### Fixed
 
 - Map jumped back to the world view every time a location request timed out
 - Go to Buzz was not offered for a distant Buzz when the location arrived after the Buzz was loaded
 - A sequencer note could stay sounding for good when crossing an area quickly
 - A sequencer track's first note was late while its synth was still being built
+- A sequencer track's synth settings could not be opened when its sample was missing
 
 ## 2026-08-31
 

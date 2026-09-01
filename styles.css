@@ -3595,18 +3595,19 @@ input:checked+.slider:before {
 	flex: 1 1 170px;
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 6px;
 	min-width: 0;
 }
 
 .simulation-tuning input[type="range"] {
 	flex: 1;
-	min-width: 70px;
+	min-width: 90px;
 }
 
 .simulation-value {
-	min-width: 52px;
-	text-align: right;
+	min-width: 44px;
+	text-align: left;
+	font-variant-numeric: tabular-nums;
 	color: var(--color-text-muted);
 }
 
