@@ -23,6 +23,8 @@ class GeolocationManagerClass {
 		this._minSamplesForStability = 3;
 		this._maxAccuracyForStability = 30;
 		this._indicatorRotation = null;
+		this._fallbackApplied = false;
+		this._offeredGoToBuzzWithoutFix = false;
 	}
 
 	setContext(context) {
@@ -243,30 +245,23 @@ class GeolocationManagerClass {
 	}
 
 	onLocationError() {
-		try {
-			console.warn('Geolocation failed, using fallback location');
-			if (this.followGPS && this.context?.map) {
-				const userPos = this.getUserPosition();
-				if (!userPos || (userPos.lat === 0 && userPos.lng === 0)) {
-					this.context.map.setView([0, 0], CONSTANTS.DEFAULT_FALLBACK_ZOOM);
-				}
-			}
-		} catch (error) {
-			console.warn('Error setting fallback map view:', error);
-		}
+		this.setupFallback();
 	}
 
 	setupFallback() {
 		try {
-			if (this.followGPS && this.context?.map) {
-				const userPos = this.getUserPosition();
-				if (userPos && !(userPos.lat === 0 && userPos.lng === 0)) return;
+			if (!this.followGPS || !this.context?.map) return;
+			if (this.hasLocationFix()) return;
 
-				this.context.map.setView([0, 0], CONSTANTS.DEFAULT_FALLBACK_ZOOM);
-				if (!this.userMarker) {
-					this.createUserMarker(L.latLng(0, 0));
-				}
+			if (!this.userMarker) {
+				this.createUserMarker(L.latLng(0, 0));
 			}
+
+			if (this._fallbackApplied) return;
+			this._fallbackApplied = true;
+
+			if (this.context.mapManager?.getContentBounds()) return;
+			this.context.map.setView([0, 0], CONSTANTS.DEFAULT_FALLBACK_ZOOM);
 		} catch (error) {
 			console.warn('Error setting up fallback map view:', error);
 		}
@@ -295,6 +290,8 @@ class GeolocationManagerClass {
 		}
 
 		this.stopWatching();
+		this._fallbackApplied = false;
+		this._offeredGoToBuzzWithoutFix = false;
 
 		this.setStatus(CONSTANTS.GEOLOCATION_STATUS.SEARCHING);
 
@@ -350,6 +347,9 @@ class GeolocationManagerClass {
 		}
 
 		this._positionUpdateCount++;
+		if (this._positionUpdateCount === 1 && this.followGPS) {
+			this.offerGoToBuzz();
+		}
 
 		if (this._resolveLocationReady) {
 			this._resolveLocationReady(filteredLatLng);
@@ -397,6 +397,7 @@ class GeolocationManagerClass {
 
 		this.setStatus(status, message);
 		this.setupFallback();
+		this.offerGoToBuzz();
 		if (this._resolveLocationReady) {
 			this._resolveLocationReady(null);
 			this._resolveLocationReady = null;
@@ -511,6 +512,45 @@ class GeolocationManagerClass {
 		this.context.audioFunctions?.resetAreaTracking?.(center);
 
 		return true;
+	}
+
+	hasLocationFix() {
+		return this._positionUpdateCount > 0;
+	}
+
+	async offerGoToBuzz() {
+		const modal = this.context?.ModalSystem;
+		const bounds = this.context?.mapManager?.getContentBounds();
+		if (!modal || !bounds) return;
+
+		if (!this.hasLocationFix()) {
+			const failed = this.status === CONSTANTS.GEOLOCATION_STATUS.ERROR ||
+				this.status === CONSTANTS.GEOLOCATION_STATUS.DISABLED;
+			if (!failed || this._offeredGoToBuzzWithoutFix) return;
+
+			this._offeredGoToBuzzWithoutFix = true;
+
+			const confirmed = await modal.confirm(
+				'Your location could not be found. Go to the Buzz and work there instead?',
+				'Go to Buzz'
+			);
+
+			if (confirmed) this.goToBuzz();
+			return;
+		}
+
+		const distance = this.context.Geometry.distance(this.getUserPosition(), bounds.getCenter());
+		if (distance < CONSTANTS.REMOTE_BUZZ_DISTANCE_M) return;
+
+		const km = distance / 1000;
+		const readable = km < 10 ? km.toFixed(1) : Math.round(km);
+
+		const confirmed = await modal.confirm(
+			`This Buzz is about ${readable} km from your current location. Go to it and work there?`,
+			'Go to Buzz'
+		);
+
+		if (confirmed) this.goToBuzz();
 	}
 
 	getStatusInfo() {

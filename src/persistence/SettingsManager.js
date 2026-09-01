@@ -379,7 +379,7 @@ export class SettingsManager {
 		}
 
 		this.finalizeRestore();
-		await this.offerGoToBuzz();
+		await this.context.GeolocationManager.offerGoToBuzz();
 	}
 
 	static async restoreUserLayers(userLayers) {
@@ -618,27 +618,6 @@ export class SettingsManager {
 		});
 	}
 
-	static async offerGoToBuzz() {
-		const userPos = this.context.GeolocationManager.getUserPosition();
-		const bounds = this.context.mapManager.getContentBounds();
-		if (!userPos || !bounds) return;
-
-		const distance = this.context.Geometry.distance(userPos, bounds.getCenter());
-		if (distance < CONSTANTS.REMOTE_BUZZ_DISTANCE_M) return;
-
-		const km = distance / 1000;
-		const readable = km < 10 ? km.toFixed(1) : Math.round(km);
-
-		const confirmed = await ModalSystem.confirm(
-			`This Buzz is about ${readable} km from your current location. Go to it and work there?`,
-			'Go to Buzz'
-		);
-
-		if (confirmed) {
-			this.context.GeolocationManager.goToBuzz();
-		}
-	}
-
 	static finalizeRestore() {
 		this.context.LayerManager.updateUI();
 
@@ -827,7 +806,7 @@ export class SettingsManager {
 		}
 
 		this.finalizeRestore();
-		await this.offerGoToBuzz();
+		await this.context.GeolocationManager.offerGoToBuzz();
 	}
 
 	static async mergeUserLayers(userLayers) {

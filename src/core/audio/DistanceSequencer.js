@@ -126,6 +126,8 @@ export class DistanceSequencer {
 
 		this._activeNotes = new Map();
 		this._synthPool = new Map();
+		this._pendingSynths = new Map();
+		this._synthGeneration = 0;
 		this._silencingGain = 1;
 		this._isMovingFastEnough = false;
 		this._releaseTimeoutId = null;
@@ -184,6 +186,7 @@ export class DistanceSequencer {
 
 		if (!wasInside && this.insideArea) {
 			this.dispatchEvent('enterArea');
+			this._prewarmTracks();
 			if (this.restartOnReenter) {
 				this.reset();
 			}
@@ -325,67 +328,99 @@ export class DistanceSequencer {
 		return totalDist / (this.positionHistory.length - 1);
 	}
 
-	async _getSynth(track) {
-		if (!this._synthPool.has(track.id)) {
-			const params = track.synthParams || initializeSynthParameters(track.synthType, 'sound', {}, context.PARAMETER_REGISTRY);
-			const authoredPolyphony = params.polyphony;
-			const polyphony = Math.max(authoredPolyphony || 1, CONSTANTS.SEQUENCER_TRACK_POLYPHONY);
+	_prewarmTracks() {
+		this.tracks.forEach(track => {
+			if (track.instrumentType !== 'synth') return;
+			if (this._synthPool.has(track.id)) return;
+			this._getSynth(track).catch(error => {
+				console.error("Error preparing synth for sequencer:", error);
+			});
+		});
+	}
 
-			const soundObj = await context.createFullSoundInstance({
-				type: track.synthType,
-				role: 'sound',
-				params: { ...params, polyphony },
-				layers: [...(track.layers || [])],
-				color: '#8e44ad'
-			}, { onMap: false });
+	_getSynth(track) {
+		if (this._synthPool.has(track.id)) return Promise.resolve(this._synthPool.get(track.id));
 
-			if (soundObj) {
-				soundObj._runtimePolyphony = polyphony;
-				if (authoredPolyphony !== undefined) soundObj.params.polyphony = authoredPolyphony;
+		const pending = this._pendingSynths.get(track.id);
+		if (pending) return pending;
 
-				soundObj.gain.gain.setValueAtTime(this._trackGainValue(soundObj), Tone.now());
+		const generation = this._synthGeneration;
+		const creation = this._createTrackSynth(track).then(soundObj => {
+			this._pendingSynths.delete(track.id);
+			if (!soundObj) return undefined;
 
-				if (soundObj.type === 'Sampler') {
-					soundObj.synth.attack = soundObj.params.attack ?? 0;
-				}
+			if (generation !== this._synthGeneration) {
+				context.destroySound(soundObj);
+				return undefined;
+			}
 
-				if (track.synthType === 'SoundFile' && params.soundFile) {
-					await context.autoLoadSoundFile(soundObj, params.soundFile);
-					context.applySoundFilePlaybackParams(soundObj, false);
-				}
+			this._synthPool.set(track.id, soundObj);
+			return soundObj;
+		}).catch(error => {
+			this._pendingSynths.delete(track.id);
+			throw error;
+		});
 
-				if (track.synthType === 'Sampler' && params.samplerMode === 'single' && params.soundFile) {
-					await context.autoLoadSoundFile(soundObj, params.soundFile);
-				}
+		this._pendingSynths.set(track.id, creation);
+		return creation;
+	}
 
-				if (track.synthType === 'Sampler' && params.samplerMode === 'grid' && params.gridSamples && Object.keys(params.gridSamples).length > 0) {
-				await new Promise((resolve) => {
-					const checkLoaded = () => {
-						if (soundObj.synth._buffers && soundObj.synth._buffers._buffers) {
-							let allLoaded = true;
-							soundObj.synth._buffers._buffers.forEach(buffer => {
-								if (!buffer.loaded) allLoaded = false;
-							});
-							if (allLoaded) {
-								soundObj.isReady = true;
+	async _createTrackSynth(track) {
+		const params = track.synthParams || initializeSynthParameters(track.synthType, 'sound', {}, context.PARAMETER_REGISTRY);
+		const authoredPolyphony = params.polyphony;
+		const polyphony = Math.max(authoredPolyphony || 1, CONSTANTS.SEQUENCER_TRACK_POLYPHONY);
 
-								resolve();
-							} else {
-								setTimeout(checkLoaded, 100);
-							}
+		const soundObj = await context.createFullSoundInstance({
+			type: track.synthType,
+			role: 'sound',
+			params: { ...params, polyphony },
+			layers: [...(track.layers || [])],
+			color: '#8e44ad'
+		}, { onMap: false });
+
+		if (!soundObj) return null;
+
+		soundObj._runtimePolyphony = polyphony;
+		if (authoredPolyphony !== undefined) soundObj.params.polyphony = authoredPolyphony;
+
+		soundObj.gain.gain.setValueAtTime(this._trackGainValue(soundObj), Tone.now());
+
+		if (soundObj.type === 'Sampler') {
+			soundObj.synth.attack = soundObj.params.attack ?? 0;
+		}
+
+		if (track.synthType === 'SoundFile' && params.soundFile) {
+			await context.autoLoadSoundFile(soundObj, params.soundFile);
+			context.applySoundFilePlaybackParams(soundObj, false);
+		}
+
+		if (track.synthType === 'Sampler' && params.samplerMode === 'single' && params.soundFile) {
+			await context.autoLoadSoundFile(soundObj, params.soundFile);
+		}
+
+		if (track.synthType === 'Sampler' && params.samplerMode === 'grid' && params.gridSamples && Object.keys(params.gridSamples).length > 0) {
+			await new Promise((resolve) => {
+				const checkLoaded = () => {
+					if (soundObj.synth._buffers && soundObj.synth._buffers._buffers) {
+						let allLoaded = true;
+						soundObj.synth._buffers._buffers.forEach(buffer => {
+							if (!buffer.loaded) allLoaded = false;
+						});
+						if (allLoaded) {
+							soundObj.isReady = true;
+							resolve();
 						} else {
 							setTimeout(checkLoaded, 100);
 						}
-					};
-					checkLoaded();
-				});
-				}
-
-				this._synthPool.set(track.id, soundObj);
-			}
+					} else {
+						setTimeout(checkLoaded, 100);
+					}
+				};
+				checkLoaded();
+			});
 		}
 
-		return this._synthPool.get(track.id);
+		return soundObj;
 	}
 
 	_applyPolyphony(soundObj, required) {
@@ -1030,7 +1065,7 @@ export class DistanceSequencer {
 	}
 
 	_triggerAttackChord(track, midiNotes, velocity, soundingNotes = 0) {
-		const handleAttack = (soundObj) => {
+		const handleAttack = (soundObj, notes = midiNotes) => {
 			if (!soundObj || !soundObj.synth) {
 				return;
 			}
@@ -1045,7 +1080,7 @@ export class DistanceSequencer {
 				}
 			}
 
-			const requiredPolyphony = Math.max(midiNotes.length, soundingNotes);
+			const requiredPolyphony = Math.max(notes.length, soundingNotes);
 			if ((soundObj._runtimePolyphony ?? soundObj.params.polyphony ?? 1) < requiredPolyphony) {
 				this._applyPolyphony(soundObj, requiredPolyphony);
 			}
@@ -1066,7 +1101,7 @@ export class DistanceSequencer {
 					soundObj.envelopeGain.gain.linearRampToValueAtTime(avgVelocity, now + CONSTANTS.SEQUENCER_VELOCITY_RAMP);
 				}
 				const useVelocity = soundObj.type === 'Sampler' ? velocity : null;
-				PolyphonyManager.triggerPolyphonic(soundObj.synth, midiNotes, true, soundObj, null, useVelocity);
+				PolyphonyManager.triggerPolyphonic(soundObj.synth, notes, true, soundObj, null, useVelocity);
 				soundObj.isPlaying = true;
 			}
 		};
@@ -1083,8 +1118,13 @@ export class DistanceSequencer {
 			} else {
 				this._getSynth(track).then(soundObj => {
 					if (!soundObj) return;
+
+					const active = this._activeNotes.get(track.id);
+					const stillActive = active ? midiNotes.filter(note => active.has(note)) : [];
+					if (stillActive.length === 0) return;
+
 					this._wakeTrackAudio(track, soundObj);
-					handleAttack(soundObj);
+					handleAttack(soundObj, stillActive);
 				}).catch(error => {
 					console.error("Error preparing synth for sequencer:", error);
 				});
@@ -1205,6 +1245,8 @@ export class DistanceSequencer {
 			this._releaseTimeoutId = null;
 		}
 		this.isActive = false;
+		this._synthGeneration++;
+		this._pendingSynths.clear();
 
 		this._releaseAllNotes();
 
