@@ -390,12 +390,20 @@ export class DistanceSequencer {
 		}
 
 		if (track.synthType === 'SoundFile' && params.soundFile) {
-			await context.autoLoadSoundFile(soundObj, params.soundFile);
-			context.applySoundFilePlaybackParams(soundObj, false);
+			try {
+				await context.autoLoadSoundFile(soundObj, params.soundFile);
+				context.applySoundFilePlaybackParams(soundObj, false);
+			} catch (error) {
+				console.warn(`Sequencer track sound file could not be loaded: ${params.soundFile}`, error);
+			}
 		}
 
 		if (track.synthType === 'Sampler' && params.samplerMode === 'single' && params.soundFile) {
-			await context.autoLoadSoundFile(soundObj, params.soundFile);
+			try {
+				await context.autoLoadSoundFile(soundObj, params.soundFile);
+			} catch (error) {
+				console.warn(`Sequencer track sample could not be loaded: ${params.soundFile}`, error);
+			}
 		}
 
 		if (track.synthType === 'Sampler' && params.samplerMode === 'grid' && params.gridSamples && Object.keys(params.gridSamples).length > 0) {
