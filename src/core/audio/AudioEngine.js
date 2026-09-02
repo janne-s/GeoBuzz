@@ -1,4 +1,5 @@
 import { CONSTANTS } from '../constants.js';
+import { AudioContextManager } from './AudioContextManager.js';
 import { AppState } from '../state/StateManager.js';
 import { Selectors } from '../state/selectors.js';
 import { Geometry } from '../geospatial/Geometry.js';
@@ -516,7 +517,7 @@ export function updateAudio(userPos, now, forcePositionWork = true) {
 }
 
 function hasPendingAudioWork() {
-	if (Tone.context.state !== 'running') return true;
+	if (!AudioContextManager.isRunning()) return true;
 	if (Selectors.isSimulationActive() || Selectors.getUserAttachedPathId()) return true;
 
 	const sounds = Selectors.getSounds();
@@ -534,25 +535,16 @@ function hasPendingAudioWork() {
 }
 
 export function audioUpdateLoop() {
-	if (Tone.context.state === 'running') {
+	if (AudioContextManager.isRunning()) {
 		audioUpdateLoop.suspendedListenerAdded = false;
-	} else if (Tone.context.state === 'suspended' && !audioUpdateLoop.suspendedListenerAdded) {
+	} else if (!audioUpdateLoop.suspendedListenerAdded) {
 		audioUpdateLoop.suspendedListenerAdded = true;
-		const resumeOnInteraction = async () => {
-			try {
-				await Tone.start();
-				audioUpdateLoop.suspendedListenerAdded = false;
-				document.removeEventListener('click', resumeOnInteraction);
-				document.removeEventListener('touchstart', resumeOnInteraction);
-				document.removeEventListener('keydown', resumeOnInteraction);
-				const userPos = context.GeolocationManager?.getUserPosition();
-				if (userPos) {
-					updateAudio(userPos, Tone.now());
-				}
-			} catch (e) {
-				console.error("Failed to resume audio context:", e);
-				audioUpdateLoop.suspendedListenerAdded = false;
-			}
+		const resumeOnInteraction = () => {
+			audioUpdateLoop.suspendedListenerAdded = false;
+			document.removeEventListener('click', resumeOnInteraction);
+			document.removeEventListener('touchstart', resumeOnInteraction);
+			document.removeEventListener('keydown', resumeOnInteraction);
+			AudioContextManager.requestResume();
 		};
 		document.addEventListener('click', resumeOnInteraction, { once: true });
 		document.addEventListener('touchstart', resumeOnInteraction, { once: true });

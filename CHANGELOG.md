@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-02
+
+### Fixed
+
+- Loading hung forever on iOS when the audio session was interrupted during startup
+
 ## 2026-09-01
 
 ### Added

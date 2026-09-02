@@ -114,8 +114,11 @@ export function updateAdaptiveGrainSize(soundObj, userSpeed) {
 	);
 	const overlap = grainSize * CONSTANTS.GRANULAR_ADAPTIVE_OVERLAP_FACTOR;
 
-	soundObj.synth.grainSize = Math.max(PARAMETER_REGISTRY.grainSize.min, Math.min(PARAMETER_REGISTRY.grainSize.max, grainSize));
-	soundObj.synth.overlap = Math.max(PARAMETER_REGISTRY.overlap.min, Math.min(PARAMETER_REGISTRY.overlap.max, overlap));
+	const nextGrainSize = Math.max(PARAMETER_REGISTRY.grainSize.min, Math.min(PARAMETER_REGISTRY.grainSize.max, grainSize));
+	const nextOverlap = Math.max(PARAMETER_REGISTRY.overlap.min, Math.min(PARAMETER_REGISTRY.overlap.max, overlap));
+
+	if (soundObj.synth.grainSize !== nextGrainSize) soundObj.synth.grainSize = nextGrainSize;
+	if (soundObj.synth.overlap !== nextOverlap) soundObj.synth.overlap = nextOverlap;
 }
 
 export function applySoundFilePlaybackParams(soundObj, shouldRestart = false) {

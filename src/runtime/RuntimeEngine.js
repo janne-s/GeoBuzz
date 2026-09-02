@@ -1005,7 +1005,7 @@ export class RuntimeEngine {
 			}
 		});
 
-		if (this.isPlaying && Tone.context.state === 'running') {
+		if (this.isPlaying && AudioContextManager.isRunning()) {
 			const userPos = GeolocationManager.getUserPosition();
 			if (userPos) {
 				updateAudio(userPos, undefined, false);
@@ -1057,9 +1057,7 @@ export class RuntimeEngine {
 	}
 
 	async resumeFromBackground() {
-		if (Tone.context.state === 'suspended') {
-			await Tone.context.resume();
-		}
+		AudioContextManager.requestResume();
 		if (!this.audioLoopActive) {
 			this.startAudioLoop();
 		}
@@ -1072,14 +1070,7 @@ export class RuntimeEngine {
 		}
 
 		try {
-			if (AudioContextManager.nativeContext && AudioContextManager.nativeContext.state === 'suspended') {
-				await AudioContextManager.nativeContext.resume();
-			}
-
-			if (Tone.context.state !== 'running') {
-				await Tone.start();
-				await Tone.context.resume();
-			}
+			AudioContextManager.requestResume();
 
 			await this.initializeAudio();
 

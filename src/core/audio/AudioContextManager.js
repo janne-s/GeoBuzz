@@ -56,6 +56,22 @@ class AudioContextManagerClass {
 
 		return this.initializationPromise;
 	}
+
+	isRunning() {
+		return this.nativeContext?.state === 'running';
+	}
+
+	requestResume() {
+		if (this.isRunning()) return;
+
+		if (this.nativeContext && this.nativeContext.state !== 'running') {
+			Promise.resolve(this.nativeContext.resume()).catch(() => {});
+		}
+
+		if (Tone.context.state !== 'running') {
+			Promise.resolve(Tone.start()).catch(() => {});
+		}
+	}
 }
 
 export const AudioContextManager = new AudioContextManagerClass();
