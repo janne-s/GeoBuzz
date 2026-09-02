@@ -3,7 +3,7 @@ import { isCircularPath } from '../utils/math.js';
 import { isLinearPath } from '../utils/typeChecks.js';
 import { generateLFOWaveform, PARAMETER_REGISTRY } from '../../config/parameterRegistry.js';
 import { getSmoothedPosition, getSmoothedModulationValue } from './AudioSmoother.js';
-import { applySoundModulationPatches } from './SoundModulation.js';
+import { applySoundModulationPatches, applyPathModulationPatches } from './SoundModulation.js';
 import { applyModShaping } from './ModShaping.js';
 import { GpsInstabilityTracker } from '../geospatial/GpsInstabilityTracker.js';
 
@@ -14,7 +14,6 @@ let AppState = null;
 let Selectors = null;
 let getUserMovementSpeed = null;
 let getTotalDistanceTraveled = null;
-let calculatePathGain = null;
 let generateOvalPoints = null;
 let getSmoothedPathPoints = null;
 let getOffsetPolyline = null;
@@ -31,7 +30,6 @@ export function setContext(ctx) {
 	Selectors = ctx.Selectors;
 	getUserMovementSpeed = ctx.getUserMovementSpeed;
 	getTotalDistanceTraveled = ctx.getTotalDistanceTraveled;
-	calculatePathGain = ctx.calculatePathGain;
 	generateOvalPoints = ctx.generateOvalPoints;
 	getSmoothedPathPoints = ctx.getSmoothedPathPoints;
 	getOffsetPolyline = ctx.getOffsetPolyline;
@@ -196,7 +194,13 @@ export function processLFOs(s, now) {
 
 	if (isAudible) {
 		if (s.pathRoles?.modulation && s.pathRoles.modulation.length > 0) {
-			processPatchModulation(s, userPos, addOffset);
+			applyPathModulationPatches(s.pathRoles.modulation, {
+				userPos,
+				params: s.params,
+				Geometry,
+				resolvePath: (id) => AppState.getPath(id),
+				addOffset
+			});
 		}
 
 		if (s.pathRoles?.soundModulation && s.pathRoles.soundModulation.length > 0) {
@@ -396,62 +400,6 @@ export function processPathLFOs(now) {
 		}
 	}
 	return pathsChanged;
-}
-
-function processPatchModulation(s, userPos, addOffset) {
-
-	const patches = s.pathRoles.modulation;
-	for (let i = 0; i < patches.length; i++) {
-		const patch = patches[i];
-		const modulator = AppState.getPath(patch.pathId);
-		if (!modulator) continue;
-
-		let modValue = 0;
-
-		if (patch.output === "distance") {
-			modValue = calculatePathGain(userPos, modulator);
-		} else if (patch.output === "x") {
-			const center = modulator.center || Geometry.calculateCentroid(modulator.points);
-			const maxRange = modulator.radius || Geometry.calculateMaxPolygonDistance(modulator.points);
-			const lngDiff = (userPos.lng - center.lng) * CONSTANTS.METERS_PER_LNG * Math.cos(center.lat * Math.PI / 180);
-			const normalized = Math.max(-1, Math.min(1, lngDiff / maxRange));
-			modValue = (normalized + 1) / 2;
-		} else if (patch.output === "y") {
-			const center = modulator.center || Geometry.calculateCentroid(modulator.points);
-			const maxRange = modulator.radius || Geometry.calculateMaxPolygonDistance(modulator.points);
-			const latDiff = (userPos.lat - center.lat) * CONSTANTS.METERS_PER_LAT;
-			const normalized = Math.max(-1, Math.min(1, latDiff / maxRange));
-			modValue = (normalized + 1) / 2;
-		} else if (patch.output === "gate") {
-			modValue = Geometry.isPointInControlPath(userPos, modulator) ? 1 : 0;
-		}
-
-		if (patch.invert) {
-			modValue = 1 - modValue;
-		}
-
-		const target = patch.parameter;
-		const def = PARAMETER_REGISTRY[target];
-		if (!def) continue;
-
-		const depthPercent = patch.depth / 100;
-
-		if (depthPercent === 0) continue;
-
-		if (target === 'pitch') {
-			const baseValue = s.params.originalValues[target] ?? s.params[target];
-			const modulatedValue = baseValue + (modValue - 0.5) * CONSTANTS.CENTS_PER_OCTAVE;
-			const offset = (modulatedValue - baseValue) * depthPercent;
-			addOffset(target, offset);
-		} else {
-			const paramMin = def.min !== undefined ? def.min : 0;
-			const paramMax = def.max !== undefined ? def.max : 1;
-			const baseValue = s.params.originalValues[target] ?? s.params[target];
-			const modulatedValue = paramMin + modValue * (paramMax - paramMin);
-			const offset = (modulatedValue - baseValue) * depthPercent;
-			addOffset(target, offset);
-		}
-	}
 }
 
 function processSoundModulation(s, userPos, addOffset) {

@@ -65,7 +65,7 @@ export class AudioNodeManager {
 
 			let lastNodeInChain = filter;
 
-			if (type === "SoundFile" || type === "Granular") {
+			if (type === "SoundFile") {
 				loopFadeGain = new Tone.Gain(1);
 				synth.connect(loopFadeGain);
 				loopFadeGain.connect(filter);

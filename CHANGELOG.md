@@ -5,10 +5,12 @@
 ### Added
 
 - Go to Buzz is offered when your location cannot be found
+- Control paths can modulate a sequencer track's synth
 
 ### Changed
 
 - Simulation panel sliders are longer and sit next to their values
+- A sequencer's sound file tracks play louder
 
 ### Fixed
 
@@ -17,6 +19,12 @@
 - A sequencer note could stay sounding for good when crossing an area quickly
 - A sequencer track's first note was late while its synth was still being built
 - A sequencer track's synth settings could not be opened when its sample was missing
+- Time-stretch and speed lock had no effect on a sound file played by a sequencer
+- Adaptive time-stretch never adjusted grain size
+- Modulating an element's volume had no effect near its center
+- Zone Boundaries did nothing
+- Duplicating a sequencer track dropped its patches
+- A control path's X and Y modulation never reached its full range on wide or tall paths
 
 ## 2026-08-31
 

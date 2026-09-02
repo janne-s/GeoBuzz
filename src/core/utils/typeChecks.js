@@ -1,10 +1,10 @@
 export function isFileSynth(obj) {
 	const type = obj.type || obj;
-	return type === 'SoundFile' || type === 'Sampler' || type === 'Granular' || type === 'StreamPlayer';
+	return type === 'SoundFile' || type === 'Sampler' || type === 'StreamPlayer';
 }
 
 export function hasKeyboard(obj) {
-	return obj.type !== 'NoiseSynth' && obj.type !== 'SoundFile' && obj.type !== 'StreamPlayer' && obj.type !== 'Granular';
+	return obj.type !== 'NoiseSynth' && obj.type !== 'SoundFile' && obj.type !== 'StreamPlayer';
 }
 
 export function isGranularMode(obj) {

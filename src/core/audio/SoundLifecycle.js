@@ -8,6 +8,9 @@ import { Geometry } from '../geospatial/Geometry.js';
 import { calcGain } from './audioUtils.js';
 import { AppState } from '../state/StateManager.js';
 import { waitForNextFrame } from '../utils/async.js';
+import { isGranularMode } from '../utils/typeChecks.js';
+import { mapValue } from '../utils/math.js';
+import { PARAMETER_REGISTRY } from '../../config/parameterRegistry.js';
 
 let context = null;
 
@@ -75,8 +78,48 @@ export function getLoopBounds(obj) {
 	return { start, end, duration };
 }
 
+export function updateSoundFilePlaybackRate(soundObj, userSpeed) {
+	if (soundObj.type !== "SoundFile" || !soundObj.synth?.loaded) return;
+
+	if (soundObj.params.speedLockScale > 0) {
+		const baseSpeed = soundObj.params.speed || 1.0;
+
+		if (userSpeed < CONSTANTS.ZERO_SPEED_THRESHOLD) {
+			if (soundObj.synth.playbackRate !== baseSpeed) soundObj.synth.playbackRate = baseSpeed;
+			return;
+		}
+
+		const referenceSpeed = soundObj.params.speedLockReference || CONSTANTS.REFERENCE_SPEED_DEFAULT;
+		const lockedSpeed = baseSpeed + (userSpeed / referenceSpeed - 1) * soundObj.params.speedLockScale;
+		let effectiveSpeed = Math.max(CONSTANTS.MIN_PLAYBACK_RATE, Math.min(CONSTANTS.MAX_PLAYBACK_RATE, lockedSpeed));
+		if (isNaN(effectiveSpeed)) effectiveSpeed = baseSpeed;
+		if (soundObj.synth.playbackRate !== effectiveSpeed) soundObj.synth.playbackRate = effectiveSpeed;
+		return;
+	}
+
+	if (!soundObj._previouslyModulatedParams?.has('speed') && soundObj.synth.playbackRate !== soundObj.params.speed) {
+		soundObj.synth.playbackRate = soundObj.params.speed || 1.0;
+	}
+}
+
+export function updateAdaptiveGrainSize(soundObj, userSpeed) {
+	if (!isGranularMode(soundObj) || soundObj.params.timeStretchMode !== 'adaptive' || !soundObj.synth?.loaded) return;
+
+	const grainSize = mapValue(
+		userSpeed,
+		CONSTANTS.GRANULAR_ADAPTIVE_SPEED_MIN,
+		CONSTANTS.GRANULAR_ADAPTIVE_SPEED_MAX,
+		CONSTANTS.GRANULAR_ADAPTIVE_GRAIN_SIZE_AT_MIN_SPEED,
+		CONSTANTS.GRANULAR_ADAPTIVE_GRAIN_SIZE_AT_MAX_SPEED
+	);
+	const overlap = grainSize * CONSTANTS.GRANULAR_ADAPTIVE_OVERLAP_FACTOR;
+
+	soundObj.synth.grainSize = Math.max(PARAMETER_REGISTRY.grainSize.min, Math.min(PARAMETER_REGISTRY.grainSize.max, grainSize));
+	soundObj.synth.overlap = Math.max(PARAMETER_REGISTRY.overlap.min, Math.min(PARAMETER_REGISTRY.overlap.max, overlap));
+}
+
 export function applySoundFilePlaybackParams(soundObj, shouldRestart = false) {
-	if ((soundObj.type !== "SoundFile" && soundObj.type !== "Granular") || !soundObj.synth) {
+	if (soundObj.type !== "SoundFile" || !soundObj.synth) {
 		return;
 	}
 
@@ -94,7 +137,7 @@ export function applySoundFilePlaybackParams(soundObj, shouldRestart = false) {
 
 	soundObj.synth.set(settings);
 
-	if (soundObj.type === "Granular") {
+	if (isGranularMode(soundObj)) {
 		soundObj.synth.detune = soundObj.params.grainDetune || 0;
 		if (soundObj.params.timeStretchMode === 'manual') {
 			soundObj.synth.grainSize = soundObj.params.grainSize || 0.1;

@@ -23,8 +23,21 @@ export function calculateBearing(lat1, lon1, lat2, lon2) {
 	return (bearingDeg + 360) % 360;
 }
 
-export function calcGain(userPos, obj) {
+function isInsideAssignedZones(userPos, obj) {
+	const zones = obj.pathRoles?.zones;
+	if (!zones || zones.length === 0) return true;
+
+	const paths = Selectors.getPaths();
+	for (let i = 0; i < zones.length; i++) {
+		const path = paths.find(p => p.id === zones[i]);
+		if (path && context.Geometry.isPointInControlPath(userPos, path)) return true;
+	}
+	return false;
+}
+
+export function calcAreaScalar(userPos, obj) {
 	if (!context.Geometry.isPointInShape(userPos, obj)) return 0;
+	if (!isInsideAssignedZones(userPos, obj)) return 0;
 
 	let volumeScalar;
 	const volumeOrigin = obj.volumeOrigin || 'icon';
@@ -54,8 +67,17 @@ export function calcGain(userPos, obj) {
 		volumeScalar = (1 - cs) + cs * curveVal;
 	}
 
-	const volume = obj._modulatedVolume !== undefined ? obj._modulatedVolume : obj.params.volume;
-	return volumeScalar * volume;
+	return volumeScalar;
+}
+
+export function soundVolumeValue(obj) {
+	return obj._modulatedVolume !== undefined ? obj._modulatedVolume : obj.params.volume;
+}
+
+export function calcGain(userPos, obj) {
+	const scalar = calcAreaScalar(userPos, obj);
+	if (scalar === 0) return 0;
+	return scalar * soundVolumeValue(obj);
 }
 
 export function isPathAudioActive(path) {

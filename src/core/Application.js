@@ -2670,26 +2670,6 @@ AppState.subscribe((action) => {
 			break;
 		}
 
-		case 'GRANULAR_ADAPTIVE_SPEED_UPDATE': {
-			const { sound } = action.payload;
-			const userSpeed = getUserMovementSpeed();
-			const grainSize = mapValue(
-				userSpeed,
-				CONSTANTS.GRANULAR_ADAPTIVE_SPEED_MIN,
-				CONSTANTS.GRANULAR_ADAPTIVE_SPEED_MAX,
-				CONSTANTS.GRANULAR_ADAPTIVE_GRAIN_SIZE_AT_MIN_SPEED,
-				CONSTANTS.GRANULAR_ADAPTIVE_GRAIN_SIZE_AT_MAX_SPEED
-			);
-			const overlap = grainSize * CONSTANTS.GRANULAR_ADAPTIVE_OVERLAP_FACTOR;
-			const grainSizeMin = PARAMETER_REGISTRY.grainSize.min || 0.01;
-			const grainSizeMax = PARAMETER_REGISTRY.grainSize.max || 0.5;
-			const overlapMin = PARAMETER_REGISTRY.overlap.min || 0.01;
-			const overlapMax = PARAMETER_REGISTRY.overlap.max || 0.2;
-			sound.synth.grainSize = Math.max(grainSizeMin, Math.min(grainSizeMax, grainSize));
-			sound.synth.overlap = Math.max(overlapMin, Math.min(overlapMax, overlap));
-			break;
-		}
-
 		case 'OSC_USER_POSITION_UPDATE': {
 			const { userPos, userDirection } = action.payload;
 			appContext.OSCManager.send('/geobuzz/user/lat', userPos.lat);

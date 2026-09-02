@@ -8,8 +8,8 @@ import { DEFAULT_LFO_STRUCTURE } from '../../config/defaults.js';
 import { deepClone } from '../utils/math.js';
 import { generateLFOWaveform } from '../../config/parameterRegistry.js';
 import { GpsInstabilityTracker } from '../geospatial/GpsInstabilityTracker.js';
-import { applySoundModulationPatches } from './SoundModulation.js';
-import { openSoundFile, closeSoundFile, scheduleLoopFades } from './SoundLifecycle.js';
+import { applySoundModulationPatches, applyPathModulationPatches } from './SoundModulation.js';
+import { openSoundFile, closeSoundFile, scheduleLoopFades, updateSoundFilePlaybackRate, updateAdaptiveGrainSize } from './SoundLifecycle.js';
 import { evaluateSpeedGate, createSpeedGateState } from './SpeedGate.js';
 import { applyModShaping } from './ModShaping.js';
 import { fxTailSeconds } from './FxTail.js';
@@ -444,7 +444,10 @@ export class DistanceSequencer {
 
 	_trackGainValue(soundObj) {
 		const volume = soundObj._modulatedVolume !== undefined ? soundObj._modulatedVolume : soundObj.params.volume;
-		return volume * CONSTANTS.SEQUENCER_SYNTH_GAIN * this._silencingGain;
+		const trackGain = soundObj.type === 'SoundFile'
+			? CONSTANTS.SEQUENCER_SOUND_FILE_GAIN
+			: CONSTANTS.SEQUENCER_SYNTH_GAIN;
+		return volume * trackGain * this._silencingGain;
 	}
 
 	applySilencingGain(silencingGain) {
@@ -673,6 +676,16 @@ export class DistanceSequencer {
 			totalDistance: this.totalDistance,
 			trackId: track.id
 		};
+
+		if (track.pathModulation && track.pathModulation.length > 0) {
+			applyPathModulationPatches(track.pathModulation, {
+				userPos: context.GeolocationManager?.getUserPosition(),
+				params: soundObj.params,
+				Geometry: context.Geometry,
+				resolvePath: (id) => AppState.getPath(id),
+				addOffset
+			});
+		}
 
 		if (track.soundModulation && track.soundModulation.length > 0) {
 			applySoundModulationPatches(track.soundModulation, {
@@ -1278,6 +1291,16 @@ export class DistanceSequencer {
 		});
 	}
 
+	updateTrackPlaybackRates(userSpeed) {
+		this.tracks.forEach(track => {
+			const soundObj = this._synthPool.get(track.id);
+			if (!soundObj || soundObj.type !== 'SoundFile') return;
+			if (!soundObj.synth || soundObj.synth.disposed) return;
+			updateSoundFilePlaybackRate(soundObj, userSpeed);
+			updateAdaptiveGrainSize(soundObj, userSpeed);
+		});
+	}
+
 	reportLayerActivity() {
 		const now = Tone.now();
 		this.tracks.forEach(track => {
@@ -1345,6 +1368,8 @@ export class DistanceSequencer {
 			sceneSteps: sceneSteps,
 			steps: sceneSteps[activeSceneId],
 			paramTarget: trackData.paramTarget || 'pitch',
+			soundModulation: trackData.soundModulation ? deepClone(trackData.soundModulation) : [],
+			pathModulation: trackData.pathModulation ? deepClone(trackData.pathModulation) : [],
 			editMode: trackData.editMode || 'note',
 			offsetMode: trackData.offsetMode || 'division',
 			offsetFraction: trackData.offsetFraction !== undefined ? trackData.offsetFraction : 0,
@@ -1388,6 +1413,8 @@ export class DistanceSequencer {
 			numSteps: source.numSteps,
 			sceneSteps,
 			paramTarget: source.paramTarget,
+			soundModulation: source.soundModulation,
+			pathModulation: source.pathModulation,
 			editMode: source.editMode,
 			offsetMode: source.offsetMode,
 			offsetFraction: source.offsetFraction,

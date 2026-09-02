@@ -4,8 +4,8 @@ import { Selectors } from '../state/selectors.js';
 import { Geometry } from '../geospatial/Geometry.js';
 import { EchoManager } from './EchoManager.js';
 import { LayerManager } from '../../layers/LayerManager.js';
-import { calcGain, calculateRelativePosition, calculateBearingPan, calculateSilencingGain } from './audioUtils.js';
-import { scheduleLoopFades, openSoundFile, closeSoundFile } from './SoundLifecycle.js';
+import { calcAreaScalar, soundVolumeValue, calculateRelativePosition, calculateBearingPan, calculateSilencingGain } from './audioUtils.js';
+import { scheduleLoopFades, openSoundFile, closeSoundFile, updateSoundFilePlaybackRate, updateAdaptiveGrainSize } from './SoundLifecycle.js';
 import { evaluateSpeedGate, createSpeedGateState, hasPendingTransition, getGridKeySpeedRange, isSpeedGateActive } from './SpeedGate.js';
 import {
 	updateSmoothedPosition,
@@ -175,12 +175,15 @@ export function updateAudio(userPos, now, forcePositionWork = true) {
 	LayerManager.applySilencingGain(silencingGain);
 	LayerManager.beginActivityFrame();
 
+	const userMovementSpeed = getUserMovementSpeed();
+
 	const sequencers = Selectors.getSequencers();
 	for (let i = 0; i < sequencers.length; i++) {
 		const seq = sequencers[i];
 		if (seq.enabled) {
 			seq.applySilencingGain(silencingGain);
 			seq.updatePosition(userPos.lat, userPos.lng);
+			seq.updateTrackPlaybackRates(userMovementSpeed);
 			seq.reportLayerActivity();
 		}
 	}
@@ -253,7 +256,7 @@ export function updateAudio(userPos, now, forcePositionWork = true) {
 
 		const positionWorkFirstRun = !s._positionWork;
 		if (positionWorkFirstRun) {
-			s._positionWork = { isInside: false, soundDistance: 0, areaGain: 0 };
+			s._positionWork = { isInside: false, soundDistance: 0, areaScalar: 0 };
 		}
 
 		const positionWorkDue = positionWorkFirstRun || listenerMoved || s._positionModulated ||
@@ -328,29 +331,24 @@ export function updateAudio(userPos, now, forcePositionWork = true) {
 			}
 		}
 
-		if (s.type === 'Granular' && s.params.timeStretchMode === 'adaptive' && s.synth?.loaded) {
-			AppState.dispatch({
-				type: 'GRANULAR_ADAPTIVE_SPEED_UPDATE',
-				payload: { sound: s }
-			});
-		}
+		updateAdaptiveGrainSize(s, userMovementSpeed);
 
 		if (positionWorkDue) {
-			s._positionWork.areaGain = (isControlledBySequencer || isInside) ? calcGain(audioPos, s) : 0;
+			s._positionWork.areaScalar = (isControlledBySequencer || isInside) ? calcAreaScalar(audioPos, s) : 0;
 		}
 
-		let targetGain = s._positionWork.areaGain;
+		let areaScalar = s._positionWork.areaScalar;
 
-		if (inDeadZone && targetGain > 0) {
-			if (s._lastDeadZoneGain === undefined) {
-				s._lastDeadZoneGain = targetGain;
+		if (inDeadZone && areaScalar > 0) {
+			if (s._lastDeadZoneScalar === undefined) {
+				s._lastDeadZoneScalar = areaScalar;
 			}
-			targetGain = s._lastDeadZoneGain;
-		} else if (targetGain > 0) {
-			s._lastDeadZoneGain = targetGain;
+			areaScalar = s._lastDeadZoneScalar;
+		} else if (areaScalar > 0) {
+			s._lastDeadZoneScalar = areaScalar;
 		}
 
-		targetGain *= elementGain;
+		let targetGain = areaScalar * soundVolumeValue(s) * elementGain;
 
 		const clampedGain = clampGainDelta(targetGain, s.id);
 		const effectiveGain = (clampedGain > 0 ? clampedGain : 0) * silencingGain;
@@ -382,23 +380,11 @@ export function updateAudio(userPos, now, forcePositionWork = true) {
 			const wasInside = s.wasInsideArea || false;
 			s.wasInsideArea = isInside;
 
-			if (s.type === "SoundFile" && s.synth.loaded && !isControlledBySequencer) {
-				if (s.params.speedLockScale > 0) {
-					const userSpeed = getUserMovementSpeed();
-					const baseSpeed = s.params.speed || 1.0;
-					if (userSpeed < CONSTANTS.ZERO_SPEED_THRESHOLD) {
-						if (s.synth.playbackRate !== baseSpeed) s.synth.playbackRate = baseSpeed;
-					} else {
-						const referenceSpeed = s.params.speedLockReference || CONSTANTS.REFERENCE_SPEED_DEFAULT;
-						const lockedSpeed = baseSpeed + (userSpeed / referenceSpeed - 1) * s.params.speedLockScale;
-						let effectiveSpeed = Math.max(CONSTANTS.MIN_PLAYBACK_RATE, Math.min(CONSTANTS.MAX_PLAYBACK_RATE, lockedSpeed));
-						if (isNaN(effectiveSpeed)) effectiveSpeed = baseSpeed;
-						if (s.synth.playbackRate !== effectiveSpeed) s.synth.playbackRate = effectiveSpeed;
-					}
-				} else if (!s._previouslyModulatedParams?.has('speed') && s.synth.playbackRate !== s.params.speed) {
-					s.synth.playbackRate = s.params.speed || 1.0;
-				}
+			if (s.type === "SoundFile" && s.synth.loaded) {
+				updateSoundFilePlaybackRate(s, userMovementSpeed);
+			}
 
+			if (s.type === "SoundFile" && s.synth.loaded && !isControlledBySequencer) {
 				const gateMin = s.params.speedGateMin ?? 0;
 				const gateMax = s.params.speedGateMax ?? 10;
 				if (isInside && isSpeedGateActive(gateMin, gateMax)) {

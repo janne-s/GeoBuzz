@@ -210,7 +210,7 @@ const PARAM_HANDLERS = {
 		if (isGranularMode(obj)) obj.synth.detune = value;
 	},
 	speed: (obj, value, isModulation) => {
-		if ((obj.type !== "SoundFile" && obj.type !== "Granular") || !obj.synth) return;
+		if (obj.type !== "SoundFile" || !obj.synth) return;
 
 		if (isModulation) {
 			obj.synth.playbackRate = value;

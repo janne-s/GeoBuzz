@@ -635,13 +635,27 @@ export const MenuTabs = {
 
 						const resampleControls = createElement('div');
 						const granularControls = createElement('div');
+						const manualGrainControls = createElement('div');
 						const commonControls = createElement('div');
 
 						motionParams.forEach(pKey => {
 							const control = context.createParameterControl(context.PARAMETER_REGISTRY[pKey], pKey, obj, update, { small: true });
 							if (['fadeIn', 'fadeOut', 'loopFadeIn', 'loopFadeOut'].includes(pKey)) {
 								resampleControls.appendChild(control);
-							} else if (['timeStretchMode', 'grainSize', 'overlap', 'grainDetune'].includes(pKey)) {
+							} else if (pKey === 'grainSize' || pKey === 'overlap') {
+								manualGrainControls.appendChild(control);
+							} else if (pKey === 'timeStretchMode') {
+								const select = control.querySelector('select');
+								if (select) {
+									select.onchange = (e) => {
+										obj.params.timeStretchMode = e.target.value;
+										manualGrainControls.style.display = e.target.value === 'manual' ? 'block' : 'none';
+										update();
+									};
+								}
+								granularControls.appendChild(control);
+								granularControls.appendChild(manualGrainControls);
+							} else if (pKey === 'grainDetune') {
 								granularControls.appendChild(control);
 							} else if (pKey === 'playbackMode') {
 								const select = control.querySelector('select');
@@ -663,6 +677,7 @@ export const MenuTabs = {
 
 						resampleControls.style.display = obj.params.playbackMode === 'granular' ? 'none' : 'block';
 						granularControls.style.display = obj.params.playbackMode === 'granular' ? 'block' : 'none';
+						manualGrainControls.style.display = obj.params.timeStretchMode === 'manual' ? 'block' : 'none';
 
 						content.appendChild(resampleControls);
 						content.appendChild(granularControls);
@@ -672,44 +687,6 @@ export const MenuTabs = {
 					}
 				});
 				container.appendChild(motionSection);
-
-				if (obj.type === 'Granular') {
-					const isGranularActive = () => {
-						const p = obj.params;
-						return p.timeStretchMode !== 'adaptive' || p.grainSize !== 0.1 || p.overlap !== 0.05 || p.grainDetune !== 0;
-					};
-
-					const granularSection = context.UIBuilder.collapsibleSection({
-						title: 'Time-Stretching',
-						icon: 'fa-ruler-horizontal',
-						isActive: isGranularActive,
-						content: (update) => {
-							const content = createElement('div');
-
-							const modeControl = context.createParameterControl(context.PARAMETER_REGISTRY['timeStretchMode'], 'timeStretchMode', obj, update);
-							content.appendChild(modeControl);
-
-							const manualControls = createElement('div');
-							manualControls.style.display = obj.params.timeStretchMode === 'manual' ? 'block' : 'none';
-							manualControls.appendChild(context.createParameterControl(context.PARAMETER_REGISTRY['grainSize'], 'grainSize', obj, update, { small: true }));
-							manualControls.appendChild(context.createParameterControl(context.PARAMETER_REGISTRY['overlap'], 'overlap', obj, update, { small: true }));
-							content.appendChild(manualControls);
-
-							content.appendChild(context.createParameterControl(context.PARAMETER_REGISTRY['grainDetune'], 'grainDetune', obj, update, { small: true }));
-
-							const select = modeControl.querySelector('select');
-							if (select) {
-								select.onchange = (e) => {
-									obj.params.timeStretchMode = e.target.value;
-									manualControls.style.display = e.target.value === 'manual' ? 'block' : 'none';
-									update();
-								};
-							}
-							return content;
-						}
-					});
-					container.appendChild(granularSection);
-				}
 			}
 
 		if (obj.marker) {
@@ -1378,14 +1355,22 @@ export const MenuTabs = {
 					content.appendChild(addPatchBtn);
 
 					obj.pathRoles.modulation.forEach((patch, index) => {
-						content.appendChild(this.createPatchItem(patch, index, obj, paths, container));
+						content.appendChild(this.createPatchItem(patch, index, {
+							patches: obj.pathRoles.modulation,
+							paths,
+							obj,
+							synthType: obj.type,
+							role: obj.role,
+							onChange: () => { container.innerHTML = ''; MenuTabs.patches.render(obj, container); }
+						}));
 					});
 					return content;
 				}
 			});
 		},
 
-		createPatchItem(patch, index, obj, paths, container) {
+		createPatchItem(patch, index, options) {
+			const { patches, paths, obj, synthType, role, onChange } = options;
 			const patchDiv = createElement('div', 'patch-item');
 			const patchTitle = createElement('div', 'patch-title');
 			patchTitle.textContent = `Patch ${index + 1}`;
@@ -1413,7 +1398,7 @@ export const MenuTabs = {
 			outputSelect.className = 'patch-select';
 			patchDiv.appendChild(outputSelect);
 
-			const availableTargets = context.getAvailableModulationTargets(obj.type, obj.role);
+			const availableTargets = context.getAvailableModulationTargets(synthType, role);
 			const paramOptions = availableTargets.map(t => ({
 				value: t,
 				label: context.PARAMETER_REGISTRY[t]?.label || t
@@ -1457,17 +1442,15 @@ export const MenuTabs = {
 			patchDiv.appendChild(invertGroup);
 
 			const removeBtn = createButton('Remove', () => {
-				obj.pathRoles.modulation.splice(index, 1);
+				patches.splice(index, 1);
 
 				const param = patch.parameter;
-				if (obj.params.originalValues && obj.params.originalValues[param] !== undefined) {
+				if (obj?.params.originalValues && obj.params.originalValues[param] !== undefined) {
 					context.updateSynthParam(obj, param, obj.params.originalValues[param]);
 				}
 
 				AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
-
-				container.innerHTML = '';
-				this.render(obj, container);
+				onChange();
 			}, 'delete-btn');
 			patchDiv.appendChild(removeBtn);
 

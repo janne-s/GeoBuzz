@@ -1958,14 +1958,57 @@ export class SequencerUIManager {
 
 	renderTrackPatches(track, sequencer, container, showTab) {
 		if (!track.soundModulation) track.soundModulation = [];
+		if (!track.pathModulation) track.pathModulation = [];
 
 		const sounds = Selectors.getSounds();
-		if (sounds.length === 0) {
+		const paths = Selectors.getPaths();
+
+		if (sounds.length === 0 && paths.length === 0) {
 			const info = createElement('div', 'info-message');
-			info.textContent = 'No sounds available.';
+			info.textContent = 'No control paths or sounds available.';
 			container.appendChild(info);
 			return;
 		}
+
+		const onChange = () => {
+			AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+			showTab('patches');
+		};
+
+		if (paths.length > 0) {
+			const pathHeading = createElement('div', 'patch-title');
+			pathHeading.textContent = 'Modulation Patches';
+			container.appendChild(pathHeading);
+
+			const addPatchBtn = createButton('+ Add Patch', () => {
+				track.pathModulation.push({
+					pathId: paths[0].id,
+					parameter: 'pitch',
+					output: 'distance',
+					depth: 50,
+					invert: false
+				});
+				onChange();
+			}, 'btn-add');
+			container.appendChild(addPatchBtn);
+
+			track.pathModulation.forEach((patch, index) => {
+				container.appendChild(MenuTabs.patches.createPatchItem(patch, index, {
+					patches: track.pathModulation,
+					paths,
+					obj: sequencer._synthPool.get(track.id),
+					synthType: track.synthType,
+					role: 'sound',
+					onChange
+				}));
+			});
+		}
+
+		if (sounds.length === 0) return;
+
+		const soundHeading = createElement('div', 'patch-title');
+		soundHeading.textContent = 'Sound Relative';
+		container.appendChild(soundHeading);
 
 		const addBtn = createButton('+ Add Reference', () => {
 			track.soundModulation.push({
@@ -1975,8 +2018,7 @@ export class SequencerUIManager {
 				range: 50,
 				polarity: 1
 			});
-			AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
-			showTab('patches');
+			onChange();
 		}, 'btn-add');
 		container.appendChild(addBtn);
 
@@ -1986,10 +2028,7 @@ export class SequencerUIManager {
 				otherSounds: sounds,
 				synthType: track.synthType,
 				role: 'sound',
-				onChange: () => {
-					AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
-					showTab('patches');
-				}
+				onChange
 			}));
 		});
 	}
