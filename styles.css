@@ -3611,6 +3611,11 @@ input:checked+.slider:before {
 	color: var(--color-text-muted);
 }
 
+.simulation-speed-readout {
+	min-width: 104px;
+	white-space: nowrap;
+}
+
 /* SIMULATION CONTROL */
 
 .simulation-controls-container.active {

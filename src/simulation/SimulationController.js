@@ -12,6 +12,7 @@ export const SimulationController = {
 
 		if (mode === 'off') {
 			simControls.classList.remove('active');
+			this.setSpeedReadout(null);
 			return;
 		}
 
@@ -31,6 +32,14 @@ export const SimulationController = {
 				goBtn.style.display = 'none';
 				break;
 		}
+	},
+
+	setSpeedReadout(commanded, actual) {
+		const readout = document.getElementById('simSpeedReadout');
+		if (!readout) return;
+		readout.textContent = commanded === null
+			? ''
+			: `${commanded.toFixed(1)} \u2192 ${actual.toFixed(1)} m/s`;
 	},
 
 	releaseSequencers() {

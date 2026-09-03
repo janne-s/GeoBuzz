@@ -1,12 +1,13 @@
 import { AppState } from '../core/state/StateManager.js';
 import { Selectors } from '../core/state/selectors.js';
 import { GeolocationManager } from '../core/geospatial/GeolocationManager.js';
-import { updateAudio } from '../core/audio/AudioEngine.js';
+import { updateAudio, getUserMovementSpeed } from '../core/audio/AudioEngine.js';
 import { toRadians, toDegrees } from '../core/utils/math.js';
 import { Geometry } from '../core/geospatial/Geometry.js';
 import { simulationSpeedMs } from './SimulationSpeed.js';
 import { GpsNoise } from './GpsNoise.js';
 import { updateDirectionUI } from '../paths/PathEditor.js';
+import { SimulationController } from './SimulationController.js';
 
 let roadGraph = null;
 let graphBBox = null;
@@ -230,6 +231,7 @@ export const RouteAnimator = {
 			const reportedPosition = GpsNoise.apply(newPosition, dt);
 			userMarker.setLatLng(reportedPosition);
 			updateAudio(reportedPosition, Tone.now());
+			SimulationController.setSpeedReadout(speedMs, getUserMovementSpeed());
 
 			AppState.simulation.animationState.frameId = requestAnimationFrame((t) => this.animateMovement(t, stopSimulation));
 		}

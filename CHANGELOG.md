@@ -2,6 +2,10 @@
 
 ## 2026-09-03
 
+### Added
+
+- Simulation panel shows the commanded and the gate-visible speed in m/s
+
 ### Fixed
 
 - A distance sequencer lost walked distance whenever its speed gate misread the pace
