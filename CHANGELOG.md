@@ -5,6 +5,7 @@
 ### Fixed
 
 - A distance sequencer lost walked distance whenever its speed gate misread the pace
+- Roundtrip time did not follow the path motion speed slider
 
 ## 2026-09-02
 

@@ -1220,6 +1220,9 @@ export const MenuTabs = {
 			motionLabel.textContent = 'Path Motion';
 			motionGroup.appendChild(motionLabel);
 
+			const pathLength = () => context.computePathLength(AppState.getPath(obj.pathRoles.movement));
+			const roundtripSeconds = (speed) => Math.max(1, Math.round(pathLength() / speed));
+
 			const speedGroup = createElement('div', 'parameter-control');
 			const speedLabel = createElement('label');
 			speedLabel.textContent = 'Speed (m/s)';
@@ -1235,6 +1238,7 @@ export const MenuTabs = {
 				if (!obj.motion) obj.motion = {};
 				obj.motion.speed = parseFloat(speedSlider.value);
 				speedDisplay.textContent = `${obj.motion.speed.toFixed(1)} m/s`;
+				timeInput.value = roundtripSeconds(obj.motion.speed);
 			};
 			speedGroup.appendChild(speedLabel);
 			speedGroup.appendChild(speedSlider);
@@ -1249,17 +1253,14 @@ export const MenuTabs = {
 			timeInput.min = 1;
 			timeInput.max = 3600;
 			timeInput.step = 1;
-			const currentPath = AppState.getPath(obj.pathRoles.movement);
-			const currentLength = context.computePathLength(currentPath);
-			timeInput.value = Math.max(1, Math.round(currentLength / (obj.motion?.speed ?? 1.0)));
+			timeInput.value = roundtripSeconds(obj.motion?.speed ?? 1.0);
 			const timeUnit = createElement('span', 'value-display');
 			timeUnit.textContent = 'seconds';
 			timeInput.onchange = () => {
 				const desired = parseFloat(timeInput.value);
 				if (!obj.motion) obj.motion = {};
 				if (desired > 0) {
-					const len = context.computePathLength(AppState.getPath(obj.pathRoles.movement));
-					obj.motion.speed = len / desired;
+					obj.motion.speed = pathLength() / desired;
 					speedSlider.value = obj.motion.speed;
 					speedDisplay.textContent = `${obj.motion.speed.toFixed(1)} m/s`;
 				}
