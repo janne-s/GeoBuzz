@@ -7,6 +7,8 @@ import { isLinearPath } from '../core/utils/typeChecks.js';
 import { calculateBearing } from '../core/audio/audioUtils.js';
 import { simulationSpeedMs } from '../simulation/SimulationSpeed.js';
 import { GpsNoise } from '../simulation/GpsNoise.js';
+import { SimulationController } from '../simulation/SimulationController.js';
+import { getUserMovementSpeed } from '../core/audio/AudioEngine.js';
 
 export function deleteControlPath(path, options = {}) {
 	const { map, refreshList, updateCounts } = options;
@@ -193,6 +195,7 @@ export function animateUserOnPath(currentTime, options = {}) {
 		const reportedPosition = GpsNoise.apply(newPosition, dt);
 		userMarker.setLatLng(reportedPosition);
 		updateAudio(reportedPosition);
+		SimulationController.setSpeedReadout(effectiveSpeedMs, getUserMovementSpeed());
 	}
 
 	AppState.simulation.userPathAnimationState.frameId = requestAnimationFrame((t) => animateUserOnPath(t, options));
