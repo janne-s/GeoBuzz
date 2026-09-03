@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-03
+
+### Fixed
+
+- A distance sequencer lost walked distance whenever its speed gate misread the pace
+
 ## 2026-09-02
 
 ### Fixed

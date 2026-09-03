@@ -232,13 +232,17 @@ export class DistanceSequencer {
 			return;
 		}
 
+		const previousSample = this.positionHistory[this.positionHistory.length - 1];
+		if (previousSample && currentPos.timestamp - previousSample.timestamp > CONSTANTS.SEQUENCER_SPEED_WINDOW_MS) {
+			this.positionHistory = [];
+		}
+
 		this.positionHistory.push(currentPos);
 		if (this.positionHistory.length > CONSTANTS.SEQUENCER_SMOOTH_SAMPLES) {
 			this.positionHistory.shift();
 		}
 
-		const smoothedDistance = this.calculateSmoothedDistance();
-		const speed = elapsed > 0 ? smoothedDistance / elapsed : 0;
+		const speed = this.calculateWindowSpeed();
 
 		const gateOpen = this._evaluateSpeedGate(speed, currentPos.timestamp);
 
@@ -254,7 +258,7 @@ export class DistanceSequencer {
 		}
 
 		this._isMovingFastEnough = true;
-		this.totalDistance += smoothedDistance * this.speedScale;
+		this.totalDistance += distance * this.speedScale;
 
 		const distanceSinceLastGlobalStep = this.totalDistance - this.lastStepDistance;
 		if (distanceSinceLastGlobalStep >= this.stepLength) {
@@ -313,19 +317,22 @@ export class DistanceSequencer {
 		this.dispatchEvent('stateChange');
 	}
 
-	calculateSmoothedDistance() {
-		if (this.positionHistory.length < 2) return 0;
+	calculateWindowSpeed() {
+		const history = this.positionHistory;
+		if (history.length < 2) return 0;
 
 		let totalDist = 0;
-		for (let i = 1; i < this.positionHistory.length; i++) {
-			const prev = this.positionHistory[i - 1];
-			const curr = this.positionHistory[i];
+		for (let i = 1; i < history.length; i++) {
+			const prev = history[i - 1];
+			const curr = history[i];
 			totalDist += context.map.distance(
 				L.latLng(prev.lat, prev.lon),
 				L.latLng(curr.lat, curr.lon)
 			);
 		}
-		return totalDist / (this.positionHistory.length - 1);
+
+		const seconds = (history[history.length - 1].timestamp - history[0].timestamp) / 1000;
+		return seconds > 0 ? totalDist / seconds : 0;
 	}
 
 	_prewarmTracks() {
