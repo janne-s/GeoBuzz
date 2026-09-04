@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-04
+
+### Added
+
+- Diagnostics page checking location, audio and browser support, linked from About
+
 ## 2026-09-03
 
 ### Added

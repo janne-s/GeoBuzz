@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>GeoBuzz Diagnostics</title>
+<style>
+	:root { color-scheme: dark; }
+	* { box-sizing: border-box; }
+	body {
+		margin: 0;
+		padding: 20px 16px 48px;
+		background: #0b0d10;
+		color: #d5dae1;
+		font: 14px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	}
+	header { margin-bottom: 18px; }
+	h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: .02em; }
+	header p { margin: 4px 0 0; color: #6d7786; font-size: 12px; }
+	h2 {
+		font-size: 11px; text-transform: uppercase; letter-spacing: .12em;
+		color: #6d7786; font-weight: 600;
+		margin: 22px 0 6px; padding-bottom: 5px; border-bottom: 1px solid #1a1f27;
+	}
+	table { width: 100%; border-collapse: collapse; }
+	tr { border-bottom: 1px solid #14181f; }
+	td { padding: 6px 0; vertical-align: top; font-size: 12.5px; }
+	td.k { color: #7c8797; width: 40%; padding-right: 10px; }
+	td.v { word-break: break-word; }
+	td.v::before { content: '● '; color: #3a424e; }
+	td.v.ok::before { color: #62c073; }
+	td.v.bad::before { color: #e0705f; }
+	td.v.warn::before { color: #d8ae4a; }
+	.actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+	button {
+		-webkit-appearance: none; appearance: none;
+		flex: 1 1 auto; min-width: 140px;
+		padding: 11px 14px; border: 1px solid #262d38; border-radius: 6px;
+		background: #151a21; color: #dbe1e9; font: inherit; font-size: 12.5px;
+		cursor: pointer;
+	}
+	button:hover:not(:disabled) { background: #1b212a; }
+	button:disabled { opacity: .45; cursor: default; }
+	pre {
+		background: #0e1116; border: 1px solid #1a1f27; border-radius: 6px;
+		padding: 10px; font-size: 11.5px; line-height: 1.5;
+		white-space: pre-wrap; word-break: break-word; color: #97a2b1;
+		margin: 10px 0 0; max-height: 320px; overflow: auto;
+	}
+</style>
+</head>
+<body>
+
+<header>
+	<h1>GeoBuzz Diagnostics</h1>
+	<p>Checks the browser capabilities GeoBuzz depends on. Nothing is sent anywhere.</p>
+</header>
+
+<div id="out"></div>
+
+<h2>Tests</h2>
+<div class="actions">
+	<button id="geo">Test location</button>
+	<button id="audio">Test audio</button>
+</div>
+
+<h2>Report</h2>
+<div class="actions">
+	<button id="copy">Copy report</button>
+</div>
+<pre id="report"></pre>
+
+<script>
+(function () {
+	var out = document.getElementById('out');
+	var reportEl = document.getElementById('report');
+	var rows = [];
+
+	function set(section, key, value, status) {
+		var existing = rows.find(function (r) { return r.section === section && r.key === key; });
+		if (existing) {
+			existing.value = value;
+			existing.status = status;
+		} else {
+			rows.push({ section: section, key: key, value: value, status: status });
+		}
+		render();
+	}
+
+	function render() {
+		var sections = [];
+		rows.forEach(function (r) {
+			if (sections.indexOf(r.section) === -1) sections.push(r.section);
+		});
+
+		out.textContent = '';
+		sections.forEach(function (name) {
+			var h = document.createElement('h2');
+			h.textContent = name;
+			out.appendChild(h);
+
+			var table = document.createElement('table');
+			rows.filter(function (r) { return r.section === name; }).forEach(function (r) {
+				var tr = document.createElement('tr');
+				var k = document.createElement('td');
+				var v = document.createElement('td');
+				k.className = 'k';
+				k.textContent = r.key;
+				v.className = 'v' + (r.status ? ' ' + r.status : '');
+				v.textContent = r.value;
+				tr.appendChild(k);
+				tr.appendChild(v);
+				table.appendChild(tr);
+			});
+			out.appendChild(table);
+		});
+
+		reportEl.textContent = rows.map(function (r) {
+			return r.section.toLowerCase() + '.' + r.key + ' = ' + r.value;
+		}).join('\n');
+	}
+
+	function browser() {
+		var ua = navigator.userAgent;
+		var webviews = [
+			[/FBAN|FBAV|FB_IAB/, 'Facebook in-app'],
+			[/Instagram/, 'Instagram in-app'],
+			[/Line\//, 'LINE in-app'],
+			[/Snapchat/, 'Snapchat in-app'],
+			[/Twitter/, 'X in-app'],
+			[/MicroMessenger/, 'WeChat in-app'],
+			[/TelegramBot|Telegram/, 'Telegram in-app'],
+			[/GSA\//, 'Google app in-app']
+		];
+		for (var i = 0; i < webviews.length; i++) {
+			if (webviews[i][0].test(ua)) return { name: webviews[i][1], inApp: true };
+		}
+		var iOS = /iPhone|iPad|iPod/.test(ua);
+		if (/CriOS/.test(ua)) return { name: 'Chrome (iOS)', inApp: false };
+		if (/FxiOS/.test(ua)) return { name: 'Firefox (iOS)', inApp: false };
+		if (/EdgiOS/.test(ua)) return { name: 'Edge (iOS)', inApp: false };
+		if (iOS && !/Safari\//.test(ua)) return { name: 'iOS WebView (not Safari)', inApp: true };
+		if (iOS) return { name: 'Safari (iOS)', inApp: false };
+		if (/Android/.test(ua) && !/Chrome\//.test(ua)) return { name: 'Android WebView', inApp: true };
+		if (/Chrome\//.test(ua)) return { name: 'Chrome', inApp: false };
+		if (/Firefox\//.test(ua)) return { name: 'Firefox', inApp: false };
+		if (/Safari\//.test(ua)) return { name: 'Safari', inApp: false };
+		return { name: 'unknown', inApp: false };
+	}
+
+	var b = browser();
+	set('Environment', 'origin', location.protocol + '//' + location.host, location.protocol === 'https:' ? 'ok' : 'bad');
+	set('Environment', 'secureContext', String(window.isSecureContext), window.isSecureContext ? 'ok' : 'bad');
+	set('Environment', 'browser', b.name, b.inApp ? 'warn' : 'ok');
+	set('Environment', 'online', String(navigator.onLine), navigator.onLine ? 'ok' : 'bad');
+	set('Environment', 'viewport', window.innerWidth + '×' + window.innerHeight + ' @' + (window.devicePixelRatio || 1) + 'x');
+	set('Environment', 'userAgent', navigator.userAgent);
+
+	set('Capabilities', 'geolocation', 'geolocation' in navigator ? 'yes' : 'no', 'geolocation' in navigator ? 'ok' : 'bad');
+	set('Capabilities', 'webAudio', (window.AudioContext || window.webkitAudioContext) ? 'yes' : 'no', (window.AudioContext || window.webkitAudioContext) ? 'ok' : 'bad');
+	set('Capabilities', 'wakeLock', 'wakeLock' in navigator ? 'yes' : 'no', 'wakeLock' in navigator ? 'ok' : 'warn');
+	set('Capabilities', 'audioSession', 'audioSession' in navigator ? 'yes' : 'no', 'audioSession' in navigator ? 'ok' : 'warn');
+	set('Capabilities', 'deviceOrientation', 'DeviceOrientationEvent' in window ? 'yes' : 'no', 'DeviceOrientationEvent' in window ? 'ok' : 'warn');
+
+	try {
+		localStorage.setItem('__gbdiag', '1');
+		localStorage.removeItem('__gbdiag');
+		set('Capabilities', 'localStorage', 'writable', 'ok');
+	} catch (e) {
+		set('Capabilities', 'localStorage', 'blocked (' + e.name + ')', 'bad');
+	}
+
+	if (navigator.permissions && navigator.permissions.query) {
+		navigator.permissions.query({ name: 'geolocation' }).then(function (r) {
+			set('Capabilities', 'locationPermission', r.state, r.state === 'denied' ? 'bad' : 'ok');
+		}).catch(function () {
+			set('Capabilities', 'locationPermission', 'not queryable', 'warn');
+		});
+	} else {
+		set('Capabilities', 'locationPermission', 'not queryable', 'warn');
+	}
+
+	function errorName(error) {
+		if (error.code === 1) return 'PERMISSION_DENIED';
+		if (error.code === 2) return 'POSITION_UNAVAILABLE';
+		if (error.code === 3) return 'TIMEOUT';
+		return 'code ' + error.code;
+	}
+
+	function fix(label, options) {
+		var t0 = Date.now();
+		set('Location', label, 'running…', 'warn');
+		return new Promise(function (resolve) {
+			navigator.geolocation.getCurrentPosition(function (p) {
+				var s = ((Date.now() - t0) / 1000).toFixed(1);
+				set('Location', label, 'ok in ' + s + 's, ±' + Math.round(p.coords.accuracy) + 'm', 'ok');
+				resolve(true);
+			}, function (e) {
+				var s = ((Date.now() - t0) / 1000).toFixed(1);
+				set('Location', label, errorName(e) + ' after ' + s + 's — ' + e.message, 'bad');
+				resolve(false);
+			}, options);
+		});
+	}
+
+	var geoButton = document.getElementById('geo');
+	geoButton.addEventListener('click', function () {
+		geoButton.disabled = true;
+		fix('highAccuracy 20s', { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 })
+			.then(function (ok) {
+				return ok || fix('highAccuracy 90s', { enableHighAccuracy: true, timeout: 90000, maximumAge: 0 });
+			})
+			.then(function (ok) {
+				return ok || fix('lowAccuracy 60s', { enableHighAccuracy: false, timeout: 60000, maximumAge: 0 });
+			})
+			.then(function () {
+				geoButton.disabled = false;
+				geoButton.textContent = 'Test location again';
+			});
+	});
+
+	var audioButton = document.getElementById('audio');
+	audioButton.addEventListener('click', function () {
+		var Ctor = window.AudioContext || window.webkitAudioContext;
+		if (!Ctor) {
+			set('Audio', 'context', 'unsupported', 'bad');
+			return;
+		}
+
+		if (navigator.audioSession) {
+			try { navigator.audioSession.type = 'playback'; } catch (e) {}
+		}
+
+		var ctx = new Ctor();
+		set('Audio', 'stateOnCreate', ctx.state, ctx.state === 'running' ? 'ok' : 'warn');
+
+		Promise.resolve(ctx.resume()).catch(function () {}).then(function () {
+			set('Audio', 'stateAfterResume', ctx.state, ctx.state === 'running' ? 'ok' : 'bad');
+			set('Audio', 'sampleRate', String(ctx.sampleRate), 'ok');
+			if (ctx.baseLatency !== undefined) {
+				set('Audio', 'baseLatency', (ctx.baseLatency * 1000).toFixed(1) + 'ms', 'ok');
+			}
+
+			var osc = ctx.createOscillator();
+			var gain = ctx.createGain();
+			osc.frequency.value = 440;
+			gain.gain.value = 0;
+			osc.connect(gain);
+			gain.connect(ctx.destination);
+			var now = ctx.currentTime;
+			gain.gain.linearRampToValueAtTime(0.08, now + 0.05);
+			gain.gain.setValueAtTime(0.08, now + 0.55);
+			gain.gain.linearRampToValueAtTime(0, now + 0.7);
+			osc.start(now);
+			osc.stop(now + 0.75);
+
+			set('Audio', 'testTone', '440 Hz played — audible?', 'warn');
+			audioButton.textContent = 'Test audio again';
+		});
+	});
+
+	var copyButton = document.getElementById('copy');
+	copyButton.addEventListener('click', function () {
+		var text = reportEl.textContent;
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			navigator.clipboard.writeText(text).then(function () {
+				copyButton.textContent = 'Copied';
+			}).catch(function () {
+				copyButton.textContent = 'Copy failed — select the text above';
+			});
+			return;
+		}
+		copyButton.textContent = 'Copy failed — select the text above';
+	});
+})();
+</script>
+
+</body>
+</html>
