@@ -28,7 +28,7 @@
 	td { padding: 6px 0; vertical-align: top; font-size: 12.5px; }
 	td.k { color: #7c8797; width: 40%; padding-right: 10px; }
 	td.v { word-break: break-word; }
-	td.v::before { content: '● '; color: #3a424e; }
+	td.v::before { content: '● '; color: transparent; }
 	td.v.ok::before { color: #62c073; }
 	td.v.bad::before { color: #e0705f; }
 	td.v.warn::before { color: #d8ae4a; }
@@ -88,10 +88,11 @@
 		render();
 	}
 
+	var SECTIONS = ['Environment', 'Capabilities', 'Location', 'Audio'];
+
 	function render() {
-		var sections = [];
-		rows.forEach(function (r) {
-			if (sections.indexOf(r.section) === -1) sections.push(r.section);
+		var sections = SECTIONS.filter(function (name) {
+			return rows.some(function (r) { return r.section === name; });
 		});
 
 		out.textContent = '';
@@ -220,11 +221,65 @@
 			});
 	});
 
+	var audioContext = null;
+
+	function stateStatus(state) {
+		if (state === 'running') return 'ok';
+		if (state === 'suspended' || state === 'interrupted') return 'bad';
+		return 'warn';
+	}
+
+	function reportState(state) {
+		var note = state;
+		if (state === 'interrupted') note += ' (iOS paused it — another app or a call)';
+		if (state === 'suspended') note += ' (browser has not let it start)';
+		set('Audio', 'state', note, stateStatus(state));
+	}
+
+	function settleState(ctx, timeout) {
+		return new Promise(function (resolve) {
+			if (ctx.state === 'running') {
+				resolve(ctx.state);
+				return;
+			}
+
+			var settled = false;
+			var finish = function () {
+				if (settled) return;
+				settled = true;
+				ctx.removeEventListener('statechange', onChange);
+				clearTimeout(timer);
+				resolve(ctx.state);
+			};
+			var onChange = function () {
+				if (ctx.state === 'running') finish();
+			};
+
+			ctx.addEventListener('statechange', onChange);
+			var timer = setTimeout(finish, timeout);
+		});
+	}
+
+	function playTestTone(ctx) {
+		var osc = ctx.createOscillator();
+		var gain = ctx.createGain();
+		osc.frequency.value = 440;
+		gain.gain.value = 0;
+		osc.connect(gain);
+		gain.connect(ctx.destination);
+		var now = ctx.currentTime;
+		gain.gain.linearRampToValueAtTime(0.08, now + 0.05);
+		gain.gain.setValueAtTime(0.08, now + 0.55);
+		gain.gain.linearRampToValueAtTime(0, now + 0.7);
+		osc.start(now);
+		osc.stop(now + 0.75);
+	}
+
 	var audioButton = document.getElementById('audio');
 	audioButton.addEventListener('click', function () {
 		var Ctor = window.AudioContext || window.webkitAudioContext;
 		if (!Ctor) {
-			set('Audio', 'context', 'unsupported', 'bad');
+			set('Audio', 'webAudio', 'unsupported', 'bad');
 			return;
 		}
 
@@ -232,30 +287,35 @@
 			try { navigator.audioSession.type = 'playback'; } catch (e) {}
 		}
 
-		var ctx = new Ctor();
-		set('Audio', 'stateOnCreate', ctx.state, ctx.state === 'running' ? 'ok' : 'warn');
+		if (!audioContext) {
+			audioContext = new Ctor();
+			audioContext.addEventListener('statechange', function () {
+				reportState(audioContext.state);
+			});
+		}
+
+		var ctx = audioContext;
+		audioButton.disabled = true;
+		reportState(ctx.state);
 
 		Promise.resolve(ctx.resume()).catch(function () {}).then(function () {
-			set('Audio', 'stateAfterResume', ctx.state, ctx.state === 'running' ? 'ok' : 'bad');
-			set('Audio', 'sampleRate', String(ctx.sampleRate), 'ok');
-			if (ctx.baseLatency !== undefined) {
-				set('Audio', 'baseLatency', (ctx.baseLatency * 1000).toFixed(1) + 'ms', 'ok');
+			return settleState(ctx, 2000);
+		}).then(function (state) {
+			reportState(state);
+
+			if (state === 'running') {
+				playTestTone(ctx);
+				set('Audio', 'testTone', '440 Hz played — did you hear it?', 'warn');
+			} else {
+				set('Audio', 'testTone', 'not played, context is ' + state, 'bad');
 			}
 
-			var osc = ctx.createOscillator();
-			var gain = ctx.createGain();
-			osc.frequency.value = 440;
-			gain.gain.value = 0;
-			osc.connect(gain);
-			gain.connect(ctx.destination);
-			var now = ctx.currentTime;
-			gain.gain.linearRampToValueAtTime(0.08, now + 0.05);
-			gain.gain.setValueAtTime(0.08, now + 0.55);
-			gain.gain.linearRampToValueAtTime(0, now + 0.7);
-			osc.start(now);
-			osc.stop(now + 0.75);
+			set('Audio', 'sampleRate', String(ctx.sampleRate));
+			if (ctx.baseLatency !== undefined) {
+				set('Audio', 'baseLatency', (ctx.baseLatency * 1000).toFixed(1) + 'ms');
+			}
 
-			set('Audio', 'testTone', '440 Hz played — audible?', 'warn');
+			audioButton.disabled = false;
 			audioButton.textContent = 'Test audio again';
 		});
 	});

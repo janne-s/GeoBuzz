@@ -6,6 +6,7 @@
 
 - The first location fix asked for a coarse position and accepted one up to ten minutes old
 - Position accuracy was never checked, so a coarse fix was trusted like a precise one
+- Diagnostics read the audio context state before it settled, and claimed a test tone it never played
 
 ### Added
 
