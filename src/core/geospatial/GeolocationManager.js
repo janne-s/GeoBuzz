@@ -1,7 +1,6 @@
 import { CONSTANTS } from '../constants.js';
 import { KalmanFilter, gpsSmoothingToFilterOptions } from './KalmanFilter.js';
 import { GpsInstabilityTracker } from './GpsInstabilityTracker.js';
-import { isTouchDevice } from '../utils/typeChecks.js';
 import { updateDirectionUI } from '../../paths/PathEditor.js';
 
 class GeolocationManagerClass {
@@ -20,8 +19,7 @@ class GeolocationManagerClass {
 		this._locationReadyPromise = null;
 		this._resolveLocationReady = null;
 		this._positionUpdateCount = 0;
-		this._minSamplesForStability = 3;
-		this._maxAccuracyForStability = 30;
+		this._imprecise = false;
 		this._indicatorRotation = null;
 		this._fallbackApplied = false;
 		this._offeredGoToBuzzWithoutFix = false;
@@ -37,6 +35,7 @@ class GeolocationManagerClass {
 		this.createStatusElement();
 		this.createAccuracyDisplayElement();
 		this._positionUpdateCount = 0;
+		this._imprecise = false;
 		this._locationReadyPromise = new Promise((resolve) => {
 			this._resolveLocationReady = resolve;
 		});
@@ -298,6 +297,7 @@ class GeolocationManagerClass {
 		navigator.geolocation.getCurrentPosition(
 			(pos) => this.handlePositionSuccess(pos),
 			(error) => this.handlePositionError(error), {
+				enableHighAccuracy: true,
 				timeout: CONSTANTS.GEOLOCATION_TIMEOUT_MS,
 				maximumAge: CONSTANTS.GEOLOCATION_MAX_AGE_MS
 			}
@@ -306,7 +306,7 @@ class GeolocationManagerClass {
 		this.watchId = navigator.geolocation.watchPosition(
 			(pos) => this.handlePositionUpdate(pos),
 			(error) => this.handlePositionError(error), {
-				enableHighAccuracy: isTouchDevice(),
+				enableHighAccuracy: true,
 				timeout: CONSTANTS.WATCH_POSITION_TIMEOUT_MS,
 				maximumAge: 0
 			}
@@ -333,6 +333,7 @@ class GeolocationManagerClass {
 
 		this._lastRawPosition = rawPosition;
 		this._lastFilteredPosition = filtered;
+		this.updateAccuracyClass(accuracy);
 		GpsInstabilityTracker.update(filtered.accuracy, timestamp);
 		this.updateAccuracyDisplay(rawPosition, filtered);
 
@@ -553,13 +554,28 @@ class GeolocationManagerClass {
 		if (confirmed) this.goToBuzz();
 	}
 
+	updateAccuracyClass(accuracy) {
+		const imprecise = accuracy > CONSTANTS.GEOLOCATION_ACCURACY_LIMIT_M;
+		if (imprecise === this._imprecise) return;
+
+		this._imprecise = imprecise;
+		this.showStatusMessage(
+			imprecise
+				? `Location only accurate to ${Math.round(accuracy)} m`
+				: 'Location accuracy recovered',
+			CONSTANTS.STATUS_LONG_MS
+		);
+	}
+
 	getStatusInfo() {
 		return {
 			status: this.status,
 			followGPS: this.followGPS,
 			hasMarker: !!this.userMarker,
 			position: this.userMarker ? this.userMarker.getLatLng() : null,
-			accuracy: this._lastFilteredPosition ? this._lastFilteredPosition.accuracy : null
+			accuracy: this._lastFilteredPosition ? this._lastFilteredPosition.accuracy : null,
+			rawAccuracy: this._lastRawPosition ? this._lastRawPosition.accuracy : null,
+			imprecise: this._imprecise
 		};
 	}
 

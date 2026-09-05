@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-05
+
+### Fixed
+
+- The first location fix asked for a coarse position and accepted one up to ten minutes old
+- Position accuracy was never checked, so a coarse fix was trusted like a precise one
+
+### Added
+
+- Audio context reports interruptions and resumes through a statechange listener
+- Runtime context exposes Geometry and the audio context manager
+
 ## 2026-09-04
 
 ### Added

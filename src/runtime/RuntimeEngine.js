@@ -284,7 +284,9 @@ export class RuntimeEngine {
 				AppState,
 				Selectors,
 				LayerManager,
-				GeolocationManager
+				GeolocationManager,
+				Geometry,
+				AudioContextManager
 			};
 
 			setAudioEngineContext(engineContext);

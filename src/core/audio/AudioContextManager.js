@@ -5,6 +5,8 @@ class AudioContextManagerClass {
 		this.nativeContext = null;
 		this.isInitialized = false;
 		this.initializationPromise = null;
+		this.state = null;
+		this.listeners = new Set();
 	}
 
 	setupContext() {
@@ -12,6 +14,8 @@ class AudioContextManagerClass {
 		try {
 			const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 			this.nativeContext = new AudioContextClass({ latencyHint: CONSTANTS.AUDIO_LATENCY_HINT });
+			this.state = this.nativeContext.state;
+			this.nativeContext.addEventListener('statechange', () => this.handleStateChange());
 			Tone.setContext(new Tone.Context(this.nativeContext));
 		} catch (error) {
 			console.error("Failed to create AudioContext:", error);
@@ -55,6 +59,33 @@ class AudioContextManagerClass {
 		})();
 
 		return this.initializationPromise;
+	}
+
+	handleStateChange() {
+		const state = this.getState();
+		if (state === this.state) return;
+
+		this.state = state;
+		this.listeners.forEach(listener => {
+			try {
+				listener(state);
+			} catch (error) {
+				console.error('AudioContext state listener failed:', error);
+			}
+		});
+	}
+
+	onStateChange(listener) {
+		this.listeners.add(listener);
+		return () => this.listeners.delete(listener);
+	}
+
+	getState() {
+		return this.nativeContext ? this.nativeContext.state : null;
+	}
+
+	isInterrupted() {
+		return this.getState() === 'interrupted';
 	}
 
 	isRunning() {
