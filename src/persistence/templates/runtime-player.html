@@ -58,6 +58,7 @@
 		let followUser = true;
 		let userPanTimeout = null;
 		let geolocationManager = null;
+		const guidedFromUrl = new URLSearchParams(location.search).get('guided') === '1';
 
 		function updateSoundsList(sounds, sequencers) {
 			const soundsContent = document.getElementById('soundsContent');
@@ -159,6 +160,7 @@
 				// Initialize the runtime engine
 				await runtimeEngine.initialize({
 					mapContainer: document.getElementById('map'),
+					startGeolocation: !guidedFromUrl,
 					mapConfig: {
 						center: [0, 0],
 						zoom: 2,
@@ -192,6 +194,15 @@
 				const sounds = state.sounds;
 				const map = runtimeEngine.getContext().map;
 				geolocationManager = runtimeEngine.getContext().GeolocationManager;
+
+				runtimeEngine.getContext().GuidedMode.mount({
+					container: document.querySelector('.player-ui'),
+					map
+				});
+
+				if (guidedFromUrl) {
+					runtimeEngine.getContext().GuidedMode.start();
+				}
 
 				updateSoundsList(sounds, buzzData.sequencers || []);
 

@@ -38,17 +38,14 @@ export const GpsNoise = {
 		}
 	},
 
-	apply(position, dt) {
+	rawFrom(position, dt) {
 		const r68 = Selectors.getSimulationNoise();
 
 		if (!(r68 > 0)) {
 			GpsNoise.reset();
-			return position;
+			return null;
 		}
-		if (!position || !(dt > 0)) return position;
-
-		if (!state.filter) state.filter = new KalmanFilter();
-		state.filter.updateOptions(gpsSmoothingToFilterOptions(GeolocationManager.getGpsSmoothing()));
+		if (!position || !(dt > 0)) return null;
 
 		const sigma = r68 * CONSTANTS.SIMULATION_NOISE_R68_TO_SIGMA;
 		const slowShare = CONSTANTS.SIMULATION_NOISE_SLOW_VARIANCE_SHARE;
@@ -65,7 +62,7 @@ export const GpsNoise = {
 		const east = state.slowEast + state.fastEast;
 		const north = state.slowNorth + state.fastNorth;
 
-		const rawPosition = {
+		return {
 			latitude: position.lat + toDegrees(north / CONSTANTS.EARTH_RADIUS_M),
 			longitude: position.lng + toDegrees(east / (CONSTANTS.EARTH_RADIUS_M * Math.cos(toRadians(position.lat)))),
 			accuracy: Math.max(
@@ -74,6 +71,14 @@ export const GpsNoise = {
 			),
 			timestamp: Date.now()
 		};
+	},
+
+	apply(position, dt) {
+		const rawPosition = this.rawFrom(position, dt);
+		if (!rawPosition) return position;
+
+		if (!state.filter) state.filter = new KalmanFilter();
+		state.filter.updateOptions(gpsSmoothingToFilterOptions(GeolocationManager.getGpsSmoothing()));
 
 		state.filter.update(rawPosition);
 		const filtered = state.filter.getFiltered();

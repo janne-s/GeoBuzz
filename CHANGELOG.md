@@ -4,6 +4,8 @@
 
 ### Added
 
+- Guided listening in the exported player, steered by clicking the map
+- Gallery of published works, linked from About
 - Field-ready example player: silent switch, wake lock, interruptions, preloading, relocation, demo walk
 - Runtime API docs for Geometry and AudioContextManager
 

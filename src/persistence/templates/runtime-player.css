@@ -400,3 +400,156 @@ body {
 
 /* Optional: Add your custom styles below */
 /* ---------------------------------------- */
+
+/* ============================================
+   Guided listening — the steer-from-home tool
+   ============================================ */
+
+.gb-guided {
+	position: absolute;
+	top: 70px;
+	right: 15px;
+	z-index: 1000;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 8px;
+	pointer-events: auto;
+}
+
+.gb-guided-toggle {
+	width: 44px;
+	height: 44px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border: 1px solid rgba(255, 255, 255, 0.25);
+	border-radius: 50%;
+	background: rgba(20, 20, 20, 0.82);
+	color: #ffffff;
+	cursor: pointer;
+	transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.gb-guided-toggle svg {
+	width: 22px;
+	height: 22px;
+	fill: currentColor;
+	stroke: currentColor;
+}
+
+.gb-guided-toggle:hover {
+	background: rgba(40, 40, 40, 0.92);
+	border-color: rgba(255, 255, 255, 0.5);
+}
+
+.gb-guided-toggle.active {
+	background: #4ecdc4;
+	border-color: #4ecdc4;
+	color: #1a1a1a;
+}
+
+.gb-guided-panel {
+	position: relative;
+	width: 236px;
+	padding: 14px;
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	border-radius: 8px;
+	background: rgba(20, 20, 20, 0.92);
+	color: #eeeeee;
+	font-size: 12px;
+}
+
+.gb-guided-panel[hidden] {
+	display: none;
+}
+
+.gb-guided-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 10px;
+}
+
+.gb-guided-label {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 4px;
+	color: #b9b9b9;
+}
+
+.gb-guided-label select,
+.gb-guided-label input[type="range"] {
+	width: 100%;
+}
+
+.gb-guided-label select {
+	padding: 5px 6px;
+	border: 1px solid rgba(255, 255, 255, 0.25);
+	border-radius: 4px;
+	background: rgba(0, 0, 0, 0.5);
+	color: #eeeeee;
+	font-size: 12px;
+}
+
+.gb-guided-value {
+	min-width: 52px;
+	color: #eeeeee;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 11px;
+	text-align: right;
+}
+
+.gb-guided-hint {
+	margin: 12px 0 0;
+	color: #9a9a9a;
+	font-size: 11px;
+	line-height: 1.45;
+}
+
+
+.gb-guided-switch {
+	flex: 1;
+	padding: 9px 12px;
+	border: 1px solid #4ecdc4;
+	border-radius: 4px;
+	background: transparent;
+	color: #4ecdc4;
+	font-family: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	cursor: pointer;
+	transition: background 0.2s ease, color 0.2s ease;
+}
+
+.gb-guided-switch.active {
+	background: #4ecdc4;
+	color: #1a1a1a;
+}
+
+.gb-guided-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+
+.gb-guided-close {
+	flex: 0 0 auto;
+	width: 26px;
+	padding: 4px 0;
+	border: 0;
+	background: none;
+	color: #9a9a9a;
+	font-size: 17px;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.gb-guided-close:hover {
+	color: #ffffff;
+}

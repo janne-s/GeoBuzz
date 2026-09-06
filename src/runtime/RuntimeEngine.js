@@ -46,6 +46,7 @@ import { getSmoothedPathPoints, generateOvalPoints } from '../paths/PathFactory.
 import { getOffsetPolyline } from '../paths/PathRenderer.js';
 import { CONSTANTS } from '../core/constants.js';
 import { SHAPE_REGISTRY, setRegistriesContext } from '../config/registries.js';
+import { GuidedMode } from './GuidedMode.js';
 
 let engineContext = null;
 let publicContext = null;
@@ -286,7 +287,8 @@ export class RuntimeEngine {
 				LayerManager,
 				GeolocationManager,
 				Geometry,
-				AudioContextManager
+				AudioContextManager,
+				GuidedMode
 			};
 
 			setAudioEngineContext(engineContext);

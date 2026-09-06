@@ -203,7 +203,8 @@ expected to need. Nothing else in the engine is reachable through it.
 
 ```javascript
 const ctx = runtimeEngine.getContext();
-// → { map, AppState, Selectors, LayerManager, GeolocationManager }
+// → { map, AppState, Selectors, LayerManager, GeolocationManager,
+//     Geometry, AudioContextManager, GuidedMode }
 ```
 
 | Field | Type | Description |
@@ -213,6 +214,9 @@ const ctx = runtimeEngine.getContext();
 | `Selectors` | object | Read accessors over `AppState` (`getSounds()`, `getPaths()`, `getSequencers()`, …) |
 | `LayerManager` | object | Layer visibility and gain |
 | `GeolocationManager` | object | User position, GPS tracking, user marker |
+| `Geometry` | object | Shape tests against sounds and paths |
+| `AudioContextManager` | object | Audio context state and interruptions |
+| `GuidedMode` | object | Steered listening away from the piece's location |
 
 Returns `null` before `initialize()` has completed.
 
@@ -265,6 +269,54 @@ const marker = geo.getUserMarker();
 // Wait for first GPS fix (useful for relative positioning)
 const position = await geo.waitForLocation(5000); // timeout in ms
 ```
+
+### GuidedMode
+
+Lets someone experience a piece without walking it — the listener is moved
+through the work at a plausible pace instead of by GPS. This is what makes a
+sited piece reachable from a desk, and reachable at all for a listener who
+cannot walk the route.
+
+Positions are fed through the same path real GPS takes, so speed gates and the
+distance sequencer behave as they do outdoors. Speed unevenness and GPS drift
+are applied before the reading is handed to the engine.
+
+```javascript
+const guided = runtimeEngine.getContext().GuidedMode;
+
+// Mount the icon and its panel into your player's UI
+guided.mount({
+	container: document.querySelector('.player-ui'),
+	map: runtimeEngine.getContext().map,
+	defaults: { speedKmh: 5, scale: 1, variability: 0.35, noise: 6 }
+});
+
+guided.start();                 // Stops GPS and begins walking the piece
+guided.openPanel();
+guided.closePanel();
+guided.togglePanel();
+guided.setDestination(latlng);  // Steer — the listener walks there
+guided.stop();                  // Resumes real GPS
+guided.isActive();
+```
+
+With no destination set, the listener walks between the piece's sound elements
+in order. Clicking the map while guided mode is active steers instead.
+
+The icon opens and closes the panel and never changes the mode. Starting and
+stopping is the switch inside the panel, so one control never carries two
+meanings. `stop()` restarts GPS tracking only if it was running when `start()`
+was called, so a listener at a desk is never asked for a location.
+
+A player that supports guided listening should read `?guided=1` from its URL,
+initialise with `startGeolocation: false`, and call `start()`. That is the link
+the gallery hands out.
+
+`mount()` builds its own DOM under the class names `gb-guided`,
+`gb-guided-toggle`, `gb-guided-panel`, `gb-guided-row`, `gb-guided-label`,
+`gb-guided-value` and `gb-guided-hint`. It ships no styles of its own — the
+exported player styles them in `player-styles.css`, and a custom player should
+style those class names to match its own design.
 
 ### Geometry
 
