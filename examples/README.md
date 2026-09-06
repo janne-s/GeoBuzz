@@ -17,6 +17,7 @@ Inspiring starting points for custom buzz players. Not production-ready — spri
 | [**05-aframe**](https://janne-s.github.io/GeoBuzz/examples/05-aframe/) ([Repo](05-aframe/)) | A-Frame AR/VR integration with 3D sound visualization. |
 | [**06-multi-buzz**](https://janne-s.github.io/GeoBuzz/examples/06-multi-buzz/) ([Repo](06-multi-buzz/)) | Switch between multiple buzz compositions. |
 | **07-osc-streaming** ([Repo](07-osc-streaming/)) | Stream data to Max/MSP, Pure Data, TouchDesigner. |
+| [**08-field-ready**](https://janne-s.github.io/GeoBuzz/examples/08-field-ready/) ([Repo](08-field-ready/)) | Mobile survival: silent switch, wake lock, interruptions, preloading, relocation, demo walk. |
 
 ---
 
@@ -31,6 +32,7 @@ Inspiring starting points for custom buzz players. Not production-ready — spri
 | 05-aframe | | ✓ | ✓ | ✓ | |
 | 06-multi-buzz | ✓ | ✓ | ✓ | | |
 | 07-osc-streaming | ✓ | ✓ | ✓ | | Node.js bridge |
+| 08-field-ready | ✓ | ✓ | ✓ | | |
 
 ---
 
@@ -68,4 +70,7 @@ your-deployment/
 
 - **Won't load**: Needs HTTPS server, not `file://`
 - **No audio**: Click play button first (browser requirement)
+- **No audio on iPhone, everything else works**: the ringer switch is on silent — see [08-field-ready](08-field-ready/)
+- **Audio stops when the page goes to the background**: the audio context was interrupted and needs resuming — see [08-field-ready](08-field-ready/)
 - **No location**: Check HTTPS and browser permissions
+- **Location is hundreds of metres off**: the browser was granted approximate location only; check `coords.accuracy` or open [/diag.html](../diag.html)

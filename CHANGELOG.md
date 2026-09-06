@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-06
+
+### Added
+
+- Field-ready example player: silent switch, wake lock, interruptions, preloading, relocation, demo walk
+- Runtime API docs for Geometry and AudioContextManager
+
 ## 2026-09-05
 
 ### Fixed

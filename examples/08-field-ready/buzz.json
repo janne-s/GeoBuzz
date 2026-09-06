@@ -1,0 +1,105 @@
+{
+	"meta": {
+		"title": "Sample Walking Tour",
+		"description": "A 4-stop walking experience"
+	},
+	"relativePositioning": true,
+	"sounds": [
+		{
+			"persistentId": "stop-1",
+			"label": "Welcome Point",
+			"type": "Synth",
+			"color": "#4CAF50",
+			"shapeType": "circle",
+			"maxDistance": 15,
+			"offsetX": 0,
+			"offsetY": 20,
+			"params": {
+				"pitch": "C4",
+				"volume": 0.7,
+				"curveStrength": 1.0,
+				"oscillatorType": "triangle",
+				"envelope": {
+					"attack": 0.1,
+					"decay": 0.2,
+					"sustain": 0.5,
+					"release": 0.8
+				},
+				"filterFrequency": 2000,
+				"filterQ": 1
+			}
+		},
+		{
+			"persistentId": "stop-2",
+			"label": "History Corner",
+			"type": "Synth",
+			"color": "#2196F3",
+			"shapeType": "circle",
+			"maxDistance": 15,
+			"offsetX": 25,
+			"offsetY": 0,
+			"params": {
+				"pitch": "E4",
+				"volume": 0.7,
+				"curveStrength": 1.0,
+				"oscillatorType": "sine",
+				"envelope": {
+					"attack": 0.2,
+					"decay": 0.3,
+					"sustain": 0.6,
+					"release": 1.0
+				},
+				"filterFrequency": 1500,
+				"filterQ": 1
+			}
+		},
+		{
+			"persistentId": "stop-3",
+			"label": "Nature Spot",
+			"type": "Synth",
+			"color": "#FF9800",
+			"shapeType": "circle",
+			"maxDistance": 15,
+			"offsetX": 0,
+			"offsetY": -20,
+			"params": {
+				"pitch": "G4",
+				"volume": 0.7,
+				"curveStrength": 1.0,
+				"oscillatorType": "square",
+				"envelope": {
+					"attack": 0.05,
+					"decay": 0.1,
+					"sustain": 0.3,
+					"release": 0.5
+				},
+				"filterFrequency": 800,
+				"filterQ": 2
+			}
+		},
+		{
+			"persistentId": "stop-4",
+			"label": "Finale Vista",
+			"type": "Synth",
+			"color": "#9C27B0",
+			"shapeType": "circle",
+			"maxDistance": 15,
+			"offsetX": -25,
+			"offsetY": 0,
+			"params": {
+				"pitch": "C5",
+				"volume": 0.8,
+				"curveStrength": 1.0,
+				"oscillatorType": "sawtooth",
+				"envelope": {
+					"attack": 0.3,
+					"decay": 0.4,
+					"sustain": 0.7,
+					"release": 1.5
+				},
+				"filterFrequency": 3000,
+				"filterQ": 1
+			}
+		}
+	]
+}

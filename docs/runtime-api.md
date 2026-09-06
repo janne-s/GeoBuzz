@@ -248,7 +248,11 @@ const pos = geo.getUserPosition();
 
 // Get detailed status
 const info = geo.getStatusInfo();
-// → { status: 'active', followGPS: true, hasMarker: true, position: LatLng, accuracy: 12.4 }
+// → { status: 'active', followGPS: true, hasMarker: true, position: LatLng,
+//     accuracy: 12.4, rawAccuracy: 18.0, imprecise: false }
+// `rawAccuracy` is what the device reported, `accuracy` is after filtering.
+// `imprecise` is true once accuracy passes CONSTANTS.GEOLOCATION_ACCURACY_LIMIT_M —
+// typically an approximate-location permission rather than a weak signal.
 
 // Toggle between GPS tracking and manual (draggable) positioning
 geo.toggleFollowGPS();       // Toggle
@@ -261,6 +265,40 @@ const marker = geo.getUserMarker();
 // Wait for first GPS fix (useful for relative positioning)
 const position = await geo.waitForLocation(5000); // timeout in ms
 ```
+
+### Geometry
+
+Shape tests against sounds and paths. This is how a player answers "is the
+listener inside this element" — including elements that move along a path,
+since the test follows their live position.
+
+```javascript
+const geometry = runtimeEngine.getContext().Geometry;
+const sound = runtimeEngine.getState().sounds[0];
+
+geometry.isPointInShape(userPosition, sound);  // → boolean
+```
+
+Handles circles, polygons, lines (as corridors) and ovals.
+
+### AudioContextManager
+
+The audio context and its state. Subscribe rather than poll: reading `state`
+straight after `resume()` can still report the old value.
+
+```javascript
+const audio = runtimeEngine.getContext().AudioContextManager;
+
+audio.getState();       // 'running' | 'suspended' | 'interrupted' | 'closed'
+audio.isRunning();
+audio.isInterrupted();  // iOS pauses this way for calls and other apps
+
+const stop = audio.onStateChange(state => { ... });  // returns an unsubscribe
+```
+
+iOS reports `interrupted` and needs a user gesture to come back; Chrome reports
+`suspended` for a backgrounded tab and resumes it on its own. See
+[examples/08-field-ready](../examples/08-field-ready/).
 
 ### LayerManager
 

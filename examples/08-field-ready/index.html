@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+	<title>Field-Ready GeoBuzz Player</title>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+	<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+	<script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
+	<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+	<div id="map"></div>
+	<div id="notice"></div>
+
+	<div id="veil" class="veil">
+		<div class="panel">
+			<h1 id="veil-title">Field-ready player</h1>
+			<p id="veil-text">Headphones, screen awake, and the ringer switch off silent.</p>
+			<div id="veil-progress" class="progress" hidden><i></i></div>
+			<button id="veil-action">Step outside</button>
+		</div>
+	</div>
+
+	<script type="module">
+		import { runtimeEngine } from '../../src/runtime/RuntimeEngine.js';
+		import { CoordinateTransform } from '../../src/core/utils/coordinates.js';
+		import { resolveSoundUrlSync } from '../../src/api/SoundUrlResolver.js';
+
+		const params = new URLSearchParams(location.search);
+		const relocate = params.get('here') === '1';
+		const demo = params.get('demo') === '1';
+
+		const veil = document.getElementById('veil');
+		const veilTitle = document.getElementById('veil-title');
+		const veilText = document.getElementById('veil-text');
+		const veilAction = document.getElementById('veil-action');
+		const veilProgress = document.getElementById('veil-progress');
+		const veilBar = veilProgress.querySelector('i');
+		const notice = document.getElementById('notice');
+
+		let buzz = null;
+		let geo = null;
+		let wakeLock = null;
+		let started = false;
+
+		function showVeil(title, text, actionLabel, onAction) {
+			veilTitle.textContent = title;
+			veilText.textContent = text;
+			veilAction.hidden = !actionLabel;
+			if (actionLabel) {
+				veilAction.textContent = actionLabel;
+				veilAction.onclick = onAction;
+			}
+			veil.hidden = false;
+		}
+
+		function hideVeil() {
+			veil.hidden = true;
+			veilProgress.hidden = true;
+		}
+
+		function setProgress(fraction) {
+			veilProgress.hidden = false;
+			veilBar.style.width = Math.round(Math.max(0, Math.min(fraction, 1)) * 100) + '%';
+		}
+
+		function soundFiles(data) {
+			const files = new Set();
+			(data.sounds || []).forEach(sound => {
+				if (sound.params?.soundFile) files.add(sound.params.soundFile);
+			});
+			(data.sequencers || []).forEach(sequencer => {
+				(sequencer.tracks || []).forEach(track => {
+					const synthParams = track.synthParams || {};
+					if (synthParams.soundFile) files.add(synthParams.soundFile);
+					Object.values(synthParams.gridSamples || {}).forEach(sample => {
+						if (sample?.fileName) files.add(sample.fileName);
+					});
+				});
+			});
+			return [...files];
+		}
+
+		async function preloadSounds(data, onProgress) {
+			const files = soundFiles(data);
+			if (!files.length) {
+				onProgress(1);
+				return;
+			}
+
+			const expected = new Array(files.length).fill(0);
+			const received = new Array(files.length).fill(0);
+			let settled = 0;
+
+			const report = () => {
+				const total = expected.reduce((sum, bytes) => sum + bytes, 0);
+				if (total > 0) {
+					onProgress(received.reduce((sum, bytes) => sum + bytes, 0) / total);
+					return;
+				}
+				onProgress(settled / files.length);
+			};
+
+			await Promise.all(files.map(async (file, index) => {
+				try {
+					const response = await fetch(resolveSoundUrlSync(null, file));
+					const length = Number(response.headers.get('content-length'));
+					if (Number.isFinite(length) && length > 0) expected[index] = length;
+					report();
+
+					const reader = response.body?.getReader();
+					if (!reader) return;
+
+					for (;;) {
+						const { done, value } = await reader.read();
+						if (done) break;
+						received[index] += value.length;
+						report();
+					}
+				} catch (error) {
+					console.warn(`Could not preload ${file}`, error);
+				} finally {
+					settled++;
+					report();
+				}
+			}));
+
+			onProgress(1);
+		}
+
+		function allowSilentSwitch() {
+			try {
+				if (navigator.audioSession) navigator.audioSession.type = 'playback';
+			} catch (error) {}
+		}
+
+		async function keepScreenAwake() {
+			if (!('wakeLock' in navigator)) return;
+			try {
+				wakeLock = await navigator.wakeLock.request('screen');
+			} catch (error) {
+				wakeLock = null;
+			}
+		}
+
+		function watchAudioContext() {
+			const audio = runtimeEngine.getContext().AudioContextManager;
+			if (!audio?.onStateChange) return;
+
+			audio.onStateChange(state => {
+				if (!started || state === 'running') return;
+
+				showVeil(
+					'The sound stopped',
+					state === 'interrupted'
+						? 'Another app or a call took the audio. Tap to bring it back.'
+						: 'The browser paused the audio while the page was in the background.',
+					'Continue',
+					async () => {
+						allowSilentSwitch();
+						await Tone.start();
+						await runtimeEngine.start();
+						keepScreenAwake();
+						hideVeil();
+					}
+				);
+			});
+		}
+
+		function walkDemo() {
+			const stops = runtimeEngine.getState().sounds
+				.map(sound => ({ lat: sound.userLat, lng: sound.userLng }))
+				.filter(stop => Number.isFinite(stop.lat));
+			if (stops.length < 2) return;
+
+			let index = 0;
+			let progress = 0;
+
+			setInterval(() => {
+				const from = stops[index];
+				const to = stops[(index + 1) % stops.length];
+				progress += 0.02;
+				if (progress >= 1) {
+					progress = 0;
+					index = (index + 1) % stops.length;
+				}
+				geo.handlePositionUpdate({
+					coords: {
+						latitude: from.lat + (to.lat - from.lat) * progress,
+						longitude: from.lng + (to.lng - from.lng) * progress,
+						accuracy: 5,
+						heading: null
+					},
+					timestamp: Date.now()
+				});
+			}, 1000);
+		}
+
+		async function begin() {
+			allowSilentSwitch();
+			await Tone.start();
+			keepScreenAwake();
+
+			showVeil('Loading', 'Fetching the audio before you set off.', null);
+			setProgress(0);
+
+			if (relocate) {
+				const position = await geo.waitForLocation(20000);
+				if (position) buzz = CoordinateTransform.anchorBuzzTo(buzz, position);
+			}
+
+			await preloadSounds(buzz, setProgress);
+			await runtimeEngine.loadBuzz(buzz);
+
+			if (demo) walkDemo();
+			else geo.setupGeolocation();
+
+			await runtimeEngine.start();
+			started = true;
+			hideVeil();
+		}
+
+		async function init() {
+			const response = await fetch('./buzz.json');
+			buzz = await response.json();
+
+			await runtimeEngine.initialize({
+				mapContainer: document.getElementById('map'),
+				startGeolocation: false
+			});
+
+			geo = runtimeEngine.getContext().GeolocationManager;
+			watchAudioContext();
+
+			const modes = [];
+			if (relocate) modes.push('relocated here');
+			if (demo) modes.push('demo walk');
+			notice.textContent = modes.join(' · ');
+
+			document.addEventListener('visibilitychange', () => {
+				if (!document.hidden && started) keepScreenAwake();
+			});
+
+			veilAction.onclick = begin;
+		}
+
+		init();
+	</script>
+</body>
+</html>
