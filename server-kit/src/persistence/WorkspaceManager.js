@@ -51,8 +51,10 @@ export class WorkspaceManager {
 
 	static async ensureWorkspace() {
 		if (this.context.AppState.workspace.id) return true;
-		await this.createNewWorkspace();
-		return !!this.context.AppState.workspace.id;
+		if (!await this.createNewWorkspace()) {
+			throw new Error('Workspace could not be created or saved. Try again.');
+		}
+		return true;
 	}
 
 	static updateWorkspaceUI() {
@@ -174,21 +176,23 @@ export class WorkspaceManager {
 	static async createNewWorkspace() {
 		try {
 			const result = await Backend.workspace.create();
-
-			if (result.success) {
-				this.context.AppState.workspace.id = result.workspaceId;
-
-				const settings = SettingsManager.buildSettings();
-				await Backend.workspace.save(this.context.Selectors.getWorkspaceId(), settings);
-
-				const newUrl = new URL(window.location);
-				newUrl.searchParams.set('workspace', this.context.Selectors.getWorkspaceId());
-				window.history.replaceState({}, '', newUrl);
-				this.updateWorkspaceUI();
+			if (!result.success || !result.workspaceId) {
+				throw new Error(result.error || 'Workspace creation failed');
 			}
+
+			this.context.AppState.workspace.id = result.workspaceId;
+
+			const newUrl = new URL(window.location);
+			newUrl.searchParams.set('workspace', result.workspaceId);
+			window.history.replaceState({}, '', newUrl);
+			this.updateWorkspaceUI();
+
+			const settings = SettingsManager.buildSettings();
+			await Backend.workspace.save(result.workspaceId, settings);
+			return true;
 		} catch (error) {
 			console.error('Error creating workspace:', error);
-			this.context.AppState.workspace.id = 'default';
+			return false;
 		}
 	}
 

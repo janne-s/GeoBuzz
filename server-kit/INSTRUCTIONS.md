@@ -104,6 +104,7 @@ Open `http://localhost:8000` in your browser.
 ### Multi-user
 
 - Each workspace has a unique URL
+- Workspace IDs are reduced to a single path component; empty IDs, `.` and `..` are rejected before filesystem access
 - Multiple users can access different workspaces simultaneously
 - Data persists on the server, accessible from any browser
 

@@ -40,6 +40,8 @@ export const PackageImporter = {
 			return null;
 		}
 
+		await context.WorkspaceManager.ensureWorkspace();
+
 		const result = {
 			soundsImported: 0,
 			soundsSkipped: 0,
@@ -90,12 +92,10 @@ export const PackageImporter = {
 	},
 
 	async getExistingSoundFileNames() {
-		try {
-			const files = await context.Backend.files.list(context.Selectors.getWorkspaceId());
-			return files.map(f => f.name);
-		} catch {
-			return [];
-		}
+		const workspaceId = context.Selectors.getWorkspaceId();
+		if (!workspaceId) return [];
+		const files = await context.Backend.files.list(workspaceId);
+		return files.map(f => f.name);
 	},
 
 	async importSounds(soundFiles, options) {
@@ -115,49 +115,58 @@ export const PackageImporter = {
 
 		const progressModal = this.showProgressModal('Importing sounds...', soundFiles.length);
 
-		for (let i = 0; i < soundFiles.length; i++) {
-			const soundFile = soundFiles[i];
-			let targetName = soundFile.name;
-			const hasConflict = existingSounds.includes(targetName);
+		try {
+			for (let i = 0; i < soundFiles.length; i++) {
+				const soundFile = soundFiles[i];
+				let targetName = soundFile.name;
+				const hasConflict = existingSounds.includes(targetName);
 
-			progressModal.update(i + 1, targetName);
+				progressModal.update(i + 1, targetName);
 
-			if (hasConflict) {
-				switch (options.fileConflict) {
-					case 'skip':
-						result.skipped++;
-						continue;
-					case 'rename':
-						targetName = this.generateUniqueName(targetName, existingSounds);
-						result.renamedFiles[soundFile.name] = targetName;
-						existingSounds.push(targetName);
+				if (hasConflict) {
+					switch (options.fileConflict) {
+						case 'skip':
+							result.skipped++;
+							continue;
+						case 'rename':
+							targetName = this.generateUniqueName(targetName, existingSounds);
+							break;
+						case 'overwrite':
+							break;
+					}
+				}
+
+				try {
+					const blob = await soundFile.file.async('blob');
+					const file = new File([blob], targetName, { type: this.getMimeType(targetName) });
+
+					const formData = new FormData();
+					formData.append('file', file);
+					context.Security.addToFormData(formData);
+
+					const uploadResult = await context.Backend.files.upload(workspaceId, formData);
+					const savedName = uploadResult.file || uploadResult.filename;
+					if (!uploadResult.success || !savedName) {
+						throw new Error(uploadResult.error || 'The sound file was not saved');
+					}
+					targetName = savedName;
+					if (savedName !== soundFile.name) {
+						result.renamedFiles[soundFile.name] = savedName;
 						result.renamed++;
-						break;
-					case 'overwrite':
-						break;
+					}
+					result.imported++;
+
+					if (!existingSounds.includes(targetName)) {
+						existingSounds.push(targetName);
+					}
+				} catch (error) {
+					throw new Error(`Could not import ${targetName}: ${error.message}`);
 				}
 			}
-
-			try {
-				const blob = await soundFile.file.async('blob');
-				const file = new File([blob], targetName, { type: this.getMimeType(targetName) });
-
-				const formData = new FormData();
-				formData.append('file', file);
-				context.Security.addToFormData(formData);
-
-				await context.Backend.files.upload(workspaceId, formData);
-				result.imported++;
-
-				if (!existingSounds.includes(targetName)) {
-					existingSounds.push(targetName);
-				}
-			} catch (error) {
-				console.warn(`Failed to import sound ${targetName}:`, error);
-			}
+		} finally {
+			progressModal.close();
 		}
 
-		progressModal.close();
 		return result;
 	},
 

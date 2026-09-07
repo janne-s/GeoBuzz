@@ -121,8 +121,19 @@ function parseSize($val) {
 	return $val;
 }
 
+function sanitizeWorkspaceId($workspaceId) {
+	if (!is_string($workspaceId) || strpos($workspaceId, "\0") !== false) {
+		jsonError("Invalid workspace", 400);
+	}
+	$id = basename($workspaceId);
+	if ($id === '' || $id === '.' || $id === '..') {
+		jsonError("Invalid workspace", 400);
+	}
+	return $id;
+}
+
 function getWorkspaceDir($workspaceId) {
-	return __DIR__ . "/../workspaces/" . basename($workspaceId);
+	return __DIR__ . "/../workspaces/" . sanitizeWorkspaceId($workspaceId);
 }
 
 function getWorkspaceSoundsDir($workspaceId) {
@@ -136,9 +147,9 @@ function getWorkspaceIdFromRequest($required = false, $default = 'default') {
 			echo json_encode(["success" => false, "error" => "Missing workspace parameter"]);
 			exit;
 		}
-		return basename($default);
+		return sanitizeWorkspaceId($default);
 	}
-	return basename($_GET['workspace']);
+	return sanitizeWorkspaceId($_GET['workspace']);
 }
 
 function getMaxUploadSize() {

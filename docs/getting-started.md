@@ -121,6 +121,10 @@ The exported ZIP includes all necessary player files (buzz.json, index.html, CSS
 
 Import a previously exported buzz package into your workspace.
 
+On a fresh page, accepting the import creates a workspace before uploading
+the sounds. If an upload fails, import stops with an error before replacing
+or merging elements. Files already uploaded remain in the workspace.
+
 1. Open the **Helper** menu (Wrench icon)
 2. Under **Buzz Operations**, click **Import Buzz ZIP**
 3. Select a `.zip` file containing a buzz package

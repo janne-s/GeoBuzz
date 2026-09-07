@@ -407,12 +407,12 @@ body {
 
 .gb-guided {
 	position: absolute;
-	top: 70px;
-	right: 15px;
+	top: 10px;
+	left: 54px;
 	z-index: 1000;
 	display: flex;
 	flex-direction: column;
-	align-items: flex-end;
+	align-items: flex-start;
 	gap: 8px;
 	pointer-events: auto;
 }

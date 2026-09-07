@@ -1,6 +1,21 @@
 # Changelog
 
+## 2026-09-07
+
+### Fixed
+
+- Importing a ZIP into a new session put audio files in the wrong workspace
+- Failed sound imports were reported as successful
+- Imported sound references ignored filenames assigned by the server
+- The exported player's guided listening button overlapped the elements panel
+
 ## 2026-09-06
+
+### Fixed
+
+- Invalid workspace IDs could access paths outside the workspace directory
+- Expired workspace exports broke new workspace creation during cleanup
+- Failed workspace creation sent later saves to a nonexistent default workspace
 
 ### Added
 
