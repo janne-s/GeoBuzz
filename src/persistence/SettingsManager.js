@@ -576,11 +576,14 @@ export class SettingsManager {
 		await Promise.all(restorePromises);
 
 		if (soundFilesToLoad.length > 0) {
-			Promise.all(
+			const failed = [];
+
+			await Promise.all(
 				soundFilesToLoad.map(({ sound, filename, isStream }) => {
 					if (isStream) {
 						return this.context.StreamManager.initializeStream(sound).catch(error => {
 							console.warn(`Failed to initialize stream:`, error);
+							failed.push(`${sound.label || 'Stream'} (stream)`);
 						});
 					}
 					return this.context.autoLoadSoundFile(sound, filename).then(() => {
@@ -589,9 +592,17 @@ export class SettingsManager {
 						}
 					}).catch(error => {
 						console.warn(`Failed to load sound file ${filename}:`, error);
+						failed.push(filename);
 					});
 				})
 			);
+
+			if (failed.length > 0) {
+				await ModalSystem.alert(
+					`${failed.length} sound file(s) could not be loaded:\n\n${failed.join('\n')}\n\nElements using them will stay silent until the files are available.`,
+					'Missing Sound Files'
+				);
+			}
 		}
 
 		this.context.Selectors.getSounds().forEach(sound => {

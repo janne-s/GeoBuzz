@@ -636,9 +636,9 @@ export class SequencerUIManager {
 		const onStateChange = () => updateUI();
 		sequencer.addEventListener('stateChange', onStateChange);
 
-		menu._onClose = () => {
-			sequencer.removeEventListener('stateChange', onStateChange);
-		};
+		if (menuData && menuData.menu === menu) {
+			menuData.onClose = () => sequencer.removeEventListener('stateChange', onStateChange);
+		}
 
 		updateUI();
 

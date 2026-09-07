@@ -16,6 +16,8 @@
 - ZIP import failed on operating system metadata files inside the sounds folder
 - ZIP import did not report sound files that were missing from the package
 - Uploading a sound before a workspace existed put the file in a workspace named null
+- Opening and closing the sequencer panel slowed the app down over a session
+- Sound files that failed to load on project open were not reported
 
 ## 2026-09-06
 
