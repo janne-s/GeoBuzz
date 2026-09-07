@@ -184,6 +184,8 @@ The main body of work took approximately five months of daily AI-assisted develo
 
 GeoBuzz aims to pioneer spatial music composition as a new creative genre — where geography, movement, and sound merge into location-aware musical experiences. We hope to grow a community of composers, developers, and sound artists exploring this space together.
 
+See created works at [geobuzz.app/gallery](https://www.geobuzz.app/gallery/)
+
 ---
 
 ## Support GeoBuzz
