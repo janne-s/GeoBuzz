@@ -23,6 +23,7 @@ class GeolocationManagerClass {
 		this._indicatorRotation = null;
 		this._fallbackApplied = false;
 		this._offeredGoToBuzzWithoutFix = false;
+		this._statusHideTimer = null;
 	}
 
 	setContext(context) {
@@ -46,6 +47,10 @@ class GeolocationManagerClass {
 			navigator.geolocation.clearWatch(this.watchId);
 
 			this.watchId = null;
+		}
+
+		if (this.status === CONSTANTS.GEOLOCATION_STATUS.SEARCHING) {
+			this.hideStatusMessage();
 		}
 	}
 
@@ -116,9 +121,7 @@ class GeolocationManagerClass {
 	}
 
 	setStatus(newStatus, message = null) {
-		const oldStatus = this.status;
 		this.status = newStatus;
-
 
 		this.updateMarkerAppearance();
 
@@ -128,7 +131,7 @@ class GeolocationManagerClass {
 			this.showDefaultStatusMessage(newStatus);
 		}
 
-		this.handleStatusTransition(oldStatus, newStatus);
+		this.handleStatusTransition(newStatus);
 	}
 
 	updateMarkerAppearance() {
@@ -167,28 +170,26 @@ class GeolocationManagerClass {
 	showStatusMessage(text, duration = CONSTANTS.STATUS_MEDIUM_MS) {
 		if (!this.statusElement) return;
 
-		this.statusElement.textContent = text;
-		this.statusElement.style.display = 'block';
+		clearTimeout(this._statusHideTimer);
+		this._statusHideTimer = null;
 
-		requestAnimationFrame(() => {
-			this.statusElement.style.opacity = '1';
-			this.statusElement.style.transform = 'translateX(-50%) translateY(0px)';
-		});
+		this.statusElement.textContent = text;
+		this.statusElement.style.opacity = '1';
+		this.statusElement.style.transform = 'translateX(-50%) translateY(0px)';
 
 		if (duration > 0) {
-			setTimeout(() => this.hideStatusMessage(), duration);
+			this._statusHideTimer = setTimeout(() => this.hideStatusMessage(), duration);
 		}
 	}
 
 	hideStatusMessage() {
 		if (!this.statusElement) return;
 
+		clearTimeout(this._statusHideTimer);
+		this._statusHideTimer = null;
+
 		this.statusElement.style.opacity = '0';
 		this.statusElement.style.transform = 'translateX(-50%) translateY(-10px)';
-
-		this.statusElement.addEventListener('transitionend', () => {
-			this.statusElement.style.display = 'none';
-		}, { once: true });
 	}
 
 	showDefaultStatusMessage(status) {
@@ -200,35 +201,25 @@ class GeolocationManagerClass {
 			[CONSTANTS.GEOLOCATION_STATUS.DISABLED]: 'Location access disabled'
 		};
 
+		const durations = {
+			[CONSTANTS.GEOLOCATION_STATUS.INITIAL]: CONSTANTS.STATUS_PERSISTENT_MS,
+			[CONSTANTS.GEOLOCATION_STATUS.SEARCHING]: CONSTANTS.STATUS_PERSISTENT_MS,
+			[CONSTANTS.GEOLOCATION_STATUS.ACTIVE]: CONSTANTS.STATUS_MEDIUM_MS
+		};
+
 		const message = messages[status] || 'Location status unknown';
-		const duration = status === CONSTANTS.GEOLOCATION_STATUS.ACTIVE ?
-			CONSTANTS.STATUS_MEDIUM_MS : CONSTANTS.STATUS_LONG_MS;
+		const duration = durations[status] ?? CONSTANTS.STATUS_LONG_MS;
 
 		this.showStatusMessage(message, duration);
 	}
 
-	handleStatusTransition(oldStatus, newStatus) {
+	handleStatusTransition(newStatus) {
 		if (newStatus === CONSTANTS.GEOLOCATION_STATUS.ACTIVE) {
 			this.onLocationAcquired();
 		}
 
 		if (newStatus === CONSTANTS.GEOLOCATION_STATUS.ERROR) {
 			this.onLocationError();
-		}
-
-		if (oldStatus === CONSTANTS.GEOLOCATION_STATUS.ERROR && newStatus === CONSTANTS.GEOLOCATION_STATUS.ACTIVE) {
-			this.onLocationRecovered();
-		}
-	}
-
-	onLocationRecovered() {
-		try {
-			if (this.followGPS && this.userMarker && this.context?.map) {
-				const userPos = this.userMarker.getLatLng();
-				this.context.map.setView(userPos, CONSTANTS.DEFAULT_USER_ZOOM);
-			}
-		} catch (error) {
-			console.warn('Error setting map view on location recovery:', error);
 		}
 	}
 
@@ -271,6 +262,8 @@ class GeolocationManagerClass {
 			navigator.geolocation.clearWatch(this.watchId);
 			this.watchId = null;
 		}
+		clearTimeout(this._statusHideTimer);
+		this._statusHideTimer = null;
 		if (this.statusElement) {
 			this.statusElement.remove();
 			this.statusElement = null;
@@ -295,7 +288,7 @@ class GeolocationManagerClass {
 		this.setStatus(CONSTANTS.GEOLOCATION_STATUS.SEARCHING);
 
 		navigator.geolocation.getCurrentPosition(
-			(pos) => this.handlePositionSuccess(pos),
+			(pos) => this.handlePositionUpdate(pos),
 			(error) => this.handlePositionError(error), {
 				enableHighAccuracy: true,
 				timeout: CONSTANTS.GEOLOCATION_TIMEOUT_MS,
@@ -312,14 +305,6 @@ class GeolocationManagerClass {
 			}
 		);
 
-	}
-
-	handlePositionSuccess(pos) {
-		this.setStatus(CONSTANTS.GEOLOCATION_STATUS.ACTIVE);
-		this.handlePositionUpdate(pos);
-		if (this.followGPS) {
-			this.context?.map.setView(this.userMarker.getLatLng(), CONSTANTS.DEFAULT_USER_ZOOM);
-		}
 	}
 
 	handlePositionUpdate(pos) {
@@ -341,6 +326,8 @@ class GeolocationManagerClass {
 
 		if (!this.userMarker) {
 			this.createUserMarker(filteredLatLng);
+		} else if (this.followGPS) {
+			this.userMarker.setLatLng(filteredLatLng);
 		}
 
 		if (this.status !== CONSTANTS.GEOLOCATION_STATUS.ACTIVE) {
@@ -358,8 +345,6 @@ class GeolocationManagerClass {
 		}
 
 		if (this.followGPS) {
-			this.userMarker.setLatLng(filteredLatLng);
-
 			const isDeviceOrientationActive = this.context?.DeviceOrientationManager?.getStatus().enabled || false;
 
 			if (pos.coords.heading !== null && !isNaN(pos.coords.heading) && !isDeviceOrientationActive) {

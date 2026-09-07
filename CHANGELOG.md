@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- The location search message disappeared long before the search finished
+- The map could stay at 0,0 after a location was found following a failed fix
 - Importing a ZIP into a new session put audio files in the wrong workspace
 - Failed sound imports were reported as successful
 - Imported sound references ignored filenames assigned by the server
