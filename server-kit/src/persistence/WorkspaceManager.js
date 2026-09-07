@@ -30,7 +30,7 @@ export class WorkspaceManager {
 			try {
 				const result = await Backend.workspace.validate(workspaceParam);
 
-				if (result.success) {
+				if (result.success && result.exists) {
 					this.context.AppState.workspace.id = workspaceParam;
 					this.context.AppState.workspace.isReady = true;
 

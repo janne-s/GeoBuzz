@@ -10,11 +10,15 @@ handleEndpoint(function($ctx) {
 		]);
 	}
 	
-	if (!ensureWorkspaceExists($ctx['workspace'])) {
-		jsonError("Failed to create workspace directory", 500);
+	if (!is_dir(getWorkspaceDir($ctx['workspace']))) {
+		jsonError("Workspace not found", 404);
 	}
 	
 	$targetDir = getWorkspaceSoundsDir($ctx['workspace']);
+	
+	if (!is_dir($targetDir) && !mkdir($targetDir, 0755, true)) {
+		jsonError("Failed to create sounds directory", 500);
+	}
 	
 	if (!isset($_FILES['file'])) {
 		jsonError("No file received");

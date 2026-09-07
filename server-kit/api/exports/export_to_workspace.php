@@ -23,7 +23,6 @@ handleEndpoint(function($ctx) {
 	$buzzName = preg_replace('/[^a-z0-9\-]/', '-', strtolower($buzzName));
 
 	$exportDir = getWorkspaceDir($ctx['workspace']) . "/exports/{$buzzName}";
-	$soundsDir = $exportDir . "/sounds";
 
 	if (file_exists($exportDir)) {
 		$counter = 1;
@@ -32,44 +31,72 @@ handleEndpoint(function($ctx) {
 		}
 		$buzzName = $buzzName . "-{$counter}";
 		$exportDir = getWorkspaceDir($ctx['workspace']) . "/exports/{$buzzName}";
-		$soundsDir = $exportDir . "/sounds";
+	}
+
+	$soundsDir = $exportDir . "/sounds";
+
+	if (!is_dir(getWorkspaceDir($ctx['workspace']))) {
+		jsonError("Workspace not found", 404);
 	}
 
 	if (!mkdir($exportDir, 0755, true)) {
 		jsonError("Failed to create export directory", 500);
 	}
 
+	$abortExport = function($message) use ($exportDir) {
+		deleteDirectoryTree($exportDir);
+		jsonError($message, 500);
+	};
+
 	if (!mkdir($soundsDir, 0755, true)) {
-		jsonError("Failed to create sounds directory", 500);
+		$abortExport("Failed to create sounds directory");
 	}
 
-	if (file_put_contents($exportDir . "/buzz.json", $buzzData) === false) {
-		jsonError("Failed to write buzz.json", 500);
-	}
+	$htaccessContent = <<<'HTACCESS'
+<FilesMatch "\.(php|php3|php4|php5|phtml|pl|py|jsp|asp|htm|shtml|sh|cgi)$">
+	Require all denied
+</FilesMatch>
+Require all granted
+HTACCESS;
 
-	if (file_put_contents($exportDir . "/index.html", $htmlContent) === false) {
-		jsonError("Failed to write index.html", 500);
-	}
+	$exportFiles = [
+		'.htaccess' => $htaccessContent,
+		'buzz.json' => $buzzData,
+		'index.html' => $htmlContent,
+		'player-styles.css' => $cssContent,
+		'README.txt' => $readmeContent
+	];
 
-	if (file_put_contents($exportDir . "/player-styles.css", $cssContent) === false) {
-		jsonError("Failed to write player-styles.css", 500);
-	}
-
-	if (file_put_contents($exportDir . "/README.txt", $readmeContent) === false) {
-		jsonError("Failed to write README.txt", 500);
+	foreach ($exportFiles as $name => $contents) {
+		if (!writeFileAtomically($exportDir . "/" . $name, $contents)) {
+			$abortExport("Failed to write {$name}");
+		}
 	}
 
 	$workspaceSoundsDir = getWorkspaceSoundsDir($ctx['workspace']);
+	$missingSounds = [];
+	$failedSounds = [];
+
 	foreach ($soundFiles as $soundFile) {
 		$soundFile = basename($soundFile);
 		$sourcePath = $workspaceSoundsDir . $soundFile;
-		$destPath = $soundsDir . "/" . $soundFile;
 
-		if (file_exists($sourcePath)) {
-			if (!copy($sourcePath, $destPath)) {
-				error_log("Failed to copy sound file: {$soundFile}");
-			}
+		if (!file_exists($sourcePath)) {
+			$missingSounds[] = $soundFile;
+		} elseif (!@copy($sourcePath, $soundsDir . "/" . $soundFile)) {
+			$failedSounds[] = $soundFile;
 		}
+	}
+
+	if ($missingSounds || $failedSounds) {
+		$detail = [];
+		if ($missingSounds) {
+			$detail[] = "not found in this workspace: " . implode(', ', $missingSounds);
+		}
+		if ($failedSounds) {
+			$detail[] = "could not be copied: " . implode(', ', $failedSounds);
+		}
+		$abortExport("Export cancelled and nothing was kept. Sounds " . implode('; ', $detail) . ".");
 	}
 
 	$protocol = 'https';
@@ -84,14 +111,6 @@ handleEndpoint(function($ctx) {
 	$host = $_SERVER['HTTP_HOST'];
 	$appRoot = rtrim(dirname(dirname(dirname($_SERVER['SCRIPT_NAME']))), '/');
 	$buzzUrl = $protocol . '://' . $host . $appRoot . '/workspaces/' . $ctx['workspace'] . '/exports/' . $buzzName . '/';
-
-	$htaccessContent = <<<'HTACCESS'
-<FilesMatch "\.(php|php3|php4|php5|phtml|pl|py|jsp|asp|htm|shtml|sh|cgi)$">
-	Require all denied
-</FilesMatch>
-Require all granted
-HTACCESS;
-	file_put_contents($exportDir . "/.htaccess", $htaccessContent);
 
 	jsonSuccess([
 		'buzzUrl' => $buzzUrl,

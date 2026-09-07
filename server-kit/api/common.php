@@ -63,6 +63,18 @@ function writeFileAtomically($path, $contents) {
 	return true;
 }
 
+function deleteDirectoryTree($dir) {
+	$items = @scandir($dir);
+	if ($items === false) return false;
+	foreach ($items as $name) {
+		if ($name === '.' || $name === '..') continue;
+		$path = $dir . '/' . $name;
+		$removed = is_dir($path) && !is_link($path) ? deleteDirectoryTree($path) : @unlink($path);
+		if (!$removed) return false;
+	}
+	return @rmdir($dir);
+}
+
 function generateCSRFToken() {
 	if (empty($_SESSION['csrf_token'])) {
 		$_SESSION['csrf_token'] = bin2hex(random_bytes(32));

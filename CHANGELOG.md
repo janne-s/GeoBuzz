@@ -10,6 +10,12 @@
 - Failed sound imports were reported as successful
 - Imported sound references ignored filenames assigned by the server
 - The exported player's guided listening button overlapped the elements panel
+- Export to Workspace reported success when sound files were missing
+- A failed export left an incomplete package in the workspace
+- Opening a link to a workspace that no longer exists recreated it as empty
+- ZIP import failed on operating system metadata files inside the sounds folder
+- ZIP import did not report sound files that were missing from the package
+- Uploading a sound before a workspace existed put the file in a workspace named null
 
 ## 2026-09-06
 

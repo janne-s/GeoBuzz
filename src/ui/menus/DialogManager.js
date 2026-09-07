@@ -148,6 +148,8 @@ export function showFileManagerDialog(soundObj = null, onFileSelected = null) {
 		`;
 
 		try {
+			await WorkspaceManager.ensureWorkspace();
+
 			const result = await Backend.files.uploadWithProgress(
 				Selectors.getWorkspaceId(),
 				file,

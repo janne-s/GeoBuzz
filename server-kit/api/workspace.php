@@ -12,9 +12,7 @@ handleEndpoint(function($ctx) {
 			ensureWorkspaceExists($id) ? jsonSuccess(["workspaceId" => $id]) : jsonError("Failed to create", 500);
 		} elseif ($action === 'validate' && isset($_GET['id'])) {
 			$id = sanitizeWorkspaceId($_GET['id']);
-			$existed = is_dir(getWorkspaceDir($id));
-			!$existed && ensureWorkspaceExists($id);
-			jsonSuccess(["exists" => $existed, "created" => !$existed]);
+			jsonSuccess(["exists" => is_dir(getWorkspaceDir($id))]);
 		} elseif ($action === 'load' && isset($_GET['id'])) {
 			$file = getWorkspaceDir($_GET['id']) . "/settings.json";
 			if (file_exists($file)) {

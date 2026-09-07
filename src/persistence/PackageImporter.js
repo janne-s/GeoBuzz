@@ -1,4 +1,5 @@
 import { SettingsManager } from './SettingsManager.js';
+import { collectSoundReferences, toSoundBaseName } from './soundReferences.js';
 import { ModalSystem } from '../ui/ModalSystem.js';
 import { LocalBackend } from '../api/LocalBackend.js';
 
@@ -6,6 +7,13 @@ let context = null;
 
 export function setPackageImporterContext(appContext) {
 	context = appContext;
+}
+
+const OS_METADATA_FILENAMES = ['thumbs.db', 'desktop.ini'];
+
+function isOperatingSystemMetadata(entryPath) {
+	const name = entryPath.split('/').pop();
+	return name.startsWith('.') || OS_METADATA_FILENAMES.includes(name.toLowerCase());
 }
 
 export const PackageImporter = {
@@ -27,7 +35,7 @@ export const PackageImporter = {
 		const soundsFolder = zip.folder('sounds');
 		if (soundsFolder) {
 			soundsFolder.forEach((relativePath, file) => {
-				if (!file.dir) {
+				if (!file.dir && !isOperatingSystemMetadata(relativePath)) {
 					soundFiles.push({
 						name: relativePath,
 						file: file
@@ -38,6 +46,10 @@ export const PackageImporter = {
 
 		const options = await this.showImportOptionsModal(buzzData, soundFiles);
 		if (!options) {
+			return null;
+		}
+
+		if (options.importMode === 'full' && !await this.confirmMissingSounds(buzzData, soundFiles)) {
 			return null;
 		}
 
@@ -90,6 +102,24 @@ export const PackageImporter = {
 			hasExistingElements: existingCount > 0,
 			hasFileConflicts: hasConflicts
 		});
+	},
+
+	async confirmMissingSounds(buzzData, soundFiles) {
+		const packaged = new Set(soundFiles.map(sf => toSoundBaseName(sf.name)));
+		const existing = new Set(await this.getExistingSoundFileNames());
+
+		const missing = collectSoundReferences(buzzData)
+			.map(toSoundBaseName)
+			.filter(name => !packaged.has(name) && !existing.has(name));
+
+		if (missing.length === 0) {
+			return true;
+		}
+
+		return ModalSystem.confirm(
+			`This package refers to ${missing.length} sound file(s) it does not contain:\n\n${missing.join('\n')}\n\nImport anyway? Elements using them will stay silent until you upload the files.`,
+			'Missing Sound Files'
+		);
 	},
 
 	async getExistingSoundFileNames() {
@@ -203,7 +233,7 @@ export const PackageImporter = {
 	updateBuzzDataFilenames(buzzData, renamedFiles) {
 		const updateFilename = (filename) => {
 			if (!filename) return filename;
-			const baseName = filename.replace(/^sounds\//, '');
+			const baseName = toSoundBaseName(filename);
 			if (renamedFiles[baseName]) {
 				return filename.startsWith('sounds/')
 					? `sounds/${renamedFiles[baseName]}`
