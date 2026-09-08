@@ -21,6 +21,7 @@
 ### Added
 
 - Standalone warns when the browser may clear its storage, or when storage is running low
+- Gallery cover images open full size when clicked
 
 ## 2026-09-07
 
