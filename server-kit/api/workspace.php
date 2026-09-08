@@ -11,10 +11,13 @@ handleEndpoint(function($ctx) {
 			$id = bin2hex(random_bytes(6));
 			ensureWorkspaceExists($id) ? jsonSuccess(["workspaceId" => $id]) : jsonError("Failed to create", 500);
 		} elseif ($action === 'validate' && isset($_GET['id'])) {
-			$id = sanitizeWorkspaceId($_GET['id']);
-			jsonSuccess(["exists" => is_dir(getWorkspaceDir($id))]);
+			$dir = getWorkspaceDir($_GET['id']);
+			markWorkspaceUsed($dir);
+			jsonSuccess(["exists" => is_dir($dir)]);
 		} elseif ($action === 'load' && isset($_GET['id'])) {
-			$file = getWorkspaceDir($_GET['id']) . "/settings.json";
+			$dir = getWorkspaceDir($_GET['id']);
+			markWorkspaceUsed($dir);
+			$file = $dir . "/settings.json";
 			if (file_exists($file)) {
 				header('Content-Type: application/json');
 				exit(file_get_contents($file));

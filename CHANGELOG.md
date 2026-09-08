@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- Workspaces could be deleted after 7 days even when opened regularly
+- A link to a workspace that does not exist silently created a new one instead of reporting it
+- Text shown in dialogs was inserted as markup
 - Control path corridors had a gap at every corner
 - Line paths and line elements were narrower east to west than north to south
 - Editing a modulation patch had no effect until the listener moved

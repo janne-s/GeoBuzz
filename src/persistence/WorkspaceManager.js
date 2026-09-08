@@ -33,11 +33,11 @@ export class WorkspaceManager {
 
 					await this.loadWorkspaceSettings();
 				} else {
-					await this.createNewWorkspace();
+					await this.reportUnusableWorkspace(workspaceParam);
 				}
 			} catch (error) {
 				console.error('Error validating workspace:', error);
-				await this.createNewWorkspace();
+				await this.reportUnusableWorkspace(workspaceParam);
 			}
 		}
 
@@ -48,6 +48,18 @@ export class WorkspaceManager {
 		this.updateMenuCounts();
 
 		this.context.AppState.workspace.isInitializing = false;
+	}
+
+	static async reportUnusableWorkspace(workspaceParam) {
+		await ModalSystem.alert(
+			`This link points to a workspace that could not be opened: ${workspaceParam}\n\n` +
+			`The link may be incomplete, or the workspace may belong to another browser \u2014 standalone ` +
+			`workspaces are stored in this browser only. Nothing has been created. Check the link before you ` +
+			`start working \u2014 a new, empty workspace is created as soon as you add something, and this ` +
+			`address is replaced then.`,
+			'Workspace Not Found',
+			{ priority: true }
+		);
 	}
 
 	static async ensureWorkspace() {

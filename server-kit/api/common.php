@@ -152,6 +152,12 @@ function getWorkspaceSoundsDir($workspaceId) {
 	return getWorkspaceDir($workspaceId) . "/sounds/";
 }
 
+function markWorkspaceUsed($workspaceDir) {
+	if (is_dir($workspaceDir)) {
+		@touch($workspaceDir);
+	}
+}
+
 function getWorkspaceIdFromRequest($required = false, $default = 'default') {
 	if (!isset($_GET['workspace']) || empty($_GET['workspace'])) {
 		if ($required) {

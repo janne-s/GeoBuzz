@@ -1,3 +1,10 @@
+const escapeHtml = (value) => String(value ?? '')
+	.replace(/&/g, '&amp;')
+	.replace(/</g, '&lt;')
+	.replace(/>/g, '&gt;')
+	.replace(/"/g, '&quot;')
+	.replace(/'/g, '&#39;');
+
 export const ModalSystem = {
 	_isTopModal(modal) {
 		const myZ = parseInt(getComputedStyle(modal).zIndex) || 0;
@@ -18,17 +25,17 @@ export const ModalSystem = {
 
 		modal.innerHTML = `
 			<div class="modal-header">
-				<h3>${title}</h3>
+				<h3>${escapeHtml(title)}</h3>
 			</div>
 			<div class="modal-body">
-				<p>${message}</p>
-				${input ? `<input type="text" class="modal-input" value="${defaultValue}" placeholder="Enter value">` : ''}
+				<p>${escapeHtml(message)}</p>
+				${input ? `<input type="text" class="modal-input" value="${escapeHtml(defaultValue)}" placeholder="Enter value">` : ''}
 			</div>
 			<div class="modal-footer">
 				${buttons.map(btn => `
 					<button class="modal-btn ${btn.primary ? 'btn-primary' : 'btn-secondary'}"
-							data-result="${btn.result}">
-						${btn.text}
+							data-result="${escapeHtml(btn.result)}">
+						${escapeHtml(btn.text)}
 					</button>
 				`).join('')}
 			</div>
@@ -116,17 +123,17 @@ export const ModalSystem = {
 		const modal = document.createElement('div');
 		modal.className = priority ? 'modal-dialog modal-priority' : 'modal-dialog';
 
-		const paragraphs = message.split('\n\n').map(p => `<p>${p}</p>`).join('');
+		const paragraphs = message.split('\n\n').map(p => `<p>${escapeHtml(p)}</p>`).join('');
 
 		modal.innerHTML = `
 			<div class="modal-header">
-				<h3>${title}</h3>
+				<h3>${escapeHtml(title)}</h3>
 			</div>
 			<div class="modal-body">
 				${paragraphs}
 				<label class="checkbox-label">
 					<input type="checkbox" class="modal-checkbox-input">
-					${checkboxLabel}
+					${escapeHtml(checkboxLabel)}
 				</label>
 			</div>
 			<div class="modal-footer">
