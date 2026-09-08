@@ -7,6 +7,7 @@ import { SYNTH_REGISTRY } from './SynthRegistry.js';
 import { Geometry } from '../geospatial/Geometry.js';
 import { calcGain } from './audioUtils.js';
 import { AppState } from '../state/StateManager.js';
+import { Selectors } from '../state/selectors.js';
 import { waitForNextFrame } from '../utils/async.js';
 import { isGranularMode } from '../utils/typeChecks.js';
 import { mapValue } from '../utils/math.js';
@@ -18,7 +19,23 @@ export function setContext(ctx) {
 	context = ctx;
 }
 
+export function detachSoundFromSequencers(persistentId) {
+	if (!persistentId) return;
+
+	Selectors.getSequencers().forEach(sequencer => {
+		let detached = false;
+		sequencer.tracks.forEach(track => {
+			if (track.instrumentType !== 'sound' || track.instrumentId !== persistentId) return;
+			sequencer.releaseTrackNotes(track);
+			track.instrumentId = null;
+			detached = true;
+		});
+		if (detached) sequencer.dispatchEvent('stateChange');
+	});
+}
+
 export function destroySound(obj) {
+	detachSoundFromSequencers(obj.persistentId);
 	AudioNodeManager.stopPlayback(obj);
 	if (obj.type === "StreamPlayer") {
 		context.StreamManager.cleanupStream(obj);

@@ -14,6 +14,8 @@
 - X and Y path modulation flipped instead of ramping when the path was a straight line
 - Line path distance modulation and silencing ignored the path's own tolerance
 - Moving a control path by its label did not change the sound until the listener moved
+- Deleting a sound left sequencer tracks pointing at the deleted sound
+- Switching the sequencer scene left notes from the previous scene sounding
 - Running out of browser storage in standalone failed saves and uploads without explanation
 
 ### Added

@@ -3,7 +3,7 @@ import { Selectors } from '../state/selectors.js';
 import { AppState } from '../state/StateManager.js';
 import { PolyphonyManager } from './AudioNodeManager.js';
 import { initializeSynthParameters } from './SynthRegistry.js';
-import { setSequencerControl } from './SoundCreation.js';
+import { setSequencerControl, releaseSequencerControl } from './SoundCreation.js';
 import { DEFAULT_LFO_STRUCTURE } from '../../config/defaults.js';
 import { deepClone } from '../utils/math.js';
 import { generateLFOWaveform } from '../../config/parameterRegistry.js';
@@ -1231,6 +1231,30 @@ export class DistanceSequencer {
 		markRelease(soundObj.params.release || 0.1);
 	}
 
+	_releaseNotesNotContinuing(track) {
+		const activeNotes = this._activeNotes.get(track.id);
+		if (!activeNotes || activeNotes.size === 0) return;
+
+		const step = track.steps?.[track.currentStep];
+		const continuing = new Set();
+		activeNotes.forEach(note => {
+			if (step?.notes?.includes(note) || step?.sustains?.includes(note)) continuing.add(note);
+		});
+
+		if (continuing.size === activeNotes.size) return;
+
+		activeNotes.forEach(note => {
+			if (!continuing.has(note)) this._triggerRelease(track, note, continuing.size > 0);
+		});
+
+		if (continuing.size === 0) {
+			this._activeNotes.delete(track.id);
+			this._scheduleTrackBypass(track);
+		} else {
+			this._activeNotes.set(track.id, continuing);
+		}
+	}
+
 	_releaseAllNotes() {
 		this.tracks.forEach(track => {
 			track._pendingSteps = null;
@@ -1457,20 +1481,8 @@ export class DistanceSequencer {
 		}
 		this._tracksMap.delete(trackId);
 
-		if (track.instrumentType === 'sound' && track.instrumentId) {
-			const sound = AppState.getSoundByPersistentId(track.instrumentId);
-			if (sound) {
-				const stillControlled = Selectors.getSequencers().some(seq =>
-					seq.tracks.some(t =>
-						t.instrumentType === 'sound' &&
-						t.instrumentId === track.instrumentId &&
-						t.id !== trackId
-					)
-				);
-				if (!stillControlled) {
-					setSequencerControl(sound, false);
-				}
-			}
+		if (track.instrumentType === 'sound') {
+			releaseSequencerControl(track.instrumentId, { exceptTrackId: trackId });
 		}
 	}
 
@@ -1589,6 +1601,7 @@ export class DistanceSequencer {
 		const activeSceneId = this.getActiveSceneId();
 		this.tracks.forEach(track => {
 			track.steps = track.sceneSteps[activeSceneId];
+			this._releaseNotesNotContinuing(track);
 		});
 
 		this.dispatchEvent('stateChange');
@@ -1600,6 +1613,7 @@ export class DistanceSequencer {
 		const activeSceneId = this.getActiveSceneId();
 		this.tracks.forEach(track => {
 			track.steps = track.sceneSteps[activeSceneId];
+			this._releaseNotesNotContinuing(track);
 		});
 		this.dispatchEvent('stateChange');
 	}

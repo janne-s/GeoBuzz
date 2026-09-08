@@ -211,6 +211,25 @@ function generateUUID() {
 	return `sound_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 }
 
+export function isSoundSequenced(persistentId, { exceptTrackId = null, exceptSequencerId = null } = {}) {
+	if (!persistentId) return false;
+
+	return Selectors.getSequencers().some(sequencer => {
+		if (exceptSequencerId && sequencer.id === exceptSequencerId) return false;
+		return sequencer.tracks.some(track =>
+			track.instrumentType === 'sound' &&
+			track.instrumentId === persistentId &&
+			track.id !== exceptTrackId
+		);
+	});
+}
+
+export function releaseSequencerControl(persistentId, options = {}) {
+	if (!persistentId || isSoundSequenced(persistentId, options)) return;
+	const sound = AppState.getSoundByPersistentId(persistentId);
+	if (sound) setSequencerControl(sound, false);
+}
+
 export function setSequencerControl(sound, controlled) {
 	if (!sound) return;
 

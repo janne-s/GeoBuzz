@@ -5,7 +5,7 @@ import { SYNTH_REGISTRY } from '../core/audio/SynthRegistry.js';
 import { initializeSynthParameters } from '../core/audio/SynthRegistry.js';
 import { getUserMovementSpeed } from '../core/audio/AudioEngine.js';
 import { destroySound } from '../core/audio/SoundLifecycle.js';
-import { setSequencerControl } from '../core/audio/SoundCreation.js';
+import { setSequencerControl, releaseSequencerControl } from '../core/audio/SoundCreation.js';
 import { DistanceSequencer } from '../core/audio/DistanceSequencer.js';
 import { createElement, createButton, createSelect, createDualRangeSlider, makeValueEditable } from './domHelpers.js';
 import { ModalSystem } from './ModalSystem.js';
@@ -650,20 +650,8 @@ export class SequencerUIManager {
 		const deleteBtn = createButton('Delete Sequencer', async () => {
 			if (await ModalSystem.confirm('Delete this sequencer?', 'Delete Sequencer')) {
 				sequencer.tracks.forEach(track => {
-					if (track.instrumentType === 'sound' && track.instrumentId) {
-						const sound = AppState.getSoundByPersistentId(track.instrumentId);
-						if (sound) {
-							const stillControlled = Selectors.getSequencers().some(seq =>
-								seq.id !== sequencer.id &&
-								seq.tracks.some(t =>
-									t.instrumentType === 'sound' &&
-									t.instrumentId === track.instrumentId
-								)
-							);
-							if (!stillControlled) {
-								setSequencerControl(sound, false);
-							}
-						}
+					if (track.instrumentType === 'sound') {
+						releaseSequencerControl(track.instrumentId, { exceptSequencerId: sequencer.id });
 					}
 				});
 
@@ -1327,20 +1315,8 @@ export class SequencerUIManager {
 				track.instrumentType = e.target.value;
 				track.instrumentId = null;
 
-				if (oldInstrumentType === 'sound' && oldInstrumentId) {
-					const oldSound = AppState.getSoundByPersistentId(oldInstrumentId);
-					if (oldSound) {
-						const stillControlled = Selectors.getSequencers().some(seq =>
-							seq.tracks.some(t =>
-								t.instrumentType === 'sound' &&
-								t.instrumentId === oldInstrumentId &&
-								t.id !== track.id
-							)
-						);
-						if (!stillControlled) {
-							setSequencerControl(oldSound, false);
-						}
-					}
+				if (oldInstrumentType === 'sound') {
+					releaseSequencerControl(oldInstrumentId, { exceptTrackId: track.id });
 				}
 
 				this.refreshTracksUI(container, sequencer);
@@ -1404,20 +1380,8 @@ export class SequencerUIManager {
 					const oldSoundId = track.instrumentId;
 					const newSoundId = e.target.value === 'none' ? null : e.target.value;
 
-					if (oldSoundId && oldSoundId !== newSoundId) {
-						const oldSound = AppState.getSoundByPersistentId(oldSoundId);
-						if (oldSound) {
-							const stillControlled = Selectors.getSequencers().some(seq =>
-								seq.tracks.some(t =>
-									t.instrumentType === 'sound' &&
-									t.instrumentId === oldSoundId &&
-									t.id !== track.id
-								)
-							);
-							if (!stillControlled) {
-								setSequencerControl(oldSound, false);
-							}
-						}
+					if (oldSoundId !== newSoundId) {
+						releaseSequencerControl(oldSoundId, { exceptTrackId: track.id });
 					}
 
 					if (newSoundId) {
