@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-08
+
+### Fixed
+
+- Control path corridors had a gap at every corner
+- Line paths and line elements were narrower east to west than north to south
+- Editing a modulation patch had no effect until the listener moved
+- Missing sound files were not reported for sequencer tracks or grid samplers
+- X and Y path modulation flipped instead of ramping when the path was a straight line
+- Line path distance modulation and silencing ignored the path's own tolerance
+- Moving a control path by its label did not change the sound until the listener moved
+
 ## 2026-09-07
 
 ### Fixed
@@ -18,13 +30,6 @@
 - Uploading a sound before a workspace existed put the file in a workspace named null
 - Opening and closing the sequencer panel slowed the app down over a session
 - Sound files that failed to load on project open were not reported
-- Control path corridors had a gap at every corner
-- Line paths and line elements were narrower east to west than north to south
-- Editing a modulation patch had no effect until the listener moved
-- Missing sound files were not reported for sequencer tracks or grid samplers
-- X and Y path modulation flipped instead of ramping when the path was a straight line
-- Line path distance modulation and silencing ignored the path's own tolerance
-- Moving a control path by its label did not change the sound until the listener moved
 
 ## 2026-09-06
 
