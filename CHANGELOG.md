@@ -14,6 +14,11 @@
 - X and Y path modulation flipped instead of ramping when the path was a straight line
 - Line path distance modulation and silencing ignored the path's own tolerance
 - Moving a control path by its label did not change the sound until the listener moved
+- Running out of browser storage in standalone failed saves and uploads without explanation
+
+### Added
+
+- Standalone warns when the browser may clear its storage, or when storage is running low
 
 ## 2026-09-07
 

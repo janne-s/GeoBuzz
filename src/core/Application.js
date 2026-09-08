@@ -2638,10 +2638,14 @@ AppState.subscribe((action) => {
 
 		case 'WORKSPACE_SAVE_FAILED': {
 			const { error, attempts } = action.payload;
-			ModalSystem.alert(
-				`Your work could not be saved to the workspace (${attempts} attempts).\n\n${error?.message || error}\n\nExport the Buzz to a file before closing this page.`,
-				'Workspace Not Saved'
-			);
+			if (error?.name === 'StorageFullError') {
+				ModalSystem.alert(error.message, 'Browser Storage Full');
+			} else {
+				ModalSystem.alert(
+					`Your work could not be saved to the workspace (${attempts} attempts).\n\n${error?.message || error}\n\nExport the Buzz to a file before closing this page.`,
+					'Workspace Not Saved'
+				);
+			}
 			break;
 		}
 

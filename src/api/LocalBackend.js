@@ -1,3 +1,5 @@
+import { formatBytes, isQuotaError, quotaError } from './LocalStorageHealth.js';
+
 const DB_NAME = 'geobuzz';
 const DB_VERSION = 1;
 const STORES = {
@@ -29,6 +31,7 @@ function tx(storeName, mode = 'readonly') {
 		return { store, complete: () => new Promise((resolve, reject) => {
 			transaction.oncomplete = () => resolve();
 			transaction.onerror = () => reject(transaction.error);
+			transaction.onabort = () => reject(transaction.error || new DOMException('Transaction aborted', 'AbortError'));
 		})};
 	});
 }
@@ -73,9 +76,14 @@ export const LocalBackend = {
 		},
 
 		async save(id, settings) {
-			const { store, complete } = await tx(STORES.workspaces, 'readwrite');
-			store.put(settings, id);
-			await complete();
+			try {
+				const { store, complete } = await tx(STORES.workspaces, 'readwrite');
+				store.put(settings, id);
+				await complete();
+			} catch (error) {
+				if (isQuotaError(error)) throw quotaError('save this Buzz');
+				throw error;
+			}
 			return { success: true };
 		}
 	},
@@ -91,9 +99,14 @@ export const LocalBackend = {
 			}
 			const blob = new Blob([await file.arrayBuffer()], { type: file.type });
 			const key = fileKey(workspaceId, file.name);
-			const { store, complete } = await tx(STORES.files, 'readwrite');
-			store.put({ blob, name: file.name, size: file.size, type: file.type }, key);
-			await complete();
+			try {
+				const { store, complete } = await tx(STORES.files, 'readwrite');
+				store.put({ blob, name: file.name, size: file.size, type: file.type }, key);
+				await complete();
+			} catch (error) {
+				if (isQuotaError(error)) throw quotaError(`store ${file.name} (${formatBytes(file.size)})`);
+				throw error;
+			}
 			blobUrlCache.set(key, URL.createObjectURL(blob));
 			return { success: true, filename: file.name };
 		},
@@ -190,10 +203,3 @@ export const LocalSecurity = {
 	addToFormData() {},
 	addToBody(body) { return body; }
 };
-
-function formatBytes(bytes) {
-	if (bytes === 0) return '0 B';
-	const units = ['B', 'KB', 'MB', 'GB'];
-	const i = Math.floor(Math.log(bytes) / Math.log(1024));
-	return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + units[i];
-}

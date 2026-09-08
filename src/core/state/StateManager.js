@@ -137,6 +137,7 @@ export class StateManager {
 
 		this._saveWorkspaceCallback = null;
 		this._failedSaves = 0;
+		this._storageFullReported = false;
 	}
 
 	setSaveCallback(callback) {
@@ -192,16 +193,22 @@ export class StateManager {
 				try {
 					await this._saveWorkspaceCallback();
 					this._failedSaves = 0;
+					this._storageFullReported = false;
 				} catch (error) {
 					this._failedSaves += 1;
 					console.error('Workspace save failed:', error);
 
-					if (this._failedSaves === 2) {
-						this.dispatch({
-							type: 'WORKSPACE_SAVE_FAILED',
-							payload: { error, attempts: this._failedSaves }
-						});
+					if (error?.name === 'StorageFullError') {
+						if (this._storageFullReported) return;
+						this._storageFullReported = true;
+					} else if (this._failedSaves !== 2) {
+						return;
 					}
+
+					this.dispatch({
+						type: 'WORKSPACE_SAVE_FAILED',
+						payload: { error, attempts: this._failedSaves }
+					});
 				}
 			}, 1000);
 		};

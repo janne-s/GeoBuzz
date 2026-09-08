@@ -1,4 +1,13 @@
 import { LocalBackend } from '../api/LocalBackend.js';
+import {
+	formatBytes,
+	getStorageEstimate,
+	markPersistenceWarningShown,
+	persistenceWarningShown,
+	requestPersistence,
+	storageLevel,
+	STORAGE_LEVEL_RANK
+} from '../api/LocalStorageHealth.js';
 import { SettingsManager } from './SettingsManager.js';
 import { StorageAdapter } from './StorageAdapter.js';
 import { ModalSystem } from '../ui/ModalSystem.js';
@@ -7,6 +16,8 @@ import { GeolocationManager } from '../core/geospatial/GeolocationManager.js';
 
 export class WorkspaceManager {
 	static context = null;
+	static persistenceRequested = false;
+	static warnedStorageRank = 0;
 
 	static setContext(context) {
 		this.context = context;
@@ -62,7 +73,57 @@ export class WorkspaceManager {
 		);
 	}
 
+	static requestPersistentStorage() {
+		if (this.persistenceRequested) return;
+		this.persistenceRequested = true;
+
+		requestPersistence().then(({ supported, persisted }) => {
+			if (persisted || persistenceWarningShown()) return;
+			markPersistenceWarningShown();
+
+			const reason = supported
+				? 'This browser declined to mark GeoBuzz storage as persistent.'
+				: 'This browser cannot mark GeoBuzz storage as persistent.';
+
+			ModalSystem.alert(
+				`${reason}\n\nStandalone GeoBuzz keeps the whole Buzz — settings and every sound file — in ` +
+				`this browser only. A browser may clear that storage on its own: Safari deletes it after seven ` +
+				`days without a visit, and any browser may clear it when disk space runs low. There is no ` +
+				`server copy and no warning when it happens.\n\nExport the Buzz to a file whenever you finish ` +
+				`working. That file is the only backup.`,
+				'Storage May Be Cleared'
+			);
+		}).catch(error => console.error('Persistence request failed:', error));
+	}
+
+	static async checkStorageHealth() {
+		const estimate = await getStorageEstimate();
+		const level = storageLevel(estimate);
+		const rank = STORAGE_LEVEL_RANK[level];
+
+		if (rank === 0) {
+			this.warnedStorageRank = 0;
+			return;
+		}
+		if (rank <= this.warnedStorageRank) return;
+		this.warnedStorageRank = rank;
+
+		const used = `${formatBytes(estimate.usage)} of ${formatBytes(estimate.quota)} used`;
+
+		await ModalSystem.alert(
+			level === 'critical'
+				? `Browser storage for GeoBuzz is almost full (${used}). The next save or sound upload will ` +
+					`probably fail.\n\nExport the Buzz to a file now, then delete sound files you no longer need ` +
+					`from Manage Sound Files.`
+				: `Browser storage for GeoBuzz is running low (${used}, ${formatBytes(estimate.remaining)} ` +
+					`left).\n\nExport the Buzz to a file as a backup, and delete sound files you no longer need ` +
+					`from Manage Sound Files.`,
+			'Storage Running Low'
+		);
+	}
+
 	static async ensureWorkspace() {
+		this.requestPersistentStorage();
 		if (this.context.AppState.workspace.id) return true;
 		if (!await this.createNewWorkspace()) {
 			throw new Error('Workspace could not be created or saved. Try again.');
@@ -184,6 +245,7 @@ export class WorkspaceManager {
 		if (!this.context.Selectors.getWorkspaceId()) return;
 		const settings = SettingsManager.buildSettings();
 		await StorageAdapter.saveToWorkspace(this.context.Selectors.getWorkspaceId(), settings);
+		this.checkStorageHealth().catch(error => console.error('Storage check failed:', error));
 	}
 
 	static async purgeDeletedFileFromSounds(deletedFilename) {

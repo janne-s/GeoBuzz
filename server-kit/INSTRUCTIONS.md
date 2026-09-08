@@ -115,4 +115,18 @@ Open `http://localhost:8000` in your browser.
 
 ### Removed from standalone
 
-- `src/api/LocalBackend.js` and `src/api/SoundUrlResolver.js` are unused but harmless
+- `src/api/LocalBackend.js`, `src/api/LocalStorageHealth.js` and `src/api/SoundUrlResolver.js` are unused but harmless
+
+## What geobuzz.app adds on top of this kit
+
+The live deployment is this kit plus a few deliberate operational additions.
+They are not bugs or drift, and the kit is complete without them:
+
+- `api/cleanup_workspaces.php`, an expiry sweep that deletes workspaces
+  inactive for more than 7 days. `api/common.php` calls `cleanupWorkspaces()`
+  from `ensureWorkspaceExists()` before creating a new workspace directory,
+  so the sweep runs without a cron job. The kit's `common.php` has no such
+  call.
+- A Google Analytics tag, a canonical URL, and Info-menu links to the gallery
+  and the diagnostics page in `index.html`.
+- Its own `message.json` welcome copy, which announces the 7-day lifetime.
