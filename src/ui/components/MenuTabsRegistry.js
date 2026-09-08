@@ -1350,6 +1350,7 @@ export const MenuTabs = {
 							depth: 50,
 							invert: false
 						});
+						AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 						container.innerHTML = '';
 						MenuTabs.patches.render(obj, container);
 					}, 'btn-add');
@@ -1383,6 +1384,7 @@ export const MenuTabs = {
 			}));
 			const pathSelect = createSelect(pathOptions, patch.pathId, (e) => {
 				patch.pathId = e.target.value;
+				AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 			});
 			pathSelect.className = 'patch-select';
 			patchDiv.appendChild(pathSelect);
@@ -1395,6 +1397,7 @@ export const MenuTabs = {
 			];
 			const outputSelect = createSelect(outputOptions, patch.output, (e) => {
 				patch.output = e.target.value;
+				AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 			});
 			outputSelect.className = 'patch-select';
 			patchDiv.appendChild(outputSelect);
@@ -1406,6 +1409,7 @@ export const MenuTabs = {
 			}));
 			const paramSelect = createSelect(paramOptions, patch.parameter, (e) => {
 				patch.parameter = e.target.value;
+				AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 			});
 			paramSelect.className = 'patch-select';
 			patchDiv.appendChild(paramSelect);
@@ -1424,6 +1428,7 @@ export const MenuTabs = {
 			depthSlider.oninput = () => {
 				patch.depth = parseFloat(depthSlider.value);
 				depthDisplay.textContent = patch.depth + '%';
+				AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 			};
 			depthGroup.appendChild(depthSlider);
 			depthGroup.appendChild(depthDisplay);
@@ -1438,6 +1443,7 @@ export const MenuTabs = {
 			invertCheck.checked = patch.invert || false;
 			invertCheck.onchange = () => {
 				patch.invert = invertCheck.checked;
+				AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 			};
 			invertGroup.appendChild(invertCheck);
 			patchDiv.appendChild(invertGroup);
@@ -1482,6 +1488,7 @@ export const MenuTabs = {
 							range: 50,
 							polarity: 1
 						});
+						AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 						container.innerHTML = '';
 						MenuTabs.patches.render(obj, container);
 					}, 'btn-add');
@@ -1515,6 +1522,7 @@ export const MenuTabs = {
 			}));
 			const soundSelect = createSelect(soundOptions, patch.sourceId, (e) => {
 				patch.sourceId = e.target.value;
+				AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 			});
 			soundSelect.className = 'patch-select';
 			patchDiv.appendChild(soundSelect);
@@ -1528,6 +1536,7 @@ export const MenuTabs = {
 			];
 			const outputSelect = createSelect(outputOptions, patch.output, (e) => {
 				patch.output = e.target.value;
+				AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 			});
 			outputSelect.className = 'patch-select';
 			patchDiv.appendChild(outputSelect);
@@ -1539,6 +1548,7 @@ export const MenuTabs = {
 			}));
 			const paramSelect = createSelect(paramOptions, patch.target, (e) => {
 				patch.target = e.target.value;
+				AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 			});
 			paramSelect.className = 'patch-select';
 			patchDiv.appendChild(paramSelect);
@@ -1557,6 +1567,7 @@ export const MenuTabs = {
 			rangeSlider.oninput = () => {
 				patch.range = parseFloat(rangeSlider.value);
 				rangeDisplay.textContent = patch.range + '%';
+				AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 			};
 			rangeGroup.appendChild(rangeSlider);
 			rangeGroup.appendChild(rangeDisplay);
@@ -1578,6 +1589,7 @@ export const MenuTabs = {
 			polaritySlider.oninput = () => {
 				patch.polarity = parseFloat(polaritySlider.value);
 				polarityDisplay.textContent = formatPolarity(patch.polarity);
+				AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 			};
 			polarityGroup.appendChild(polaritySlider);
 			polarityGroup.appendChild(polarityDisplay);

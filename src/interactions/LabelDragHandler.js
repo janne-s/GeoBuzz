@@ -138,5 +138,6 @@ export const LabelDragHandler = {
 
 	dragPath(path, deltaLat, deltaLng) {
 		context.updateControlPathPosition(path, deltaLat, deltaLng);
+		AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 	}
 };

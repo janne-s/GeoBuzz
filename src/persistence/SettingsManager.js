@@ -357,8 +357,9 @@ export class SettingsManager {
 			this.restoreControlPaths(settings.controlPaths, settings.relativePositioning || false);
 		}
 
+		let loadFailures = [];
 		if (settings.sounds) {
-			await this.restoreSounds(settings.sounds, settings.relativePositioning || false);
+			loadFailures = await this.restoreSounds(settings.sounds, settings.relativePositioning || false);
 		}
 
 		if (settings.sequencers) {
@@ -380,6 +381,7 @@ export class SettingsManager {
 		}
 
 		this.finalizeRestore();
+		await this.reportMissingSoundFiles(loadFailures, settings);
 		await this.context.GeolocationManager.offerGoToBuzz();
 	}
 
@@ -488,6 +490,59 @@ export class SettingsManager {
 		this.context.audioFunctions.refreshSequencersList();
 	}
 
+	static collectReferencedSoundFiles(settings) {
+		const files = new Set();
+
+		const addFile = (name) => {
+			if (name && !name.includes('/')) files.add(name);
+		};
+
+		const addGridSamples = (params) => {
+			if (!params || !params.gridSamples) return;
+			for (const data of Object.values(params.gridSamples)) addFile(data && data.fileName);
+		};
+
+		(settings.sounds || []).forEach(sound => addGridSamples(sound.params));
+
+		(settings.sequencers || []).forEach(sequencer => {
+			(sequencer.tracks || []).forEach(track => {
+				if (track.instrumentType === 'sound') return;
+				addFile(track.synthParams && track.synthParams.soundFile);
+				addGridSamples(track.synthParams);
+			});
+		});
+
+		return files;
+	}
+
+	static async findMissingSoundFiles(referenced) {
+		if (referenced.size === 0) return [];
+
+		const available = await this.context.Backend.files.list(this.context.Selectors.getWorkspaceId());
+		const names = new Set(available.map(file => file.name));
+		return [...referenced].filter(name => !names.has(name));
+	}
+
+	static async reportMissingSoundFiles(loadFailures, settings) {
+		const missing = [...loadFailures];
+
+		try {
+			const unresolved = await this.findMissingSoundFiles(this.collectReferencedSoundFiles(settings));
+			for (const name of unresolved) {
+				if (!missing.includes(name)) missing.push(name);
+			}
+		} catch (error) {
+			console.warn('Could not list workspace sound files:', error);
+		}
+
+		if (missing.length === 0) return;
+
+		await ModalSystem.alert(
+			`${missing.length} sound file(s) could not be loaded:\n\n${missing.join('\n')}\n\nElements and sequencer tracks using them will stay silent until the files are available.`,
+			'Missing Sound Files'
+		);
+	}
+
 	static async restoreSounds(soundsData, isRelative = false) {
 		let anchor = null;
 		if (isRelative) {
@@ -575,9 +630,9 @@ export class SettingsManager {
 
 		await Promise.all(restorePromises);
 
-		if (soundFilesToLoad.length > 0) {
-			const failed = [];
+		const failed = [];
 
+		if (soundFilesToLoad.length > 0) {
 			await Promise.all(
 				soundFilesToLoad.map(({ sound, filename, isStream }) => {
 					if (isStream) {
@@ -596,13 +651,6 @@ export class SettingsManager {
 					});
 				})
 			);
-
-			if (failed.length > 0) {
-				await ModalSystem.alert(
-					`${failed.length} sound file(s) could not be loaded:\n\n${failed.join('\n')}\n\nElements using them will stay silent until the files are available.`,
-					'Missing Sound Files'
-				);
-			}
 		}
 
 		this.context.Selectors.getSounds().forEach(sound => {
@@ -628,6 +676,8 @@ export class SettingsManager {
 				}
 			}
 		});
+
+		return failed;
 	}
 
 	static finalizeRestore() {
@@ -802,22 +852,26 @@ export class SettingsManager {
 		}
 
 		const existingPersistentIds = new Set(this.context.Selectors.getSounds().map(s => s.persistentId));
+		let loadFailures = [];
+		let addedSounds = [];
 		if (settings.sounds) {
-			const newSounds = settings.sounds.filter(s => !existingPersistentIds.has(s.persistentId));
-			if (newSounds.length > 0) {
-				await this.restoreSounds(newSounds, settings.relativePositioning || false);
+			addedSounds = settings.sounds.filter(s => !existingPersistentIds.has(s.persistentId));
+			if (addedSounds.length > 0) {
+				loadFailures = await this.restoreSounds(addedSounds, settings.relativePositioning || false);
 			}
 		}
 
 		const existingSeqIds = new Set(this.context.Selectors.getSequencers().map(seq => seq.id));
+		let addedSequencers = [];
 		if (settings.sequencers) {
-			const newSequencers = settings.sequencers.filter(seq => !existingSeqIds.has(seq.id));
-			if (newSequencers.length > 0) {
-				this.mergeSequencers(newSequencers);
+			addedSequencers = settings.sequencers.filter(seq => !existingSeqIds.has(seq.id));
+			if (addedSequencers.length > 0) {
+				this.mergeSequencers(addedSequencers);
 			}
 		}
 
 		this.finalizeRestore();
+		await this.reportMissingSoundFiles(loadFailures, { sounds: addedSounds, sequencers: addedSequencers });
 		await this.context.GeolocationManager.offerGoToBuzz();
 	}
 

@@ -48,16 +48,8 @@ export const Geometry = {
 		if (!linePoints || linePoints.length < 2) return false;
 
 		for (let i = 0; i < linePoints.length - 1; i++) {
-			const closestPoint = this.getClosestPointOnLineSegment(point, linePoints[i], linePoints[i + 1]);
-			const distMeters = _map ? _map.distance(point, closestPoint) : this.calculateDistanceMeters(point, closestPoint);
-			if (distMeters <= tolerance) return true;
+			if (this.distanceToLineSegmentMeters(point, linePoints[i], linePoints[i + 1]) <= tolerance) return true;
 		}
-
-		const startDist = _map ? _map.distance(point, linePoints[0]) : this.calculateDistanceMeters(point, linePoints[0]);
-		if (startDist <= tolerance) return true;
-
-		const endDist = _map ? _map.distance(point, linePoints[linePoints.length - 1]) : this.calculateDistanceMeters(point, linePoints[linePoints.length - 1]);
-		if (endDist <= tolerance) return true;
 
 		return false;
 	},
@@ -82,11 +74,7 @@ export const Geometry = {
 		} else if (path.type === 'polygon' && path.points) {
 			return Geometry.isPointInPolygon(point, path.points);
 		} else if (path.type === 'line' && path.points) {
-			for (let i = 0; i < path.points.length - 1; i++) {
-				const dist = Geometry.distanceToLineSegment(point, path.points[i], path.points[i + 1]);
-				if (dist * CONSTANTS.METERS_PER_LNG <= CONSTANTS.LINE_PATH_BUFFER_M) return true;
-			}
-			return false;
+			return Geometry.isPointInLineCorridor(point, path.points, path.tolerance || CONSTANTS.LINE_PATH_BUFFER_M);
 		}
 		return false;
 	},
@@ -269,62 +257,24 @@ export const Geometry = {
 		}
 	},
 
-	distanceToLineSegment(point, lineStart, lineEnd) {
-		const A = point.lat - lineStart.lat;
-		const B = point.lng - lineStart.lng;
-		const C = lineEnd.lat - lineStart.lat;
-		const D = lineEnd.lng - lineStart.lng;
-
-		const dot = A * C + B * D;
-		const lenSq = C * C + D * D;
-		let param = -1;
-
-		if (lenSq !== 0) param = dot / lenSq;
-
-		let xx, yy;
-
-		if (param < 0) {
-			xx = lineStart.lat;
-			yy = lineStart.lng;
-		} else if (param > 1) {
-			xx = lineEnd.lat;
-			yy = lineEnd.lng;
-		} else {
-			xx = lineStart.lat + param * C;
-			yy = lineStart.lng + param * D;
-		}
-
-		const dx = point.lat - xx;
-		const dy = point.lng - yy;
-		return Math.sqrt(dx * dx + dy * dy);
+	distanceToLineSegmentMeters(point, lineStart, lineEnd) {
+		return this.distance(point, this.getClosestPointOnLineSegment(point, lineStart, lineEnd));
 	},
 
 	getClosestPointOnLineSegment(point, lineStart, lineEnd) {
-		const A = point.lat - lineStart.lat;
-		const B = point.lng - lineStart.lng;
-		const C = lineEnd.lat - lineStart.lat;
-		const D = lineEnd.lng - lineStart.lng;
+		const lngScale = Math.cos(lineStart.lat * Math.PI / 180) * CONSTANTS.METERS_PER_LNG / CONSTANTS.METERS_PER_LAT;
 
-		const dot = A * C + B * D;
-		const lenSq = C * C + D * D;
-		let param = -1;
+		const deltaLat = lineEnd.lat - lineStart.lat;
+		const deltaLng = lineEnd.lng - lineStart.lng;
+		const segLng = deltaLng * lngScale;
+		const lenSq = deltaLat * deltaLat + segLng * segLng;
 
-		if (lenSq !== 0) param = dot / lenSq;
+		if (lenSq === 0) return L.latLng(lineStart.lat, lineStart.lng);
 
-		let xx, yy;
+		const dot = (point.lat - lineStart.lat) * deltaLat + (point.lng - lineStart.lng) * lngScale * segLng;
+		const param = Math.max(0, Math.min(1, dot / lenSq));
 
-		if (param < 0) {
-			xx = lineStart.lat;
-			yy = lineStart.lng;
-		} else if (param > 1) {
-			xx = lineEnd.lat;
-			yy = lineEnd.lng;
-		} else {
-			xx = lineStart.lat + param * C;
-			yy = lineStart.lng + param * D;
-		}
-
-		return L.latLng(xx, yy);
+		return L.latLng(lineStart.lat + param * deltaLat, lineStart.lng + param * deltaLng);
 	},
 
 	isPointInPolygon(point, vertices) {
@@ -436,7 +386,7 @@ export const Geometry = {
 		for (let i = 0; i < vertices.length; i++) {
 			const current = vertices[i];
 			const next = vertices[(i + 1) % vertices.length];
-			const distance = this.distanceToLineSegment(clickPoint, current, next);
+			const distance = this.distanceToLineSegmentMeters(clickPoint, current, next);
 
 			if (distance < minDistance) {
 				minDistance = distance;
@@ -445,22 +395,6 @@ export const Geometry = {
 		}
 
 		return insertIndex;
-	},
-
-	distanceToPolygon(point, vertices) {
-		let minDistance = Infinity;
-
-		for (let i = 0; i < vertices.length; i++) {
-			const start = vertices[i];
-			const end = vertices[(i + 1) % vertices.length];
-			const distance = this.distanceToLineSegment(point, start, end);
-
-			if (distance < minDistance) {
-				minDistance = distance;
-			}
-		}
-
-		return minDistance;
 	},
 
 	generateOvalPoints(center, radiusX, radiusY, numPoints = CONSTANTS.OVAL_RESOLUTION) {

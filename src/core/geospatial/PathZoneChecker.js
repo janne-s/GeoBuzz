@@ -37,29 +37,7 @@ export const PathZoneChecker = {
 	isPointInCorridor(userPos, path, tolerance) {
 		if (tolerance <= 0) return false;
 		if (path.type === 'line' && path.points) {
-			for (let i = 0; i < path.points.length - 1; i++) {
-				const p1 = path.points[i];
-				const p2 = path.points[i + 1];
-
-				const dx = p2.lng - p1.lng;
-				const dy = p2.lat - p1.lat;
-				const lengthSquared = dx * dx + dy * dy;
-
-				if (lengthSquared === 0) continue;
-
-				const t = ((userPos.lng - p1.lng) * dx + (userPos.lat - p1.lat) * dy) / lengthSquared;
-
-				if (t < 0 || t > 1) continue;
-
-				const projectedPoint = {
-					lat: p1.lat + t * dy,
-					lng: p1.lng + t * dx
-				};
-
-				const dist = Geometry.distance(userPos, projectedPoint);
-				if (dist <= tolerance) return true;
-			}
-			return false;
+			return Geometry.isPointInLineCorridor(userPos, path.points, tolerance);
 		} else if (path.type === 'circle') {
 			const distance = Geometry.distance(userPos, path.center);
 			const isOutside = distance > path.radius;
@@ -77,12 +55,7 @@ export const PathZoneChecker = {
 		} else if (path.type === 'polygon' && path.points) {
 			const isInside = Geometry.isPointInPolygon(userPos, path.points);
 			if (isInside) return false;
-			const points = [...path.points, path.points[0]];
-			for (let i = 0; i < points.length - 1; i++) {
-				const dist = Geometry.distance(userPos, Geometry.getClosestPointOnLineSegment(userPos, points[i], points[i + 1]));
-				if (dist <= tolerance) return true;
-			}
-			return false;
+			return Geometry.isPointInLineCorridor(userPos, [...path.points, path.points[0]], tolerance);
 		}
 		return false;
 	},

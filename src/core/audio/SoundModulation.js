@@ -4,11 +4,13 @@ import { getSmoothedModulationValue } from './AudioSmoother.js';
 import { calculatePathGain } from './audioUtils.js';
 
 function pathAxisExtent(path) {
+	const tolerance = path.tolerance || 0;
+
 	if (path.type === 'circle') {
-		return { center: path.center, halfLat: path.radius, halfLng: path.radius };
+		return { center: path.center, halfLat: path.radius + tolerance, halfLng: path.radius + tolerance };
 	}
 	if (path.type === 'oval') {
-		return { center: path.center, halfLat: path.radiusY, halfLng: path.radius };
+		return { center: path.center, halfLat: path.radiusY + tolerance, halfLng: path.radius + tolerance };
 	}
 
 	const points = path.points;
@@ -26,8 +28,8 @@ function pathAxisExtent(path) {
 	const center = { lat: (minLat + maxLat) / 2, lng: (minLng + maxLng) / 2 };
 	return {
 		center,
-		halfLat: (maxLat - minLat) / 2 * CONSTANTS.METERS_PER_LAT,
-		halfLng: (maxLng - minLng) / 2 * CONSTANTS.METERS_PER_LNG * Math.cos(center.lat * Math.PI / 180)
+		halfLat: (maxLat - minLat) / 2 * CONSTANTS.METERS_PER_LAT + tolerance,
+		halfLng: (maxLng - minLng) / 2 * CONSTANTS.METERS_PER_LNG * Math.cos(center.lat * Math.PI / 180) + tolerance
 	};
 }
 

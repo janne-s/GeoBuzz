@@ -128,10 +128,10 @@ export function calculatePathGain(userPos, path) {
 	} else if (path.type === 'line' && path.points) {
 		let minDist = Infinity;
 		for (let i = 0; i < path.points.length - 1; i++) {
-			const dist = context.Geometry.distanceToLineSegment(userPos, path.points[i], path.points[i + 1]) * CONSTANTS.METERS_PER_LNG;
+			const dist = context.Geometry.distanceToLineSegmentMeters(userPos, path.points[i], path.points[i + 1]);
 			if (dist < minDist) minDist = dist;
 		}
-		const normalized = Math.min(1, minDist / CONSTANTS.LINE_PATH_BUFFER_M);
+		const normalized = Math.min(1, minDist / (path.tolerance || CONSTANTS.LINE_PATH_BUFFER_M));
 		rawGain = 1 - normalized;
 	} else if (path.type === 'polygon') {
 		const centroid = context.Geometry.calculateCentroid(path.points);
