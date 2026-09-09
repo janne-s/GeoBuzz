@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-09
+
+### Added
+
+- World map in the gallery for browsing pieces by location
+
 ## 2026-09-08
 
 ### Fixed
