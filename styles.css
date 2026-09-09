@@ -2515,8 +2515,11 @@ label.layer-item span {
 #accuracyDisplay {
 	position: fixed;
 	top: 20px;
-	left: 50%;
-	transform: translateX(-50%);
+	left: 0;
+	right: 0;
+	width: fit-content;
+	margin: 0 auto;
+	transform: translateY(0);
 	background: var(--color-overlay-darker);
 	color: var(--color-white);
 	padding: var(--spacing-md) var(--spacing-xl);

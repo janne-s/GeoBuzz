@@ -85,11 +85,11 @@ class GeolocationManagerClass {
 			this.updateAccuracyDisplay(this._lastRawPosition, this._lastFilteredPosition);
 			requestAnimationFrame(() => {
 				element.style.opacity = '1';
-				element.style.transform = 'translateX(-50%) translateY(0px)';
+				element.style.transform = 'translateY(0px)';
 			});
 		} else {
 			element.style.opacity = '0';
-			element.style.transform = 'translateX(-50%) translateY(10px)';
+			element.style.transform = 'translateY(10px)';
 			element.addEventListener('transitionend', () => {
 				element.style.display = 'none';
 			}, { once: true });
@@ -175,7 +175,7 @@ class GeolocationManagerClass {
 
 		this.statusElement.textContent = text;
 		this.statusElement.style.opacity = '1';
-		this.statusElement.style.transform = 'translateX(-50%) translateY(0px)';
+		this.statusElement.style.transform = 'translateY(0px)';
 
 		if (duration > 0) {
 			this._statusHideTimer = setTimeout(() => this.hideStatusMessage(), duration);
@@ -189,7 +189,7 @@ class GeolocationManagerClass {
 		this._statusHideTimer = null;
 
 		this.statusElement.style.opacity = '0';
-		this.statusElement.style.transform = 'translateX(-50%) translateY(-10px)';
+		this.statusElement.style.transform = 'translateY(-10px)';
 	}
 
 	showDefaultStatusMessage(status) {

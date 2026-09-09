@@ -6,6 +6,10 @@
 
 - World map in the gallery for browsing pieces by location
 
+### Fixed
+
+- Location status messages slid sideways when the text changed
+
 ## 2026-09-08
 
 ### Fixed
