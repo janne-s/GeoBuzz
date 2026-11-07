@@ -1,6 +1,7 @@
 export class SecurityManager {
 	constructor() {
 		this.csrfToken = null;
+		this.pendingRefresh = null;
 	}
 
 	async init() {
@@ -13,14 +14,13 @@ export class SecurityManager {
 		}
 	}
 
-	addToFormData(formData) {
-		if (this.csrfToken) {
-			formData.append('csrf_token', this.csrfToken);
+	refresh() {
+		if (!this.pendingRefresh) {
+			this.pendingRefresh = this.init().finally(() => {
+				this.pendingRefresh = null;
+			});
 		}
-	}
-
-	addToBody(body) {
-		return body + `&csrf_token=${encodeURIComponent(this.csrfToken)}`;
+		return this.pendingRefresh;
 	}
 }
 

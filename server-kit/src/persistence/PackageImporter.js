@@ -172,7 +172,6 @@ export const PackageImporter = {
 
 					const formData = new FormData();
 					formData.append('file', file);
-					context.Security.addToFormData(formData);
 
 					const uploadResult = await context.Backend.files.upload(workspaceId, formData);
 					const savedName = uploadResult.file || uploadResult.filename;

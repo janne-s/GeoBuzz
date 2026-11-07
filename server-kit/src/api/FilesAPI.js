@@ -1,5 +1,4 @@
 import { Backend } from './Backend.js';
-import { Security } from './SecurityManager.js';
 
 function describeNonJsonResponse(text) {
 	const sizeLimit = text.match(/Content-Length of (\d+) bytes exceeds the limit of (\d+) bytes/);
@@ -44,7 +43,7 @@ export const FilesAPI = {
 		return Backend.call(`api/files/delete_sound.php?workspace=${workspaceId}`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-			body: `filename=${encodeURIComponent(filename)}&csrf_token=${encodeURIComponent(Security.csrfToken)}`
+			body: `filename=${encodeURIComponent(filename)}`
 		});
 	},
 
@@ -67,9 +66,8 @@ export const FilesAPI = {
 	async uploadWithProgress(workspaceId, file, onProgress) {
 		const fd = new FormData();
 		fd.append("file", file);
-		Security.addToFormData(fd);
 
-		const response = await fetch(`api/files/upload_sound.php?workspace=${workspaceId}`, {
+		const response = await Backend.fetch(`api/files/upload_sound.php?workspace=${workspaceId}`, {
 			method: 'POST',
 			body: fd
 		});
@@ -140,11 +138,7 @@ export const FilesAPI = {
 
 	async deleteExport(workspaceId, exportName) {
 		return Backend.call(`api/exports/delete_export.php?workspace=${workspaceId}&name=${encodeURIComponent(exportName)}`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'X-CSRF-Token': Security.csrfToken
-			}
+			method: 'POST'
 		});
 	}
 };

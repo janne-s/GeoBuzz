@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-07
+
+### Fixed
+
+- Saving failed after a tab had been left idle for a while
+
 ## 2026-09-09
 
 ### Added
