@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-09
+
+### Added
+
+- Sequencer tracks can trigger an instrument at its own pitch or frequency
+- Per-note frequency in the sequencer step grid
+
 ## 2026-11-08
 
 ### Added

@@ -2838,21 +2838,23 @@ input:checked+.slider:before {
 
 .track-octave-mode-row {
 	display: flex;
-	justify-content: space-between;
+	flex-wrap: wrap;
 	align-items: center;
-	margin-bottom: var(--spacing-xs);
+	gap: var(--spacing-xs);
+	margin-bottom: var(--spacing-sm);
 }
 
 .track-mode-selector {
 	display: flex;
-	gap: 6px;
+	gap: var(--spacing-xs);
+	margin-left: auto;
 }
 
 .mode-box {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing-xs) var(--spacing-md);
+	padding: var(--spacing-xxs) var(--spacing-sm);
 	border-radius: var(--border-radius);
 	cursor: pointer;
 	font-size: var(--font-sm);
@@ -3029,20 +3031,26 @@ input:checked+.slider:before {
 .track-header-compact {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	margin-bottom: var(--spacing-xs);
+	gap: var(--spacing-xs);
+	margin-bottom: var(--spacing-sm);
 }
 
 .track-header-compact .track-title {
 	font-size: var(--font-md);
-	min-width: 50px;
+	min-width: 1.2em;
+	flex-shrink: 0;
 }
 
 .track-header-compact select {
 	font-size: var(--font-sm);
 	padding: var(--spacing-xxs) var(--spacing-xs);
-	flex: 1;
-	min-width: 60px;
+	flex: 1 1 0;
+	min-width: 0;
+}
+
+.track-header-compact .btn-icon {
+	padding: var(--spacing-xxs) var(--spacing-xs);
+	flex-shrink: 0;
 }
 
 .track-header-compact .track-duplicate-btn,
@@ -3122,6 +3130,11 @@ input:checked+.slider:before {
 .track-octave-controls {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing-xxs);
+}
+
+.track-octave-controls .btn-icon {
+	padding: var(--spacing-xs) var(--spacing-sm);
 }
 
 .octave-label {
@@ -3320,6 +3333,48 @@ input:checked+.slider:before {
 	position: relative;
 }
 
+.mode-box.hz-mode {
+	background: var(--color-accent-orange);
+	color: var(--color-white);
+}
+
+.piano-cell.note.has-frequency {
+	box-shadow: inset 0 3px 0 rgba(0, 0, 0, 0.55);
+}
+
+.frequency-panel {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing-sm);
+	padding: var(--spacing-sm);
+	background: var(--color-bg-medium);
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius);
+	margin-top: var(--spacing-sm);
+}
+
+.frequency-panel label {
+	font-size: var(--font-sm);
+	font-weight: 500;
+	min-width: 60px;
+}
+
+.frequency-panel .frequency-input {
+	width: 100px;
+	font-family: monospace;
+}
+
+.frequency-panel .frequency-unit,
+.frequency-panel .frequency-help {
+	font-size: var(--font-xs);
+	color: var(--color-text-secondary);
+}
+
+.frequency-panel .frequency-help {
+	font-style: italic;
+}
+
 .piano-cell.note.speed-gated {
 	display: flex;
 	align-items: center;
@@ -3327,13 +3382,21 @@ input:checked+.slider:before {
 }
 
 .tracks-container .parameter-control select {
-	margin-right: var(--spacing-10);
 	flex: 0 1 auto;
 	width: auto;
+	min-width: 0;
 }
 
 .tracks-container .parameter-control {
 	gap: var(--spacing-xs);
+}
+
+.tracks-container .parameter-control label {
+	margin-right: 0;
+}
+
+.track-offset-row {
+	margin-bottom: var(--spacing-sm);
 }
 
 .tracks-container .parameter-control .solo-btn {
@@ -3348,6 +3411,7 @@ input:checked+.slider:before {
 .track-steps-control {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing-xxs);
 }
 
 .track-steps-control input[type="number"] {
@@ -3369,7 +3433,7 @@ input:checked+.slider:before {
 }
 
 .track-steps-control .btn-icon-small {
-	padding: var(--spacing-xs) var(--spacing-md) !important;
+	padding: var(--spacing-xs) var(--spacing-sm) !important;
 	margin-top: 0 !important;
 	color: var(--color-text-primary) !important;
 }

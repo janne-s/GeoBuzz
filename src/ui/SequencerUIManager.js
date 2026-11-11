@@ -1,8 +1,7 @@
 import { AppState } from '../core/state/StateManager.js';
 import { Selectors } from '../core/state/selectors.js';
 import { CONSTANTS } from '../core/constants.js';
-import { SYNTH_REGISTRY } from '../core/audio/SynthRegistry.js';
-import { initializeSynthParameters } from '../core/audio/SynthRegistry.js';
+import { SYNTH_REGISTRY, initializeSynthParameters, hasFrequencyPlayback } from '../core/audio/SynthRegistry.js';
 import { getUserMovementSpeed } from '../core/audio/AudioEngine.js';
 import { destroySound } from '../core/audio/SoundLifecycle.js';
 import { setSequencerControl, releaseSequencerControl } from '../core/audio/SoundCreation.js';
@@ -855,6 +854,9 @@ export class SequencerUIManager {
 						if (hasSpeedGate) {
 							cell.classList.add('speed-gated');
 						}
+						if (track.steps[stepIndex].frequencies?.[midiNote]) {
+							cell.classList.add('has-frequency');
+						}
 					}
 
 					cell.addEventListener('mousedown', () => {
@@ -899,6 +901,14 @@ export class SequencerUIManager {
 							return;
 						}
 
+						if (track.editMode === 'hz') {
+							if (track.steps[stepIndex].notes.includes(midiNote) || track.steps[stepIndex].sustains.includes(midiNote)) {
+								const originStep = this._findNoteOrigin(track, stepIndex, midiNote);
+								this.showFrequencyEditor(track, trackDiv, originStep, midiNote, sequencer);
+							}
+							return;
+						}
+
 					const currentHasNote = track.steps[stepIndex].notes.includes(midiNote);
 						const currentHasSustain = track.steps[stepIndex].sustains.includes(midiNote);
 
@@ -907,6 +917,7 @@ export class SequencerUIManager {
 							delete track.steps[stepIndex].velocities[midiNote];
 							delete track.steps[stepIndex].speedGateMin[midiNote];
 							delete track.steps[stepIndex].speedGateMax[midiNote];
+							delete track.steps[stepIndex].frequencies?.[midiNote];
 							this.cleanOrphanedSustains(track, stepIndex, midiNote);
 						} else if (currentHasSustain) {
 							track.steps[stepIndex].sustains = track.steps[stepIndex].sustains.filter(n => n !== midiNote);
@@ -950,6 +961,15 @@ export class SequencerUIManager {
 
 		trackDiv.querySelectorAll('.velocity-panel').forEach(el => el.remove());
 		trackDiv.querySelectorAll('.speed-gate-panel').forEach(el => el.remove());
+		trackDiv.querySelectorAll('.frequency-panel').forEach(el => el.remove());
+
+		if (track.editMode === 'hz') {
+			const frequencyPanel = createElement('div', 'frequency-panel');
+			const helpText = createElement('span', 'frequency-help');
+			helpText.textContent = 'Select a note to set its frequency';
+			frequencyPanel.appendChild(helpText);
+			trackDiv.appendChild(frequencyPanel);
+		}
 
 		if (track.editMode === 'vel') {
 			const velocityPanel = createElement('div', 'velocity-panel');
@@ -1055,6 +1075,80 @@ export class SequencerUIManager {
 				}
 			}
 		};
+	}
+
+	showFrequencyEditor(track, trackDiv, stepIndex, midiNote, sequencer) {
+		const panel = trackDiv.querySelector('.frequency-panel');
+		if (!panel) return;
+
+		this.highlightNoteChain(track, trackDiv, stepIndex, midiNote);
+
+		const step = track.steps[stepIndex];
+		const noteFrequency = Tone.Frequency(midiNote, 'midi').toFrequency();
+
+		panel.innerHTML = '';
+
+		const label = createElement('label');
+		label.textContent = 'Frequency';
+		panel.appendChild(label);
+
+		const input = createElement('input', 'frequency-input');
+		input.type = 'number';
+		input.min = CONSTANTS.FREQUENCY_MIN;
+		input.max = CONSTANTS.FREQUENCY_MAX;
+		input.step = 'any';
+		input.placeholder = noteFrequency.toFixed(2);
+		input.value = step.frequencies?.[midiNote] ?? '';
+		panel.appendChild(input);
+
+		const unit = createElement('span', 'frequency-unit');
+		unit.textContent = `Hz (${Tone.Frequency(midiNote, 'midi').toNote()} = ${noteFrequency.toFixed(2)})`;
+		panel.appendChild(unit);
+
+		const setFrequency = (value) => {
+			if (value === null) {
+				delete step.frequencies?.[midiNote];
+			} else {
+				if (!step.frequencies) step.frequencies = {};
+				step.frequencies[midiNote] = value;
+			}
+			this._getCellForNote(trackDiv, track, stepIndex, midiNote)?.classList.toggle('has-frequency', value !== null);
+			AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+		};
+
+		input.onchange = () => {
+			const value = parseFloat(input.value);
+			if (input.value.trim() === '') {
+				setFrequency(null);
+			} else if (!isNaN(value) && value >= CONSTANTS.FREQUENCY_MIN && value <= CONSTANTS.FREQUENCY_MAX) {
+				setFrequency(value);
+			} else {
+				input.value = step.frequencies?.[midiNote] ?? '';
+			}
+		};
+
+		const resetBtn = createButton('Reset', () => {
+			input.value = '';
+			setFrequency(null);
+		}, 'frequency-reset-btn');
+		panel.appendChild(resetBtn);
+	}
+
+	_isPitchedTrack(track) {
+		const type = track.instrumentType === 'synth'
+			? track.synthType
+			: AppState.getSoundByPersistentId(track.instrumentId)?.type;
+		return hasFrequencyPlayback(type);
+	}
+
+	_releaseActiveTrackNotes(sequencer, track) {
+		const activeNotes = sequencer._activeNotes.get(track.id);
+		if (activeNotes && activeNotes.size > 0) {
+			activeNotes.forEach(note => {
+				sequencer._triggerRelease(track, note);
+			});
+			sequencer._activeNotes.delete(track.id);
+		}
 	}
 
 	_getCellForNote(trackDiv, track, stepIndex, midiNote) {
@@ -1294,20 +1388,15 @@ export class SequencerUIManager {
 			const trackHeader = createElement('div', 'track-header-compact');
 
 			const trackTitle = createElement('strong', 'track-title');
-			trackTitle.textContent = `Track ${trackIndex + 1}`;
+			trackTitle.textContent = `${trackIndex + 1}`;
+			trackTitle.title = `Track ${trackIndex + 1}`;
 			trackHeader.appendChild(trackTitle);
 
 			const instrTypeSelect = createSelect([
 				{ value: 'synth', label: 'Synth' },
 				{ value: 'sound', label: 'Sound' }
 			], track.instrumentType, (e) => {
-				const activeNotes = sequencer._activeNotes.get(track.id);
-				if (activeNotes && activeNotes.size > 0) {
-					activeNotes.forEach(note => {
-						sequencer._triggerRelease(track, note);
-					});
-					sequencer._activeNotes.delete(track.id);
-				}
+				this._releaseActiveTrackNotes(sequencer, track);
 
 				const oldInstrumentType = track.instrumentType;
 				const oldInstrumentId = track.instrumentId;
@@ -1328,16 +1417,11 @@ export class SequencerUIManager {
 			if (track.instrumentType === 'synth') {
 				const synthOptions = Object.keys(SYNTH_REGISTRY).map(key => ({ value: key, label: key }));
 				const synthSelect = createSelect(synthOptions, track.synthType, (e) => {
-					const activeNotes = sequencer._activeNotes.get(track.id);
-					if (activeNotes && activeNotes.size > 0) {
-						activeNotes.forEach(note => {
-							sequencer._triggerRelease(track, note);
-						});
-						sequencer._activeNotes.delete(track.id);
-					}
+					this._releaseActiveTrackNotes(sequencer, track);
 
 					track.synthType = e.target.value;
 					track.synthParams = initializeSynthParameters(track.synthType, 'sound');
+					delete track.synthLastTouchedParam;
 
 					if (sequencer._synthPool.has(track.id)) {
 						const oldSoundObj = sequencer._synthPool.get(track.id);
@@ -1369,13 +1453,7 @@ export class SequencerUIManager {
 					}))
 				];
 				const soundSelect = createSelect(soundOptions, track.instrumentId || 'none', (e) => {
-					const activeNotes = sequencer._activeNotes.get(track.id);
-					if (activeNotes && activeNotes.size > 0) {
-						activeNotes.forEach(note => {
-							sequencer._triggerRelease(track, note);
-						});
-						sequencer._activeNotes.delete(track.id);
-					}
+					this._releaseActiveTrackNotes(sequencer, track);
 
 					const oldSoundId = track.instrumentId;
 					const newSoundId = e.target.value === 'none' ? null : e.target.value;
@@ -1417,6 +1495,19 @@ export class SequencerUIManager {
 				trackHeader.appendChild(settingsBtn);
 			}
 
+			if (this._isPitchedTrack(track)) {
+				const pitchSelect = createSelect([
+					{ value: 'notes', label: 'Note Pitch' },
+					{ value: 'sound', label: 'Own Pitch' }
+				], track.pitchSource || 'notes', (e) => {
+					this._releaseActiveTrackNotes(sequencer, track);
+					track.pitchSource = e.target.value;
+					AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+				});
+				pitchSelect.title = 'Own Pitch: notes trigger the instrument at its own pitch or frequency';
+				trackHeader.appendChild(pitchSelect);
+			}
+
 			const duplicateTrackBtn = createElement('button', 'btn-icon track-duplicate-btn');
 			duplicateTrackBtn.innerHTML = '<i class="fas fa-clone"></i>';
 			duplicateTrackBtn.title = 'Duplicate Track';
@@ -1441,7 +1532,7 @@ export class SequencerUIManager {
 
 			trackDiv.appendChild(trackHeader);
 
-			const trackOffsetGroup = createElement('div', 'parameter-control');
+			const trackOffsetGroup = createElement('div', 'parameter-control track-offset-row');
 
 			const trackSoloBtn = createElement('button', `solo-btn ${track.soloed ? 'active' : ''}`);
 			trackSoloBtn.textContent = 'S';
@@ -1730,6 +1821,23 @@ export class SequencerUIManager {
 				AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
 			};
 			modeSelector.appendChild(spdMode);
+
+			if (this._isPitchedTrack(track)) {
+				const hzMode = createElement('div', 'mode-box');
+				hzMode.classList.add('hz-mode');
+				if (track.editMode === 'hz') hzMode.classList.add('active');
+				const hzLabel = createElement('span');
+				hzLabel.textContent = 'Hz';
+				hzMode.appendChild(hzLabel);
+				hzMode.onclick = () => {
+					track.editMode = track.editMode === 'hz' ? 'note' : 'hz';
+					this.refreshTracksUI(container, sequencer);
+					AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
+				};
+				modeSelector.appendChild(hzMode);
+			} else if (track.editMode === 'hz') {
+				track.editMode = 'note';
+			}
 
 			octaveAndModeRow.appendChild(modeSelector);
 			trackDiv.appendChild(octaveAndModeRow);

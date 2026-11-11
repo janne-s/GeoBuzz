@@ -2,7 +2,7 @@ import { CONSTANTS } from '../constants.js';
 import { Selectors } from '../state/selectors.js';
 import { AppState } from '../state/StateManager.js';
 import { PolyphonyManager } from './AudioNodeManager.js';
-import { initializeSynthParameters } from './SynthRegistry.js';
+import { initializeSynthParameters, hasFrequencyPlayback } from './SynthRegistry.js';
 import { setSequencerControl, releaseSequencerControl } from './SoundCreation.js';
 import { DEFAULT_LFO_STRUCTURE } from '../../config/defaults.js';
 import { deepClone } from '../utils/math.js';
@@ -381,6 +381,8 @@ export class DistanceSequencer {
 			type: track.synthType,
 			role: 'sound',
 			params: { ...params, polyphony },
+			lastTouchedParam: track.synthLastTouchedParam || 'pitch',
+			frequencyMode: track.synthLastTouchedParam === 'frequency',
 			layers: [...(track.layers || [])],
 			color: '#8e44ad'
 		}, { onMap: false });
@@ -1081,7 +1083,7 @@ export class DistanceSequencer {
 				velocitiesNormalized[note] = midiVel / 127;
 			});
 			try {
-				this._triggerAttackChord(track, notesArray, velocitiesNormalized, notesForThisStep.size);
+				this._triggerAttackChord(track, notesArray, velocitiesNormalized, notesForThisStep.size, stepIndex);
 			} catch (error) {
 				console.error(`Sequencer error on track ${track.id}:`, error.message);
 			}
@@ -1092,7 +1094,7 @@ export class DistanceSequencer {
 		}
 	}
 
-	_triggerAttackChord(track, midiNotes, velocity, soundingNotes = 0) {
+	_triggerAttackChord(track, midiNotes, velocity, soundingNotes = 0, stepIndex = 0) {
 		const handleAttack = (soundObj, notes = midiNotes) => {
 			if (!soundObj || !soundObj.synth) {
 				return;
@@ -1128,8 +1130,12 @@ export class DistanceSequencer {
 					soundObj.envelopeGain.gain.cancelAndHoldAtTime(now);
 					soundObj.envelopeGain.gain.linearRampToValueAtTime(avgVelocity, now + CONSTANTS.SEQUENCER_VELOCITY_RAMP);
 				}
-				const useVelocity = soundObj.type === 'Sampler' ? velocity : null;
-				PolyphonyManager.triggerPolyphonic(soundObj.synth, notes, true, soundObj, null, useVelocity);
+				if (hasFrequencyPlayback(soundObj.type)) {
+					this._triggerNoteFrequencies(track, soundObj, notes, stepIndex);
+				} else {
+					const useVelocity = soundObj.type === 'Sampler' ? velocity : null;
+					PolyphonyManager.triggerPolyphonic(soundObj.synth, notes, true, soundObj, null, useVelocity);
+				}
 				soundObj.isPlaying = true;
 			}
 		};
@@ -1158,6 +1164,61 @@ export class DistanceSequencer {
 				});
 			}
 		}
+	}
+
+	_resolveNoteFrequencies(track, soundObj, midiNote, stepIndex) {
+		const originStep = this._findNoteOriginStep(track, stepIndex, midiNote);
+		const override = track.steps[originStep]?.frequencies?.[midiNote];
+		if (override) return [override];
+
+		if (track.pitchSource === 'sound') {
+			const source = PolyphonyManager.determinePlaybackSource(soundObj);
+			if (!source) return [];
+			if (source.type === 'frequency') return [source.values[0]];
+			return source.values.map(note => Tone.Frequency(note, 'midi').toFrequency());
+		}
+
+		return [Tone.Frequency(midiNote, 'midi').toFrequency()];
+	}
+
+	_triggerNoteFrequencies(track, soundObj, midiNotes, stepIndex) {
+		if (!track._noteFrequencies) track._noteFrequencies = new Map();
+		const active = this._activeNotes.get(track.id) || new Set();
+		for (const note of track._noteFrequencies.keys()) {
+			if (!active.has(note) && !midiNotes.includes(note)) track._noteFrequencies.delete(note);
+		}
+
+		const sounding = new Set([...track._noteFrequencies.values()].flat());
+		const toStart = new Set();
+		midiNotes.forEach(note => {
+			const frequencies = this._resolveNoteFrequencies(track, soundObj, note, stepIndex);
+			track._noteFrequencies.set(note, frequencies);
+			frequencies.forEach(frequency => {
+				if (!sounding.has(frequency)) toStart.add(frequency);
+			});
+		});
+
+		if (toStart.size === 0) return;
+		const frequencies = [...toStart];
+		if (soundObj.synth instanceof Tone.PolySynth) {
+			soundObj.synth.triggerAttack(frequencies, Tone.now());
+		} else {
+			soundObj.synth.triggerAttack(frequencies[0]);
+		}
+	}
+
+	_releaseNoteFrequencies(track, soundObj, midiNote) {
+		const frequencies = track._noteFrequencies?.get(midiNote) ?? [Tone.Frequency(midiNote, 'midi').toFrequency()];
+		track._noteFrequencies?.delete(midiNote);
+
+		if (!(soundObj.synth instanceof Tone.PolySynth)) {
+			soundObj.synth.triggerRelease();
+			return;
+		}
+
+		const stillHeld = new Set([...(track._noteFrequencies?.values() ?? [])].flat());
+		const released = [...new Set(frequencies)].filter(frequency => !stillHeld.has(frequency));
+		if (released.length > 0) soundObj.synth.triggerRelease(released);
 	}
 
 	_findNoteOriginStep(track, stepIndex, midiNote) {
@@ -1197,6 +1258,12 @@ export class DistanceSequencer {
 
 		if (soundObj.synth instanceof Tone.NoiseSynth) {
 			soundObj.synth.triggerRelease();
+			markRelease(soundObj.params.release || 0.1);
+			return;
+		}
+
+		if (hasFrequencyPlayback(soundObj.type)) {
+			this._releaseNoteFrequencies(track, soundObj, midiNote);
 			markRelease(soundObj.params.release || 0.1);
 			return;
 		}
@@ -1402,6 +1469,8 @@ export class DistanceSequencer {
 			soundModulation: trackData.soundModulation ? deepClone(trackData.soundModulation) : [],
 			pathModulation: trackData.pathModulation ? deepClone(trackData.pathModulation) : [],
 			editMode: trackData.editMode || 'note',
+			pitchSource: trackData.pitchSource || 'notes',
+			synthLastTouchedParam: trackData.synthLastTouchedParam,
 			offsetMode: trackData.offsetMode || 'division',
 			offsetFraction: trackData.offsetFraction !== undefined ? trackData.offsetFraction : 0,
 			offsetSteps: trackData.offsetSteps !== undefined ? trackData.offsetSteps : 0,
@@ -1447,6 +1516,8 @@ export class DistanceSequencer {
 			soundModulation: source.soundModulation,
 			pathModulation: source.pathModulation,
 			editMode: source.editMode,
+			pitchSource: source.pitchSource,
+			synthLastTouchedParam: source.synthLastTouchedParam,
 			offsetMode: source.offsetMode,
 			offsetFraction: source.offsetFraction,
 			offsetSteps: source.offsetSteps,

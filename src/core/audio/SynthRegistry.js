@@ -343,6 +343,10 @@ export const SYNTH_REGISTRY = {
 	}
 };
 
+export function hasFrequencyPlayback(synthType) {
+	return SYNTH_REGISTRY[synthType]?.parameters.includes('frequency') || false;
+}
+
 export function getSynthCapabilities(synthType) {
 	const def = SYNTH_REGISTRY[synthType];
 	return def ? {

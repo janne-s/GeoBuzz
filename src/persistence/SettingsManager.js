@@ -95,6 +95,8 @@ export class SettingsManager {
 					soundModulation: track.soundModulation || [],
 					pathModulation: track.pathModulation || [],
 					editMode: track.editMode,
+					pitchSource: track.pitchSource,
+					synthLastTouchedParam: track.synthLastTouchedParam,
 					offsetMode: track.offsetMode,
 					offsetFraction: track.offsetFraction,
 					offsetSteps: track.offsetSteps,

@@ -603,6 +603,7 @@ Each track has:
 | **Track Name** | Track label |
 | **Instrument Type** | What the track triggers: synth or sound |
 | **Instrument** | Specific synth or sound |
+| **Pitch** | Pitched synths only. Note Pitch: grid rows set the pitch. Own Pitch: notes trigger the instrument at its own pitch, frequency or keyboard notes |
 | **Offset** | Step offset from main sequence |
 | **Offset Mode** | How offset is calculated: meters (absolute distance), steps (number of sequence steps), division (fraction of the total sequence length) |
 | **Steps** | Per-track step count override |
@@ -614,6 +615,7 @@ Each track has:
 | **Step Grid** | Click cells to toggle triggers |
 | **Velocity** | Per-note volume (Vel mode) |
 | **Speed Gate** | Per-note speed range and hold (Spd mode). Independent of the sequencer-level speed gate. Hold falls back to sequencer-level hold |
+| **Frequency** | Per-note frequency in Hz (Hz mode, pitched synths only). Overrides the row pitch and Own Pitch; empty keeps the row pitch |
 | **Note Selection** | MIDI note for keyboard instruments |
 
 ---
