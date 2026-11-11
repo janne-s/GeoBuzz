@@ -5,7 +5,7 @@ import { Selectors } from '../state/selectors.js';
 import { Geometry } from '../geospatial/Geometry.js';
 import { EchoManager } from './EchoManager.js';
 import { LayerManager } from '../../layers/LayerManager.js';
-import { calcAreaScalar, soundVolumeValue, calculateRelativePosition, calculateBearingPan, calculateSilencingGain } from './audioUtils.js';
+import { calcAreaScalar, soundVolumeValue, calculateRelativePosition, calculateBearingPan, calculateSilencing, isSilencerSettling } from './audioUtils.js';
 import { scheduleLoopFades, openSoundFile, closeSoundFile, updateSoundFilePlaybackRate, updateAdaptiveGrainSize } from './SoundLifecycle.js';
 import { evaluateSpeedGate, createSpeedGateState, hasPendingTransition, getGridKeySpeedRange, isSpeedGateActive } from './SpeedGate.js';
 import {
@@ -28,6 +28,8 @@ let lastSpeedPosition = null;
 let lastSpeedDistance = 0;
 let lastSpeedTime = 0;
 let computedSpeed = 0;
+let filteredSpeed = null;
+let filteredSpeedTime = 0;
 let listenerAtOrigin = false;
 let lastPositionWorkPos = null;
 
@@ -35,15 +37,15 @@ export function setContext(ctx) {
 	context = ctx;
 }
 
-function evaluateGridKeySpeedGate(s, midi, inRange, nowMs, holdSeconds, userSpeed) {
+function evaluateGridKeySpeedGate(s, midi, inRange, nowMs, holdSeconds) {
 	if (!s._gridKeyHoldState) s._gridKeyHoldState = {};
 	if (!s._gridKeyHoldState[midi]) s._gridKeyHoldState[midi] = createSpeedGateState();
-	return evaluateSpeedGate(s._gridKeyHoldState[midi], inRange, holdSeconds, nowMs, userSpeed);
+	return evaluateSpeedGate(s._gridKeyHoldState[midi], inRange, holdSeconds, nowMs);
 }
 
-function evaluateSpeedGateWithHold(s, inRange, nowMs, userSpeed) {
+function evaluateSpeedGateWithHold(s, inRange, nowMs) {
 	if (!s._speedGateState) s._speedGateState = createSpeedGateState();
-	return evaluateSpeedGate(s._speedGateState, inRange, s.params.speedGateHold ?? 0, nowMs, userSpeed);
+	return evaluateSpeedGate(s._speedGateState, inRange, s.params.speedGateHold ?? 0, nowMs);
 }
 
 export function getTotalDistanceTraveled() {
@@ -52,6 +54,7 @@ export function getTotalDistanceTraveled() {
 
 export function resetSpeedTracking() {
 	computedSpeed = 0;
+	filteredSpeed = null;
 	lastSpeedDistance = 0;
 	lastSpeedPosition = null;
 	lastSpeedTime = 0;
@@ -62,11 +65,23 @@ export function resetTotalDistance() {
 	lastUserPosition = null;
 }
 
+export function reportFilteredSpeed(speed) {
+	if (!Number.isFinite(speed)) return;
+	filteredSpeed = speed;
+	filteredSpeedTime = performance.now();
+}
+
+function currentFilteredSpeed() {
+	if (filteredSpeed === null) return null;
+	if (performance.now() - filteredSpeedTime > CONSTANTS.FILTERED_SPEED_MAX_AGE_S * 1000) return null;
+	return filteredSpeed;
+}
+
 export function getUserMovementSpeed() {
 	const isSimulating = Selectors.getUserAttachedPathId() || Selectors.isSimulationActive();
 
 	if (isSimulating && Selectors.getSimulationNoise() > 0) {
-		return computedSpeed;
+		return currentFilteredSpeed() ?? computedSpeed;
 	}
 
 	if (Selectors.getUserAttachedPathId()) {
@@ -77,7 +92,7 @@ export function getUserMovementSpeed() {
 		return Selectors.getSimulationCurrentSpeed() || 0;
 	}
 
-	return computedSpeed;
+	return currentFilteredSpeed() ?? computedSpeed;
 }
 
 function updateComputedSpeed(userPos) {
@@ -172,8 +187,9 @@ export function updateAudio(userPos, now, forcePositionWork = true) {
 		lastUserPosition = { lat: userPos.lat, lng: userPos.lng };
 	}
 
-	const silencingGain = calculateSilencingGain(audioPos);
-	LayerManager.applySilencingGain(silencingGain);
+	const silencing = calculateSilencing(audioPos);
+	const silencingGain = silencing.gateClosed ? 0 : silencing.gain;
+	LayerManager.applySilencingGain(silencing.gain);
 	LayerManager.beginActivityFrame();
 
 	const userMovementSpeed = getUserMovementSpeed();
@@ -182,7 +198,8 @@ export function updateAudio(userPos, now, forcePositionWork = true) {
 	for (let i = 0; i < sequencers.length; i++) {
 		const seq = sequencers[i];
 		if (seq.enabled) {
-			seq.applySilencingGain(silencingGain);
+			seq.applySilencingGain(silencing.gain);
+			seq.applySilencerGate(silencing.gateClosed);
 			seq.updatePosition(userPos.lat, userPos.lng);
 			seq.updateTrackPlaybackRates(userMovementSpeed);
 			seq.reportLayerActivity();
@@ -372,7 +389,7 @@ export function updateAudio(userPos, now, forcePositionWork = true) {
 				if (isSpeedGateActive(gateMin, gateMax)) {
 					const userSpeed = getUserMovementSpeed();
 					const rawInRange = userSpeed >= gateMin && userSpeed <= gateMax;
-					if (!evaluateSpeedGateWithHold(s, rawInRange, performance.now(), userSpeed)) {
+					if (!evaluateSpeedGateWithHold(s, rawInRange, performance.now())) {
 						isInside = false;
 					}
 				}
@@ -391,7 +408,7 @@ export function updateAudio(userPos, now, forcePositionWork = true) {
 				if (isInside && isSpeedGateActive(gateMin, gateMax)) {
 					const userSpeed = getUserMovementSpeed();
 					const rawInRange = userSpeed >= gateMin && userSpeed <= gateMax;
-					if (!evaluateSpeedGateWithHold(s, rawInRange, performance.now(), userSpeed)) {
+					if (!evaluateSpeedGateWithHold(s, rawInRange, performance.now())) {
 						isInside = false;
 						s.wasInsideArea = false;
 					}
@@ -441,7 +458,7 @@ export function updateAudio(userPos, now, forcePositionWork = true) {
 							const range = getGridKeySpeedRange(s, midi);
 							const hold = gs.speedGateHold ?? s.params.speedGateHold ?? 0;
 							const rawInRange = userSpeed >= range.min && userSpeed <= range.max;
-							if (evaluateGridKeySpeedGate(s, midi, rawInRange, nowMs, hold, userSpeed)) {
+							if (evaluateGridKeySpeedGate(s, midi, rawInRange, nowMs, hold)) {
 								eligibleKeys.add(midi);
 							}
 						}
@@ -488,7 +505,7 @@ export function updateAudio(userPos, now, forcePositionWork = true) {
 					if (hasSpeedGate || s._speedGateOpen === false) {
 						const userSpeed = hasSpeedGate ? getUserMovementSpeed() : 0;
 						const rawInRange = !hasSpeedGate || (userSpeed >= gateMin && userSpeed <= gateMax);
-						const inRange = evaluateSpeedGateWithHold(s, rawInRange, performance.now(), userSpeed);
+						const inRange = evaluateSpeedGateWithHold(s, rawInRange, performance.now());
 						if (inRange !== (s._speedGateOpen !== false)) {
 							if (inRange) {
 								NoteManager.trigger(s);
@@ -519,6 +536,7 @@ export function updateAudio(userPos, now, forcePositionWork = true) {
 function hasPendingAudioWork() {
 	if (!AudioContextManager.isRunning()) return true;
 	if (Selectors.isSimulationActive() || Selectors.getUserAttachedPathId()) return true;
+	if (isSilencerSettling()) return true;
 
 	const sounds = Selectors.getSounds();
 	for (let i = 0; i < sounds.length; i++) {

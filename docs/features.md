@@ -533,9 +533,17 @@ Click a path label to open the path editor panel.
 
 #### Silencer Effect
 
+A silencer attenuates every sound element, layer and distance sequencer while
+the listener is in its silenced region.
+
 | Parameter | Description |
 |-----------|-------------|
-| **Curve** | Silencing curve shape |
+| **Mode** | Inside: the path's area is silenced. Outside: everything outside the area is silenced |
+| **Action** | Fade: volume falls with depth into the silenced region. Gate: entering the region counts as leaving every sound's area, so notes end with each sound's own release and restart with its attack; sequencers stop as if their area was left |
+| **Fade Width** | Fade only. Distance in meters from the path's edge to full silence. 0 silences at the edge |
+| **Curve** | Fade only. Shape of the fade across the fade width |
+| **Attack** | Fade only. Time for silencing to take hold when moving deeper |
+| **Release** | Fade only. Time for sound to return when moving back out |
 
 ---
 
@@ -1018,7 +1026,7 @@ The controls bar has a second row for tuning the movement:
 |---------|-------------|
 | **Scale** | Multiplies the selected speed (0.25–3×), for speeds between or beyond the presets. Applies to path simulation too |
 | **Variability** | Makes the speed wander around the selected value instead of holding it exactly, the way real walking does. The wander is pulled back towards the base speed, so the average pace and the arrival time stay put |
-| **Noise** | Above zero, the simulation stops feeding exact positions and runs the whole device pipeline instead: positions arrive once a second like a real GPS watch, carry a slowly drifting error, and pass through the same filter as a real fix. The slider value is the error of the incoming fix, as a 68% radius — the number shown as **Raw** in the accuracy readout: 3 m is a good open-sky fix, 8 m a typical street, 15 m a bad urban canyon. The route and the arrival time are unaffected. Movement speed, the accuracy readout, and the GPS instability modulation source are then all read from the filtered positions, so **GPS Accuracy** in the settings menu becomes testable without going outdoors. At zero the simulation moves smoothly and exactly, as before. Applies to path simulation too |
+| **Noise** | Above zero, the simulation stops feeding exact positions and runs the whole device pipeline instead: positions arrive once a second like a real GPS watch, carry a slowly drifting error, and pass through the same filter as a real fix. The slider value is the error of the incoming fix, as a 68% radius — the number shown as **Raw** in the accuracy readout: 3 m is a good open-sky fix, 8 m a typical street, 15 m a bad urban canyon. The route and the arrival time are unaffected. Movement speed is then read from the filter's velocity estimate, and the accuracy readout and the GPS instability modulation source from the filtered positions, so **GPS Accuracy** in the settings menu becomes testable without going outdoors. At zero the simulation moves smoothly and exactly, as before. Applies to path simulation too |
 
 #### Path Simulation
 

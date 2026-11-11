@@ -79,6 +79,34 @@ export const Geometry = {
 		return false;
 	},
 
+	distanceToControlPathEdge(point, path) {
+		if (path.type === 'circle') {
+			return Math.abs(_map.distance(point, path.center) - path.radius);
+		}
+		if (path.type === 'oval') {
+			return this.distanceToRingMeters(point, this.generateOvalPoints(path.center, path.radius, path.radiusY));
+		}
+		if (path.type === 'polygon' && path.points) {
+			return this.distanceToRingMeters(point, path.points);
+		}
+		if (path.type === 'line' && path.points) {
+			let minDistance = Infinity;
+			for (let i = 0; i < path.points.length - 1; i++) {
+				minDistance = Math.min(minDistance, this.distanceToLineSegmentMeters(point, path.points[i], path.points[i + 1]));
+			}
+			return Math.abs(minDistance - (path.tolerance || CONSTANTS.LINE_PATH_BUFFER_M));
+		}
+		return 0;
+	},
+
+	distanceToRingMeters(point, ring) {
+		let minDistance = Infinity;
+		for (let i = 0; i < ring.length; i++) {
+			minDistance = Math.min(minDistance, this.distanceToLineSegmentMeters(point, ring[i], ring[(i + 1) % ring.length]));
+		}
+		return minDistance;
+	},
+
 	getDistanceToCircleBoundary(iconPos, userPos, circle) {
 		const circleCenter = circle.getLatLng();
 		const radius = circle.getRadius();

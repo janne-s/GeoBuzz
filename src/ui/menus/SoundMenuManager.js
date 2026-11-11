@@ -227,26 +227,8 @@ export async function changeSoundType(obj, newType) {
 		} else if (newType === 'Sampler' && preservedData.samplerMode === 'single' && preservedData.fileName) {
 			await autoLoadSoundFile(obj, preservedData.fileName);
 		} else if (newType === 'Sampler' && preservedData.samplerMode === 'grid' && Object.keys(preservedData.gridSamples).length > 0) {
-		await new Promise((resolve) => {
-			const checkLoaded = () => {
-				if (obj.synth._buffers && obj.synth._buffers._buffers) {
-					let allLoaded = true;
-					obj.synth._buffers._buffers.forEach(buffer => {
-						if (!buffer.loaded) allLoaded = false;
-					});
-					if (allLoaded) {
-						obj.isReady = true;
-
-						resolve();
-					} else {
-						setTimeout(checkLoaded, 100);
-					}
-				} else {
-					setTimeout(checkLoaded, 100);
-				}
-			};
-			checkLoaded();
-		});
+			await obj.synth.gridLoad;
+			obj.isReady = true;
 		} else if (newType === 'StreamPlayer' && preservedData.streamUrl) {
 			obj.params.streamUrl = preservedData.streamUrl;
 			await StreamManager.initializeStream(obj);

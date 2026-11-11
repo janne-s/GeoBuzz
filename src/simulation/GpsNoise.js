@@ -4,7 +4,7 @@ import { gaussianRandom, toDegrees, toRadians } from '../core/utils/math.js';
 import { KalmanFilter, gpsSmoothingToFilterOptions } from '../core/geospatial/KalmanFilter.js';
 import { GpsInstabilityTracker } from '../core/geospatial/GpsInstabilityTracker.js';
 import { GeolocationManager } from '../core/geospatial/GeolocationManager.js';
-import { resetSpeedTracking } from '../core/audio/AudioEngine.js';
+import { resetSpeedTracking, reportFilteredSpeed } from '../core/audio/AudioEngine.js';
 
 const state = {
 	slowEast: 0,
@@ -89,6 +89,7 @@ export const GpsNoise = {
 
 		GpsInstabilityTracker.update(filtered.accuracy, rawPosition.timestamp);
 		GeolocationManager.updateAccuracyDisplay(rawPosition, filtered);
+		reportFilteredSpeed(state.filter.getSpeed());
 
 		return L.latLng(filtered.lat, filtered.lon);
 	}

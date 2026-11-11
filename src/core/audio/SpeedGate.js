@@ -1,5 +1,3 @@
-import { CONSTANTS } from '../constants.js';
-
 export function createSpeedGateState() {
 	return { committed: undefined, transitionStart: null };
 }
@@ -16,15 +14,9 @@ export function getGridKeySpeedRange(soundObj, midiNote) {
 	};
 }
 
-export function evaluateSpeedGate(state, inRange, holdSeconds, nowMs, userSpeed) {
+export function evaluateSpeedGate(state, inRange, holdSeconds, nowMs) {
 	const hold = (holdSeconds ?? 0) * 1000;
 	if (hold === 0) return inRange;
-
-	if (!inRange && userSpeed < CONSTANTS.ZERO_SPEED_THRESHOLD) {
-		state.committed = false;
-		state.transitionStart = null;
-		return false;
-	}
 
 	if (state.committed === undefined) {
 		state.committed = inRange;

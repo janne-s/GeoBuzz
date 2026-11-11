@@ -547,6 +547,12 @@ const ParameterManager = {
 			const def = PARAMETER_REGISTRY[paramKey];
 			const actualParamName = def?.audioParam || options.paramName || paramKey.replace('fx_', '');
 
+			if (actualParamName === 'delayTime' && node.delayTime?.maxValue < value) {
+				const config = options.isLayerFX ? target.fx : target.params.fx;
+				FXManager.change(target, Number(options.slot.replace('slot', '')), config[options.slot].type, { isLayer: !!options.isLayerFX });
+				return;
+			}
+
 			updateNodeParameter(node, actualParamName, value);
 		}
 	},
@@ -1516,11 +1522,14 @@ async function duplicateSound(originalObj) {
 		modulationSources: originalObj.modulationSources ? [...originalObj.modulationSources] : []
 	};
 
+	const shift = (p) => L.latLng(p.lat + offset, p.lng + offset);
+
 	if (originalObj.shapeType === 'polygon' && originalObj.vertices) {
-		newData.vertices = originalObj.vertices.map(v => ({
-			lat: v.lat + offset,
-			lng: v.lng + offset
-		}));
+		newData.vertices = originalObj.vertices.map(shift);
+	} else if (originalObj.shapeType === 'line' && originalObj.linePoints) {
+		newData.linePoints = originalObj.linePoints.map(shift);
+	} else if (originalObj.shapeType === 'oval' && originalObj.ovalCenter) {
+		newData.ovalCenter = shift(originalObj.ovalCenter);
 	}
 
 	delete newData.marker;
@@ -1528,6 +1537,11 @@ async function duplicateSound(originalObj) {
 	delete newData.polygon;
 	delete newData.handle;
 	delete newData.vertexMarkers;
+	delete newData.linePointMarkers;
+	delete newData._lineSpine;
+	delete newData._divisionLine;
+	delete newData.xHandle;
+	delete newData.yHandle;
 	delete newData.labelMarker;
 	delete newData.synth;
 	delete newData.gain;

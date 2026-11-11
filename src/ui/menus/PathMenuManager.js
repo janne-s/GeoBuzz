@@ -1,4 +1,4 @@
-import { createElement, createButton, makeValueEditable } from '../domHelpers.js';
+import { createElement, createButton, createSelect, makeValueEditable } from '../domHelpers.js';
 import { createDraggableHeader, createElementNavigationDropdown } from '../controllers/HeaderBuilder.js';
 import { createParameterControl } from '../controllers/ParameterControls.js';
 import { UIBuilder, createColorPicker, createMenuStructure } from '../controllers/UIBuilder.js';
@@ -7,6 +7,7 @@ import { CONSTANTS } from '../../core/constants.js';
 import { PARAMETER_REGISTRY } from '../../config/parameterRegistry.js';
 import { isCircularPath } from '../../core/utils/math.js';
 import { isLinearPath } from '../../core/utils/typeChecks.js';
+import { silencerSettings } from '../../core/audio/audioUtils.js';
 
 let AppState, Selectors, MenuManager, ModalSystem;
 let closeAllMenus, refreshPathsList, renderControlPath, deleteControlPath, duplicatePath, computePathLength;
@@ -22,6 +23,44 @@ export function setContext(context) {
 	deleteControlPath = context.deleteControlPath;
 	duplicatePath = context.duplicatePath;
 	computePathLength = context.computePathLength;
+}
+
+function createSilencerSelect(labelText, silencer, key, value, options, onChange) {
+	const group = createElement('div', 'parameter-control');
+	const label = createElement('label');
+	label.textContent = labelText;
+	const select = createSelect(options, value, () => {
+		silencer[key] = select.value;
+		if (onChange) onChange();
+		AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
+	});
+	group.append(label, select, createElement('span'));
+	return group;
+}
+
+function createSilencerSlider(labelText, silencer, key, value, max, step, format) {
+	const group = createElement('div', 'parameter-control');
+	const label = createElement('label');
+	label.textContent = labelText;
+	const slider = createElement('input');
+	slider.type = 'range';
+	slider.min = 0;
+	slider.max = Math.max(max, value);
+	slider.step = step;
+	slider.value = value;
+	const display = createElement('span', 'value-display');
+	display.textContent = format(value);
+
+	const apply = (newValue) => {
+		silencer[key] = newValue;
+		display.textContent = format(newValue);
+		AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
+	};
+	slider.oninput = () => apply(parseFloat(slider.value));
+	makeValueEditable(display, slider, { modalSystem: ModalSystem, formatValue: format, onUpdate: apply });
+
+	group.append(label, slider, display);
+	return group;
 }
 
 export function showPathMenu(point, path) {
@@ -292,33 +331,35 @@ export function renderPathSettingsTab(path, container) {
 	silencerGroup.appendChild(silencerLabel);
 
 	if (path.params.silencer) {
-		const silencerSettings = UIBuilder.collapsibleSection({
+		const silencerSection = UIBuilder.collapsibleSection({
 			title: 'Silencer Settings',
 			icon: 'fa-volume-mute',
 			expanded: true,
 			content: () => {
 				const content = createElement('div');
+				const silencer = path.params.silencer;
+				const settings = silencerSettings(silencer);
 
-				const curveGroup = createElement('div', 'parameter-control');
-				const curveLabel = createElement('label');
-				curveLabel.textContent = 'Curve';
-				const curveSlider = createElement('input');
-				curveSlider.type = 'range';
-				curveSlider.min = 0;
-				curveSlider.max = 2;
-				curveSlider.step = 0.01;
-				const curveValue = path.params.silencer.curve !== undefined ? path.params.silencer.curve : 1.0;
-				curveSlider.value = curveValue;
-				const curveDisplay = createElement('span', 'value-display');
-				curveDisplay.textContent = curveValue.toFixed(2);
-				curveSlider.oninput = () => {
-					const value = parseFloat(curveSlider.value);
-					path.params.silencer.curve = value;
-					curveDisplay.textContent = value.toFixed(2);
-					AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
-				};
-				curveGroup.append(curveLabel, curveSlider, curveDisplay);
-				content.appendChild(curveGroup);
+				const fadeControls = createElement('div');
+				const showFadeControls = () => fadeControls.classList.toggle('hidden', silencer.action === 'gate');
+
+				content.appendChild(createSilencerSelect('Mode', silencer, 'mode', settings.mode, [
+					{ value: 'inside', label: 'Inside' },
+					{ value: 'outside', label: 'Outside' }
+				]));
+				content.appendChild(createSilencerSelect('Action', silencer, 'action', settings.action, [
+					{ value: 'fade', label: 'Fade' },
+					{ value: 'gate', label: 'Gate' }
+				], showFadeControls));
+
+				const meters = (value) => `${value.toFixed(1)} m`;
+				const seconds = (value) => `${value.toFixed(2)} s`;
+				fadeControls.appendChild(createSilencerSlider('Fade Width', silencer, 'fade', settings.fade, CONSTANTS.SILENCER_FADE_MAX_M, CONSTANTS.SILENCER_FADE_STEP_M, meters));
+				fadeControls.appendChild(createSilencerSlider('Curve', silencer, 'curve', settings.curve, CONSTANTS.SILENCER_CURVE_MAX, CONSTANTS.SILENCER_CURVE_STEP, (value) => value.toFixed(2)));
+				fadeControls.appendChild(createSilencerSlider('Attack', silencer, 'attack', settings.attack, CONSTANTS.SILENCER_TIME_MAX_S, CONSTANTS.SILENCER_TIME_STEP_S, seconds));
+				fadeControls.appendChild(createSilencerSlider('Release', silencer, 'release', settings.release, CONSTANTS.SILENCER_TIME_MAX_S, CONSTANTS.SILENCER_TIME_STEP_S, seconds));
+				showFadeControls();
+				content.appendChild(fadeControls);
 
 				const removeBtn = createButton('Remove Silencer Effect', () => {
 					delete path.params.silencer;
@@ -335,10 +376,10 @@ export function renderPathSettingsTab(path, container) {
 				return content;
 			}
 		});
-		silencerGroup.appendChild(silencerSettings);
+		silencerGroup.appendChild(silencerSection);
 	} else {
 		const addSilencerBtn = createButton('+ Add Silencer Effect', () => {
-			path.params.silencer = { curve: 1.0 };
+			path.params.silencer = silencerSettings({});
 			AppState.dispatch({ type: 'PATH_UPDATED', payload: { path } });
 			const parentContainer = container.closest('.params-container');
 			if (parentContainer) {

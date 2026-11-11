@@ -122,13 +122,13 @@ export class DistanceSequencer {
 		this.isActive = false;
 		this.insideArea = false;
 		this.lastPosition = null;
-		this.positionHistory = [];
 
 		this._activeNotes = new Map();
 		this._synthPool = new Map();
 		this._pendingSynths = new Map();
 		this._synthGeneration = 0;
 		this._silencingGain = 1;
+		this._silencerGateClosed = false;
 		this._isMovingFastEnough = false;
 		this._releaseTimeoutId = null;
 		this._speedGateState = createSpeedGateState();
@@ -158,7 +158,7 @@ export class DistanceSequencer {
 
 	_evaluateSpeedGate(speed, nowMs) {
 		const inRange = speed >= this.speedGateMin && speed <= this.speedGateMax;
-		return evaluateSpeedGate(this._speedGateState, inRange, this.speedGateHold, nowMs, speed);
+		return evaluateSpeedGate(this._speedGateState, inRange, this.speedGateHold, nowMs);
 	}
 
 	_handleGateClosed() {
@@ -182,7 +182,7 @@ export class DistanceSequencer {
 
 		const userPos = L.latLng(lat, lon);
 		const wasInside = this.insideArea;
-		this.insideArea = context.PathZoneChecker.checkActivePaths(userPos, this.activePaths);
+		this.insideArea = !this._silencerGateClosed && context.PathZoneChecker.checkActivePaths(userPos, this.activePaths);
 
 		if (!wasInside && this.insideArea) {
 			this.dispatchEvent('enterArea');
@@ -205,7 +205,6 @@ export class DistanceSequencer {
 
 		if (!this.lastPosition) {
 			this.lastPosition = currentPos;
-			this.positionHistory = [currentPos];
 			return;
 		}
 
@@ -220,31 +219,7 @@ export class DistanceSequencer {
 			return;
 		}
 
-		const elapsed = (currentPos.timestamp - this.lastPosition.timestamp) / 1000;
-
-		if (distance < CONSTANTS.SEQUENCER_MIN_DELTA) {
-			if (elapsed >= CONSTANTS.SEQUENCER_IDLE_SAMPLE_SECONDS) {
-				const idleSpeed = distance / elapsed;
-				if (idleSpeed < this.speedGateMin || idleSpeed > this.speedGateMax) {
-					this._handleGateClosed();
-				}
-			}
-			return;
-		}
-
-		const previousSample = this.positionHistory[this.positionHistory.length - 1];
-		if (previousSample && currentPos.timestamp - previousSample.timestamp > CONSTANTS.SEQUENCER_SPEED_WINDOW_MS) {
-			this.positionHistory = [];
-		}
-
-		this.positionHistory.push(currentPos);
-		if (this.positionHistory.length > CONSTANTS.SEQUENCER_SMOOTH_SAMPLES) {
-			this.positionHistory.shift();
-		}
-
-		const speed = this.calculateWindowSpeed();
-
-		const gateOpen = this._evaluateSpeedGate(speed, currentPos.timestamp);
+		const gateOpen = this._evaluateSpeedGate(context.getUserMovementSpeed(), currentPos.timestamp);
 
 		if (!gateOpen) {
 			this._handleGateClosed();
@@ -258,6 +233,10 @@ export class DistanceSequencer {
 		}
 
 		this._isMovingFastEnough = true;
+
+		if (distance < CONSTANTS.SEQUENCER_MIN_DELTA) return;
+
+		const elapsed = (currentPos.timestamp - this.lastPosition.timestamp) / 1000;
 		this.totalDistance += distance * this.speedScale;
 
 		const distanceSinceLastGlobalStep = this.totalDistance - this.lastStepDistance;
@@ -315,24 +294,6 @@ export class DistanceSequencer {
 		if (signature === this._stateSignature) return;
 		this._stateSignature = signature;
 		this.dispatchEvent('stateChange');
-	}
-
-	calculateWindowSpeed() {
-		const history = this.positionHistory;
-		if (history.length < 2) return 0;
-
-		let totalDist = 0;
-		for (let i = 1; i < history.length; i++) {
-			const prev = history[i - 1];
-			const curr = history[i];
-			totalDist += context.map.distance(
-				L.latLng(prev.lat, prev.lon),
-				L.latLng(curr.lat, curr.lon)
-			);
-		}
-
-		const seconds = (history[history.length - 1].timestamp - history[0].timestamp) / 1000;
-		return seconds > 0 ? totalDist / seconds : 0;
 	}
 
 	_prewarmTracks() {
@@ -415,26 +376,9 @@ export class DistanceSequencer {
 			}
 		}
 
-		if (track.synthType === 'Sampler' && params.samplerMode === 'grid' && params.gridSamples && Object.keys(params.gridSamples).length > 0) {
-			await new Promise((resolve) => {
-				const checkLoaded = () => {
-					if (soundObj.synth._buffers && soundObj.synth._buffers._buffers) {
-						let allLoaded = true;
-						soundObj.synth._buffers._buffers.forEach(buffer => {
-							if (!buffer.loaded) allLoaded = false;
-						});
-						if (allLoaded) {
-							soundObj.isReady = true;
-							resolve();
-						} else {
-							setTimeout(checkLoaded, 100);
-						}
-					} else {
-						setTimeout(checkLoaded, 100);
-					}
-				};
-				checkLoaded();
-			});
+		if (track.synthType === 'Sampler' && params.samplerMode === 'grid') {
+			await soundObj.synth.gridLoad;
+			soundObj.isReady = true;
 		}
 
 		return soundObj;
@@ -459,6 +403,10 @@ export class DistanceSequencer {
 		return volume * trackGain * this._silencingGain;
 	}
 
+	applySilencerGate(closed) {
+		this._silencerGateClosed = closed;
+	}
+
 	applySilencingGain(silencingGain) {
 		if (silencingGain === this._silencingGain) return;
 		this._silencingGain = silencingGain;
@@ -481,6 +429,23 @@ export class DistanceSequencer {
 			? Math.max(release, soundObj?.params?.fadeOut ?? 0)
 			: release;
 		return fxTailSeconds(soundObj?.params?.fx, tail);
+	}
+
+	auditionTrackNote(track, midiNote) {
+		const soundObj = this._synthPool.get(track.id);
+		if (!soundObj?.synth) return;
+
+		this._wakeTrackAudio(track, soundObj);
+		this.updateTrackVolume(track);
+
+		const now = Tone.now();
+		soundObj.envelopeGain.gain.cancelAndHoldAtTime(now);
+		soundObj.envelopeGain.gain.linearRampToValueAtTime(CONSTANTS.KEYBOARD_AUDITION_VELOCITY, now + CONSTANTS.SEQUENCER_VELOCITY_RAMP);
+
+		PolyphonyManager.triggerPolyphonic(soundObj.synth, [midiNote], true, soundObj);
+		Tone.getContext().setTimeout(() => {
+			PolyphonyManager.triggerPolyphonic(soundObj.synth, [midiNote], false, soundObj);
+		}, CONSTANTS.KEYBOARD_AUDITION_DURATION_S);
 	}
 
 	_wakeTrackAudio(track, soundObj) {
@@ -1046,7 +1011,7 @@ export class DistanceSequencer {
 			if (!track._noteHoldState[note]) track._noteHoldState[note] = createSpeedGateState();
 			const hold = step?.speedGateHold?.[note] ?? this.speedGateHold ?? 0;
 			const inRange = userSpeed >= gateMin && userSpeed <= gateMax;
-			return evaluateSpeedGate(track._noteHoldState[note], inRange, hold, nowMs, userSpeed);
+			return evaluateSpeedGate(track._noteHoldState[note], inRange, hold, nowMs);
 		};
 
 		for (const note of [...allNotesToTrigger]) {
@@ -1345,7 +1310,6 @@ export class DistanceSequencer {
 		this.lastStepDistance = 0;
 		this.currentStep = -1;
 		this.lastPosition = null;
-		this.positionHistory = [];
 		this._speedGateState = createSpeedGateState();
 		this._releaseAllNotes();
 

@@ -238,6 +238,11 @@ export class KalmanFilter {
 		}
 	}
 
+	getSpeed() {
+		if (!this.isInitialized) return null;
+		return Math.hypot(this.x[2], this.x[3]);
+	}
+
 	getFiltered() {
 		if (!this.isInitialized) return null;
 

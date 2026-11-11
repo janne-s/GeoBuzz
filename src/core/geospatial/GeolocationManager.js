@@ -2,6 +2,7 @@ import { CONSTANTS } from '../constants.js';
 import { KalmanFilter, gpsSmoothingToFilterOptions } from './KalmanFilter.js';
 import { GpsInstabilityTracker } from './GpsInstabilityTracker.js';
 import { updateDirectionUI } from '../../paths/PathEditor.js';
+import { reportFilteredSpeed } from '../audio/AudioEngine.js';
 
 class GeolocationManagerClass {
 	constructor() {
@@ -358,6 +359,7 @@ class GeolocationManagerClass {
 				updateDirectionUI(newHeading);
 			}
 
+			reportFilteredSpeed(this.geoFilter.getSpeed());
 			this.context?.audioFunctions.updateAudio?.(this.userMarker.getLatLng());
 			this.context?.audioFunctions.startAudioLoop?.();
 			this.context?.audioFunctions.resetAreaTracking?.(this.userMarker.getLatLng());
@@ -460,6 +462,7 @@ class GeolocationManagerClass {
 					this.watchId = null;
 				}
 				this.userMarker.dragging.enable();
+				this.context?.audioFunctions.resetSpeedTracking?.();
 				this.context?.audioFunctions.updateAudio?.(this.userMarker.getLatLng());
 				this.context?.audioFunctions.startAudioLoop?.();
 			}

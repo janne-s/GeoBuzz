@@ -704,12 +704,19 @@ export class SequencerUIManager {
 		const originalSoundFile = liveSoundObj.params.soundFile;
 		const originalGridSamples = liveSoundObj.params.gridSamples ? JSON.stringify(liveSoundObj.params.gridSamples) : null;
 
-		track.synthParams = liveSoundObj.params;
+		const syncTrackFromSynth = () => {
+			track.synthParams = liveSoundObj.params;
+			track.synthLastTouchedParam = liveSoundObj.lastTouchedParam;
+		};
+		syncTrackFromSynth();
+		liveSoundObj.audition = (midiNote) => sequencer.auditionTrackNote(track, midiNote);
 
 		menu.addEventListener('input', () => {
+			syncTrackFromSynth();
 			AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
 		});
 		menu.addEventListener('change', () => {
+			syncTrackFromSynth();
 			track.layers = [...(liveSoundObj.layers || [])];
 			AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
 		});
@@ -757,6 +764,7 @@ export class SequencerUIManager {
 		const menuData = Selectors.getTopMenu();
 		if (menuData && menuData.menu === menu) {
 			menuData.onClose = async () => {
+				syncTrackFromSynth();
 				const currentSoundFile = liveSoundObj.params.soundFile;
 				const currentGridSamples = liveSoundObj.params.gridSamples ? JSON.stringify(liveSoundObj.params.gridSamples) : null;
 
@@ -770,6 +778,7 @@ export class SequencerUIManager {
 						sequencer._synthPool.delete(track.id);
 					}
 					await sequencer._getSynth(track);
+					AppState.dispatch({ type: 'SEQUENCER_UPDATED', payload: { sequencer } });
 				}
 			};
 		}

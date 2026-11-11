@@ -111,13 +111,8 @@ export const DragHandlers = {
 			drag: () => {
 				obj.vertices[index] = marker.getLatLng();
 				obj.polygon.setLatLngs(obj.vertices);
-				if (obj.iconPlacementMode === 'fixed') {
-					const centroid = Geometry.calculateCentroid(obj.vertices);
-					obj.marker.setLatLng(centroid);
-				}
-				if (index === 0 && obj.labelMarker) {
-					obj.labelMarker.setLatLng(obj.vertices[0]);
-				}
+				Geometry.updatePolygonCentroid(obj);
+				if (index === 0) Geometry.updatePolygonLabelPosition(obj);
 				Geometry.updateDivisionLineVisual(obj, context.map);
 				AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
 			},
@@ -228,6 +223,7 @@ export const DragHandlers = {
 			obj.polygon.setLatLngs(obj.vertices);
 			ShapeManager.createVertexMarkers(obj);
 			Geometry.updatePolygonCentroid(obj);
+			Geometry.updatePolygonLabelPosition(obj);
 			if (obj.originalVertices) {
 				obj.originalVertices = obj.vertices.map(v => ({
 					lat: v.lat - obj.userLat,
@@ -285,6 +281,7 @@ export const DragHandlers = {
 			Geometry.updateLineCorridor(obj);
 			Geometry.updateDivisionLineVisual(obj, context.map);
 			ShapeManager.createLinePointMarkers(obj);
+			if (obj.labelMarker) obj.labelMarker.setLatLng(obj.linePoints[0]);
 
 			if (obj.iconPlacementMode === 'fixed') {
 				const centroid = Geometry.calculateCentroid(obj.linePoints);

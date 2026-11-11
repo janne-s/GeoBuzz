@@ -11,6 +11,19 @@ export function setContext(appCtx) {
 	context = appCtx;
 }
 
+function toggleAuditionedNote(obj, midiNote, container) {
+	if (obj.params.selectedNotes.includes(midiNote)) {
+		obj.params.selectedNotes = obj.params.selectedNotes.filter(note => note !== midiNote);
+	} else {
+		obj.params.selectedNotes.push(midiNote);
+		obj.frequencyMode = false;
+		obj.audition(midiNote);
+	}
+	obj.lastTouchedParam = 'keyboard';
+	container.dispatchEvent(new Event('change', { bubbles: true }));
+	MenuTabs.keyboard.render(obj, container);
+}
+
 export const MenuTabs = {
 	sound: {
 		render(obj, container) {
@@ -361,6 +374,7 @@ export const MenuTabs = {
 							if (obj.params.gridEditMode) {
 								const updated = await context.showGridSampleDialog(obj, midiNote);
 								if (updated) {
+									container.dispatchEvent(new Event('change', { bubbles: true }));
 									MenuTabs.keyboard.render(obj, container);
 
 									const soundTabContent = document.querySelector('.params-container');
@@ -372,6 +386,8 @@ export const MenuTabs = {
 										}
 									}
 								}
+							} else if (obj.audition) {
+								obj.audition(midiNote);
 							} else {
 								const isCurrentlySelected = obj.params.selectedNotes.includes(midiNote);
 								AppState.dispatch({
@@ -384,6 +400,8 @@ export const MenuTabs = {
 								});
 								MenuTabs.keyboard.render(obj, container);
 							}
+						} else if (obj.audition) {
+							toggleAuditionedNote(obj, midiNote, container);
 						} else {
 							const isCurrentlySelected = obj.params.selectedNotes.includes(midiNote);
 							AppState.dispatch({
@@ -425,10 +443,16 @@ export const MenuTabs = {
 						'Clear Grid'
 					);
 					if (confirm) {
-						AppState.dispatch({
-							type: 'SOUND_GRID_CLEARED',
-							payload: { soundId: obj.id }
-						});
+						if (obj.audition) {
+							obj.params.gridSamples = {};
+							await context.changeSoundType(obj, 'Sampler');
+						} else {
+							AppState.dispatch({
+								type: 'SOUND_GRID_CLEARED',
+								payload: { soundId: obj.id }
+							});
+						}
+						container.dispatchEvent(new Event('change', { bubbles: true }));
 						MenuTabs.keyboard.render(obj, container);
 					}
 				}, 'keyboard-clear-btn');

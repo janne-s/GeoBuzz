@@ -7,6 +7,19 @@ import { FXParamSets } from '../../config/registries.js';
 import { PARAMETER_REGISTRY } from '../../config/parameterRegistry.js';
 import { resolveSoundUrlSync } from '../../api/SoundUrlResolver.js';
 
+function delayCapacitySeconds(delayTime) {
+	return Math.max(CONSTANTS.FX_DELAY_BASE_CAPACITY_S, delayTime * CONSTANTS.FX_DELAY_CAPACITY_HEADROOM);
+}
+
+function delayOptions(params) {
+	const delayTime = params.delayTime || 0.25;
+	return {
+		delayTime,
+		feedback: params.feedback || 0.5,
+		maxDelay: delayCapacitySeconds(delayTime)
+	};
+}
+
 export function getBaseWaveformPartials(waveform, partialCount, pulseWidth = CONSTANTS.DEFAULT_SOUND.pulseWidth) {
 	const partials = [];
 
@@ -318,25 +331,28 @@ export const SYNTH_REGISTRY = {
 				volume: CONSTANTS.DEFAULT_SYNTH_VOLUME_DB
 			};
 
-			if (params.samplerMode === 'grid' && params.gridSamples && Object.keys(params.gridSamples).length > 0) {
-				const urls = {};
+			samplerConfig.urls = {};
+			if (params.samplerMode === 'grid' && params.gridSamples) {
 				Object.entries(params.gridSamples).forEach(([midiNote, data]) => {
 					if (data && data.fileName) {
 						const noteName = Tone.Frequency(parseInt(midiNote), 'midi').toNote();
-						urls[noteName] = resolveSoundUrlSync(Selectors.getWorkspaceId(), data.fileName);
+						samplerConfig.urls[noteName] = resolveSoundUrlSync(Selectors.getWorkspaceId(), data.fileName);
 					}
 				});
-				samplerConfig.urls = urls;
-
-				samplerConfig.onload = () => {
-
-				};
-			} else {
-				samplerConfig.urls = {};
 			}
+
+			let settleGridLoad;
+			const gridLoad = new Promise(resolve => { settleGridLoad = resolve; });
+			samplerConfig.onload = () => settleGridLoad(true);
+			samplerConfig.onerror = (error) => {
+				console.warn('Grid sample could not be loaded:', error);
+				settleGridLoad(false);
+			};
+			if (Object.keys(samplerConfig.urls).length === 0) settleGridLoad(true);
 
 			const sampler = new Tone.Sampler(samplerConfig);
 			sampler.maxPolyphony = params.polyphony || 4;
+			sampler.gridLoad = gridLoad;
 			return sampler;
 		},
 		parameters: ['attack', 'release', 'loop', 'filterFreq', 'filterType', 'resonance', 'pan', 'polyphony', 'speedGateMin', 'speedGateMax', 'speedGateHold', 'samplerMode', 'gridSamples', 'soundFile']
@@ -491,10 +507,7 @@ export const FX_REGISTRY = {
 	FeedbackDelay: {
 		label: "Feedback Delay",
 		parameters: FXParamSets.delay,
-		factory: (params) => new Tone.FeedbackDelay({
-			delayTime: params.delayTime || 0.25,
-			feedback: params.feedback || 0.5
-		})
+		factory: (params) => new Tone.FeedbackDelay(delayOptions(params))
 	},
 
 	Phaser: {
@@ -510,10 +523,7 @@ export const FX_REGISTRY = {
 	PingPongDelay: {
 		label: "Ping Pong Delay",
 		parameters: FXParamSets.delay,
-		factory: (params) => new Tone.PingPongDelay({
-			delayTime: params.delayTime || 0.25,
-			feedback: params.feedback || 0.5
-		})
+		factory: (params) => new Tone.PingPongDelay(delayOptions(params))
 	},
 
 	Reverb: {

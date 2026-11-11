@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-11-11
+
+### Added
+
+- Sequencer synth keyboard plays notes for auditioning
+- Silencer mode for silencing outside a path instead of inside
+- Silencer gate action that ends and restarts notes at the path's edge
+- Silencer fade width, attack and release
+
+### Changed
+
+- Filter frequency goes down to 20 Hz
+- Silencer fades from the path's edge instead of its center
+
+### Fixed
+
+- Delay time could not be set above one second
+- Sequencer grid sampler settings did not open when a sample was missing
+- Sequencer sampler edits were sometimes not saved
+- Element label stayed behind when its first point was removed
+- Duplicated elements placed their icon outside the shape
+- Duplicating a line element moved the original's points
+- GPS speed dropped to zero every other second while walking
+- Speed gate hold did not protect against stopping
+- Sequencer speed gate with hold never opened under GPS noise
+
 ## 2026-11-09
 
 ### Added

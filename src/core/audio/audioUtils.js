@@ -96,19 +96,85 @@ export function pathContributes(path, role) {
 	return !path.muted;
 }
 
-export function calculateSilencingGain(userPos) {
-	let silencingGain = 1;
-	if (!userPos) return silencingGain;
+const silencerStates = new Map();
 
+export function silencerSettings(silencer) {
+	return {
+		mode: silencer.mode ?? 'inside',
+		action: silencer.action ?? 'fade',
+		fade: silencer.fade ?? CONSTANTS.SILENCER_DEFAULT_FADE_M,
+		curve: silencer.curve ?? 1,
+		attack: silencer.attack ?? 0,
+		release: silencer.release ?? 0
+	};
+}
+
+function silencedDepth(userPos, path, settings) {
+	const inside = context.Geometry.isPointInControlPath(userPos, path);
+	if (inside !== (settings.mode === 'inside')) return 0;
+	if (settings.action === 'gate' || settings.fade <= 0) return 1;
+
+	const depth = Math.min(1, context.Geometry.distanceToControlPathEdge(userPos, path) / settings.fade);
+	const exponent = CONSTANTS.SILENCER_MIN_EXPONENT + settings.curve * (1 - CONSTANTS.SILENCER_MIN_EXPONENT);
+	return Math.pow(depth, exponent);
+}
+
+function settleSilencerLevel(pathId, target, settings, now) {
+	const state = silencerStates.get(pathId);
+	if (!state) {
+		silencerStates.set(pathId, { level: target, target, time: now });
+		return target;
+	}
+
+	const elapsed = Math.max(0, now - state.time);
+	const duration = target > state.level ? settings.attack : settings.release;
+	state.time = now;
+	state.target = target;
+
+	if (duration <= 0) {
+		state.level = target;
+	} else if (target > state.level) {
+		state.level = Math.min(target, state.level + elapsed / duration);
+	} else {
+		state.level = Math.max(target, state.level - elapsed / duration);
+	}
+	return state.level;
+}
+
+export function isSilencerSettling() {
+	for (const state of silencerStates.values()) {
+		if (state.level !== state.target) return true;
+	}
+	return false;
+}
+
+export function calculateSilencing(userPos) {
+	const silencing = { gain: 1, gateClosed: false };
+	if (!userPos) return silencing;
+
+	const now = performance.now() / 1000;
+	const fadingPaths = new Set();
 	const paths = Selectors.getPaths();
 	for (let i = 0; i < paths.length; i++) {
 		const path = paths[i];
 		if (!path.params.silencer || !pathContributes(path, 'silencer')) continue;
-		if (context.Geometry.isPointInControlPath(userPos, path)) {
-			silencingGain = Math.min(silencingGain, 1 - calculatePathGain(userPos, path));
+
+		const settings = silencerSettings(path.params.silencer);
+		const depth = silencedDepth(userPos, path, settings);
+
+		if (settings.action === 'gate') {
+			if (depth > 0) silencing.gateClosed = true;
+			continue;
 		}
+
+		fadingPaths.add(path.id);
+		silencing.gain = Math.min(silencing.gain, 1 - settleSilencerLevel(path.id, depth, settings, now));
 	}
-	return silencingGain;
+
+	for (const pathId of silencerStates.keys()) {
+		if (!fadingPaths.has(pathId)) silencerStates.delete(pathId);
+	}
+	return silencing;
 }
 
 export function calculatePathGain(userPos, path) {
@@ -139,12 +205,6 @@ export function calculatePathGain(userPos, path) {
 		const distance = context.map.distance(userPos, centroid);
 		const normalized = Math.min(1, distance / maxDist);
 		rawGain = 1 - normalized;
-	}
-
-	if (path.params.silencer) {
-		const curve = path.params.silencer.curve !== undefined ? path.params.silencer.curve : 1.0;
-		const exponent = 0.01 + curve * 0.99;
-		return Math.pow(rawGain, exponent);
 	}
 
 	return rawGain;
