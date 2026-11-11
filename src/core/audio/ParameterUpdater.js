@@ -224,13 +224,13 @@ const PARAM_HANDLERS = {
 		updatePartials(obj);
 	},
 	grainSize: (obj, value, isModulation) => {
-		if (isGranularMode(obj)) obj.synth.grainSize = value;
+		if (obj.synth && isGranularMode(obj)) obj.synth.grainSize = value;
 	},
 	overlap: (obj, value, isModulation) => {
-		if (isGranularMode(obj)) obj.synth.overlap = value;
+		if (obj.synth && isGranularMode(obj)) obj.synth.overlap = value;
 	},
 	grainDetune: (obj, value, isModulation) => {
-		if (isGranularMode(obj)) obj.synth.detune = value;
+		if (obj.synth && isGranularMode(obj)) obj.synth.detune = value;
 	},
 	speed: (obj, value, isModulation) => {
 		if (obj.type !== "SoundFile" || !obj.synth) return;

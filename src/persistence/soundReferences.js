@@ -14,7 +14,7 @@ export function collectSoundReferences(buzzData) {
 
 				if (sound.params?.samplerMode === 'grid' && sound.params?.gridSamples) {
 					Object.values(sound.params.gridSamples).forEach(sample => {
-						if (sample.fileName) {
+						if (sample?.fileName) {
 							soundFiles.add(sample.fileName);
 						}
 					});
@@ -39,7 +39,7 @@ export function collectSoundReferences(buzzData) {
 
 							if (track.synthParams.samplerMode === 'grid' && track.synthParams.gridSamples) {
 								Object.values(track.synthParams.gridSamples).forEach(sample => {
-									if (sample.fileName) {
+									if (sample?.fileName) {
 										soundFiles.add(sample.fileName);
 									}
 								});

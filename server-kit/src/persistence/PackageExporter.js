@@ -190,7 +190,7 @@ export const PackageExporter = {
 
 					if (sound.params?.samplerMode === 'grid' && sound.params?.gridSamples) {
 						Object.values(sound.params.gridSamples).forEach(sample => {
-							if (sample.fileName && !sample.fileName.includes('/')) {
+							if (sample?.fileName && !sample.fileName.includes('/')) {
 								sample.fileName = `sounds/${sample.fileName}`;
 							}
 						});
@@ -219,7 +219,7 @@ export const PackageExporter = {
 
 								if (track.synthParams.samplerMode === 'grid' && track.synthParams.gridSamples) {
 									Object.values(track.synthParams.gridSamples).forEach(sample => {
-										if (sample.fileName && !sample.fileName.includes('/')) {
+										if (sample?.fileName && !sample.fileName.includes('/')) {
 											sample.fileName = `sounds/${sample.fileName}`;
 										}
 									});

@@ -249,7 +249,7 @@ export const PackageImporter = {
 				}
 				if (sound.params?.gridSamples) {
 					Object.values(sound.params.gridSamples).forEach(sample => {
-						if (sample.fileName) {
+						if (sample?.fileName) {
 							sample.fileName = updateFilename(sample.fileName);
 						}
 					});
@@ -266,7 +266,7 @@ export const PackageImporter = {
 						}
 						if (track.synthParams?.gridSamples) {
 							Object.values(track.synthParams.gridSamples).forEach(sample => {
-								if (sample.fileName) {
+								if (sample?.fileName) {
 									sample.fileName = updateFilename(sample.fileName);
 								}
 							});
@@ -300,7 +300,7 @@ export const PackageImporter = {
 				}
 				if (sound.params?.gridSamples) {
 					Object.values(sound.params.gridSamples).forEach(sample => {
-						if (sample.fileName) {
+						if (sample?.fileName) {
 							sample.fileName = revertPath(sample.fileName);
 						}
 					});
@@ -317,7 +317,7 @@ export const PackageImporter = {
 						}
 						if (track.synthParams?.gridSamples) {
 							Object.values(track.synthParams.gridSamples).forEach(sample => {
-								if (sample.fileName) {
+								if (sample?.fileName) {
 									sample.fileName = revertPath(sample.fileName);
 								}
 							});

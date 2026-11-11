@@ -23,6 +23,9 @@
 - Duplicated elements placed their icon outside the shape
 - Duplicating a line element moved the original's points
 - GPS speed dropped to zero every other second while walking
+- Server workspace saves turned empty settings into lists, losing later edits
+- Export failed on a sequencer grid sampler with empty sample slots
+- Exported player logged grain size warnings before playback started
 - Speed gate hold did not protect against stopping
 - Sequencer speed gate with hold never opened under GPS noise
 
