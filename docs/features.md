@@ -98,10 +98,11 @@ Parameters are organized by category. Which categories appear depends on the syn
 | **Pitch** | Base pitch in semitones |
 | **Frequency** | Direct frequency control (Hz) |
 | **Waveform** | Wave shape: Sine, Square, Sawtooth, Triangle, Pulse, PWM |
-| **Pulse Width** | Width for pulse waveforms |
+| **Pulse Width** | Duty cycle of the Pulse waveform (shown only for Pulse) |
+| **PWM Rate** | Speed of the pulse width sweep in Hz (shown only for PWM) |
 | **Detune** | Fine tuning offset in cents |
 | **Portamento** | Glide time between notes |
-| **Partial Count** | Number of harmonic partials |
+| **Partial Count** | Number of harmonic partials (not available for PWM; with Pulse, follows Pulse Width) |
 | **Partial Curve** | Harmonic rolloff curve |
 
 **Fat Oscillator** additionally shows:

@@ -2,7 +2,7 @@ import { CONSTANTS } from '../constants.js';
 import { Selectors } from '../state/selectors.js';
 import { AppState } from '../state/StateManager.js';
 import { Geometry } from '../geospatial/Geometry.js';
-import { calculatePartials } from './SynthRegistry.js';
+import { calculatePartials, resolveOscillatorShape, sanitizeFatWaveform } from './SynthRegistry.js';
 import { applySoundFilePlaybackParams, cancelFadeStop } from './SoundLifecycle.js';
 import { isGranularMode } from '../utils/typeChecks.js';
 
@@ -40,46 +40,66 @@ function getAudioNodeParameter(synth, audioNodePath) {
 	return current;
 }
 
+function updateModulationPartials(target, overrides) {
+	if (!target.synth?.modulation) return;
+
+	const partialCount = Math.max(1, Math.round(overrides.modPartialCount ?? (target.params.modPartialCount || 1)));
+	const partialCurve = overrides.modPartialCurve ?? (target.params.modPartialCurve ?? -0.5);
+	const waveform = target.params.modWaveform || 'square';
+	const type = partialCount > 1 ? 'custom' : waveform;
+
+	const settings = { type };
+	if (partialCount > 1) settings.partials = calculatePartials(partialCount, partialCurve, waveform);
+
+	applyNodeSettings(target.synth, 'modulation', settings);
+}
+
+function applyNodeSettings(synth, nodeKey, settings) {
+	if (synth instanceof Tone.PolySynth) {
+		synth.set({ [nodeKey]: settings });
+		return;
+	}
+
+	const node = synth[nodeKey];
+	if (!node) return;
+
+	node.type = settings.type;
+	if (settings.partials) node.partials = settings.partials;
+	if (settings.width !== undefined && node.width) node.width.value = settings.width;
+	if (settings.modulationFrequency !== undefined && node.modulationFrequency) node.modulationFrequency.value = settings.modulationFrequency;
+}
+
 export const updatePartials = (target, isMod = false, overrides = {}) => {
-	const prefix = isMod ? 'mod' : '';
-	const countParam = prefix + (isMod ? 'PartialCount' : 'partialCount');
-	const curveParam = prefix + (isMod ? 'PartialCurve' : 'partialCurve');
-	const waveParam = isMod ? 'modWaveform' : 'waveform';
-	const defaultWave = isMod ? 'square' : 'sine';
-	const nodeKey = isMod ? 'modulation' : 'oscillator';
-
-	if (isMod ? (!target.synth?.modulation) : (target.type === "SoundFile" || target.type === "StreamPlayer" || !target.synth)) return;
-
-	const rawCount = overrides[countParam] !== undefined ? overrides[countParam] : (target.params[countParam] || 1);
-	const partialCount = Math.max(1, Math.round(rawCount));
-
-	const partialCurve = overrides[curveParam] !== undefined ? overrides[curveParam] : (target.params[curveParam] ?? -0.5);
-	const waveform = target.params[waveParam] || defaultWave;
-
-	const partials = calculatePartials(partialCount, partialCurve, partialCount > 1 ? waveform : null);
-	let newType = partialCount > 1 ? 'custom' : waveform;
-
-	if (!isMod && target.type === "FatOscillator" && newType !== 'custom') {
-		newType = 'fat' + waveform;
+	if (isMod) {
+		updateModulationPartials(target, overrides);
+		return;
 	}
 
-	const config = {
-		[nodeKey]: { type: newType }
-	};
-	if (partialCount > 1) {
-		config[nodeKey].partials = partials;
+	if (target.type === "SoundFile" || target.type === "StreamPlayer" || !target.synth) return;
+
+	const params = { ...target.params, ...overrides };
+
+	if (target.type === "FatOscillator") {
+		applyNodeSettings(target.synth, 'oscillator', { type: 'fat' + sanitizeFatWaveform(params.waveform || 'sawtooth') });
+		return;
 	}
 
-	if (target.synth instanceof Tone.PolySynth) {
-		target.synth.set(config);
-	} else {
-		const node = target.synth[nodeKey];
-		if (node) {
-			node.type = newType;
-			if (partialCount > 1) node.partials = partials;
-		}
-	}
+	applyNodeSettings(target.synth, 'oscillator', resolveOscillatorShape(params, params.waveform || 'sine'));
 };
+
+const usesPulsePartials = (obj) => obj.params.waveform === 'pulse' && Math.round(obj.params.partialCount || 1) > 1;
+
+function setOscillatorSignal(obj, key, value, isModulation) {
+	if (obj.synth instanceof Tone.PolySynth) {
+		obj.synth.set({ oscillator: { [key]: value } });
+		return;
+	}
+
+	const signal = obj.synth.oscillator?.[key];
+	if (!signal) return;
+	if (isModulation) signal.rampTo(value, CONSTANTS.LFO_SMOOTH_RAMP_TIME);
+	else signal.value = value;
+}
 
 const PARAM_HANDLERS = {
 	pitch: async (obj, value, isModulation) => {
@@ -191,10 +211,13 @@ const PARAM_HANDLERS = {
 		}
 	},
 	pulseWidth: (obj, value, isModulation) => {
-		if (obj.synth) {
-			if (obj.synth instanceof Tone.PolySynth) obj.synth.set({ oscillator: { width: value } });
-			else if (obj.synth.oscillator?.width) obj.synth.oscillator.width.value = value;
-		}
+		if (!obj.synth || obj.params.waveform !== 'pulse') return;
+		if (usesPulsePartials(obj)) updatePartials(obj, false, { pulseWidth: value });
+		else setOscillatorSignal(obj, 'width', value, isModulation);
+	},
+	pwmRate: (obj, value, isModulation) => {
+		if (!obj.synth || obj.params.waveform !== 'pwm') return;
+		setOscillatorSignal(obj, 'modulationFrequency', value, isModulation);
 	},
 	waveform: (obj, value, isModulation) => {
 		if (obj.type === "SoundFile" || obj.type === "StreamPlayer" || !obj.synth) return;

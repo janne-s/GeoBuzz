@@ -212,6 +212,12 @@ export const CONSTANTS = {
 	PULSE_WIDTH_MAX: 0.99,
 	PULSE_WIDTH_STEP: 0.01,
 
+	PWM_RATE_MIN: 0.01,
+	PWM_RATE_MAX: 20,
+	PWM_RATE_STEP: 0.01,
+
+	FAT_WAVEFORMS: ['sine', 'square', 'sawtooth', 'triangle'],
+
 	PORTAMENTO_MIN: 0,
 	PORTAMENTO_MAX: 1,
 	PORTAMENTO_STEP: 0.01,
@@ -287,6 +293,7 @@ export const CONSTANTS = {
 		portamento: 0,
 		harmonicity: 1,
 		pulseWidth: 0.5,
+		pwmRate: 0.4,
 		count: 3,
 		spread: 20,
 		pan: 0,

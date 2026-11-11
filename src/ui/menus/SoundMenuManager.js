@@ -7,6 +7,7 @@ import { EchoManager } from '../../core/audio/EchoManager.js';
 import { DEFAULT_FX_STRUCTURE, DEFAULT_EQ_STRUCTURE, DEFAULT_LFO_STRUCTURE } from '../../config/defaults.js';
 import { deepClone } from '../../core/utils/math.js';
 import { waitForNextFrame } from '../../core/utils/async.js';
+import { CONSTANTS } from '../../core/constants.js';
 
 let AppState, Selectors, MenuManager, ModalSystem, AudioNodeManager, StreamManager, FXManager, GeolocationManager;
 let closeAllMenus, destroySound, stopLoopedPlayback, isFileSynth;
@@ -159,6 +160,7 @@ export async function changeSoundType(obj, newType) {
 			portamento: obj.params.portamento || 0,
 			harmonicity: obj.params.harmonicity || 1,
 			pulseWidth: obj.params.pulseWidth || 0.5,
+			pwmRate: obj.params.pwmRate ?? CONSTANTS.DEFAULT_SOUND.pwmRate,
 			count: obj.params.count || 3,
 			spread: obj.params.spread || 20,
 			resonance: obj.params.resonance || 1,

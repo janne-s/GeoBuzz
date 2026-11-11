@@ -7,7 +7,7 @@ import { FXParamSets } from '../../config/registries.js';
 import { PARAMETER_REGISTRY } from '../../config/parameterRegistry.js';
 import { resolveSoundUrlSync } from '../../api/SoundUrlResolver.js';
 
-export function getBaseWaveformPartials(waveform, partialCount) {
+export function getBaseWaveformPartials(waveform, partialCount, pulseWidth = CONSTANTS.DEFAULT_SOUND.pulseWidth) {
 	const partials = [];
 
 	if (waveform === 'sine') {
@@ -25,6 +25,11 @@ export function getBaseWaveformPartials(waveform, partialCount) {
 		for (let i = 1; i <= partialCount; i++) {
 			partials.push(i % 2 === 1 ? Math.pow(-1, (i - 1) / 2) / (i * i) : 0);
 		}
+	} else if (waveform === 'pulse') {
+		const fundamental = Math.sin(Math.PI * pulseWidth);
+		for (let i = 1; i <= partialCount; i++) {
+			partials.push(Math.sin(i * Math.PI * pulseWidth) / (i * fundamental));
+		}
 	} else {
 		for (let i = 1; i <= partialCount; i++) partials.push(i === 1 ? 1 : 0);
 	}
@@ -32,12 +37,12 @@ export function getBaseWaveformPartials(waveform, partialCount) {
 	return partials;
 }
 
-export function calculatePartials(count, curve, baseWaveform = null) {
+export function calculatePartials(count, curve, baseWaveform = null, pulseWidth) {
 	if (count === 1) {
-		return baseWaveform ? getBaseWaveformPartials(baseWaveform, 1) : [1];
+		return baseWaveform ? getBaseWaveformPartials(baseWaveform, 1, pulseWidth) : [1];
 	}
 
-	const base = baseWaveform ? getBaseWaveformPartials(baseWaveform, count) : new Array(count).fill(0);
+	const base = baseWaveform ? getBaseWaveformPartials(baseWaveform, count, pulseWidth) : new Array(count).fill(0);
 	base[0] = 1;
 
 	for (let i = 2; i <= count; i++) {
@@ -57,23 +62,26 @@ export function calculatePartials(count, curve, baseWaveform = null) {
 	return base;
 }
 
-export function createOscillatorConfig(params, waveformDefault = "sine") {
-	const waveform = params.waveform || waveformDefault;
-	const partialCount = params.partialCount || 1;
+export function resolveOscillatorShape(params, waveform) {
+	const partialCount = Math.max(1, Math.round(params.partialCount || 1));
 	const partialCurve = params.partialCurve ?? -0.5;
+	const pulseWidth = params.pulseWidth ?? CONSTANTS.DEFAULT_SOUND.pulseWidth;
+	const usesPartials = partialCount > 1 && waveform !== 'pwm';
+	const type = usesPartials ? 'custom' : waveform;
 
-	const partials = calculatePartials(partialCount, partialCurve, partialCount > 1 ? waveform : null);
-	const oscillatorType = partialCount > 1 ? 'custom' : waveform;
+	const shape = { type };
+	if (usesPartials) shape.partials = calculatePartials(partialCount, partialCurve, waveform, pulseWidth);
+	if (type === 'pulse') shape.width = pulseWidth;
+	if (type === 'pwm') shape.modulationFrequency = params.pwmRate ?? CONSTANTS.DEFAULT_SOUND.pwmRate;
 
-	const config = {
-		type: oscillatorType,
-		width: params.pulseWidth || 0.5,
+	return shape;
+}
+
+export function createOscillatorConfig(params, waveformDefault = "sine") {
+	return {
+		...resolveOscillatorShape(params, params.waveform || waveformDefault),
 		detune: params.detune || 0
 	};
-
-	if (partialCount > 1) config.partials = partials;
-
-	return config;
 }
 
 export function createModulationConfig(params, waveformDefault = "square") {
@@ -90,10 +98,8 @@ export function createModulationConfig(params, waveformDefault = "square") {
 	return config;
 }
 
-const VALID_FAT_WAVEFORMS = ['sine', 'square', 'sawtooth', 'triangle'];
-
-function sanitizeFatWaveform(waveform) {
-	return VALID_FAT_WAVEFORMS.includes(waveform) ? waveform : 'sawtooth';
+export function sanitizeFatWaveform(waveform) {
+	return CONSTANTS.FAT_WAVEFORMS.includes(waveform) ? waveform : 'sawtooth';
 }
 
 const SynthTemplates = {
@@ -133,7 +139,7 @@ export const SYNTH_REGISTRY = {
 			}
 			return new Tone.Synth(baseOptions);
 		},
-		parameters: ['pitch', 'frequency', 'waveform', 'pulseWidth', 'detune', 'portamento', 'partialCount', 'partialCurve', 'attack', 'decay', 'sustain', 'release', 'filterFreq', 'filterType', 'resonance', 'pan', 'polyphony', 'speedGateMin', 'speedGateMax', 'speedGateHold']
+		parameters: ['pitch', 'frequency', 'waveform', 'pulseWidth', 'pwmRate', 'detune', 'portamento', 'partialCount', 'partialCurve', 'attack', 'decay', 'sustain', 'release', 'filterFreq', 'filterType', 'resonance', 'pan', 'polyphony', 'speedGateMin', 'speedGateMax', 'speedGateHold']
 	},
 
 	AMSynth: {
@@ -160,7 +166,7 @@ export const SYNTH_REGISTRY = {
 			}
 			return new Tone.AMSynth(baseOptions);
 		},
-		parameters: ['pitch', 'frequency', 'waveform', 'pulseWidth', 'modWaveform', 'harmonicity',
+		parameters: ['pitch', 'frequency', 'waveform', 'pulseWidth', 'pwmRate', 'modWaveform', 'harmonicity',
 			'detune', 'portamento', 'partialCount', 'partialCurve', 'modPartialCount', 'modPartialCurve', 'attack', 'decay', 'sustain', 'release', 'modAttack', 'modRelease', 'filterFreq', 'filterType', 'resonance', 'pan', 'polyphony', 'speedGateMin', 'speedGateMax', 'speedGateHold'
 		]
 	},
@@ -189,7 +195,7 @@ export const SYNTH_REGISTRY = {
 			}
 			return new Tone.FMSynth(baseOptions);
 		},
-		parameters: ['pitch', 'frequency', 'waveform', 'pulseWidth', 'modWaveform', 'modIndex', 'harmonicity', 'detune', 'portamento', 'partialCount', 'partialCurve', 'modPartialCount', 'modPartialCurve', 'attack', 'decay', 'sustain', 'release', 'modAttack', 'modRelease', 'filterFreq', 'filterType', 'resonance', 'pan', 'polyphony', 'speedGateMin', 'speedGateMax', 'speedGateHold']
+		parameters: ['pitch', 'frequency', 'waveform', 'pulseWidth', 'pwmRate', 'modWaveform', 'modIndex', 'harmonicity', 'detune', 'portamento', 'partialCount', 'partialCurve', 'modPartialCount', 'modPartialCurve', 'attack', 'decay', 'sustain', 'release', 'modAttack', 'modRelease', 'filterFreq', 'filterType', 'resonance', 'pan', 'polyphony', 'speedGateMin', 'speedGateMax', 'speedGateHold']
 	},
 
 	FatOscillator: {
@@ -205,7 +211,6 @@ export const SYNTH_REGISTRY = {
 					type: 'fat' + waveform,
 					count: params.count || 3,
 					spread: params.spread || 20,
-					width: params.pulseWidth || 0.5,
 					detune: params.detune || 0
 				},
 				envelope: AudioNodeManager.getEnvelopeParams(params),
@@ -220,7 +225,7 @@ export const SYNTH_REGISTRY = {
 			}
 			return new Tone.Synth(baseOptions);
 		},
-		parameters: ['pitch', 'frequency', 'waveform', 'pulseWidth', 'count', 'spread',
+		parameters: ['pitch', 'frequency', 'waveform', 'count', 'spread',
 			'detune', 'portamento', 'attack', 'decay', 'sustain', 'release',
 			'filterFreq', 'filterType', 'resonance', 'pan', 'polyphony', 'speedGateMin', 'speedGateMax', 'speedGateHold'
 		]

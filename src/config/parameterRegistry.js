@@ -247,7 +247,22 @@ export const PARAMETER_REGISTRY = {
 		category: 'oscillator',
 		audioNode: 'oscillator.width',
 		serialize: true,
-		ui: true
+		ui: true,
+		visibleWhen: (params) => params.waveform === 'pulse'
+	},
+	pwmRate: {
+		label: 'PWM Rate',
+		type: 'range',
+		min: CONSTANTS.PWM_RATE_MIN,
+		max: CONSTANTS.PWM_RATE_MAX,
+		step: CONSTANTS.PWM_RATE_STEP,
+		defaultValue: CONSTANTS.DEFAULT_SOUND.pwmRate,
+		unit: ' Hz',
+		category: 'oscillator',
+		audioNode: 'oscillator.modulationFrequency',
+		serialize: true,
+		ui: true,
+		visibleWhen: (params) => params.waveform === 'pwm'
 	},
 	waveform: {
 		label: 'Waveform',
@@ -264,7 +279,10 @@ export const PARAMETER_REGISTRY = {
 		category: 'oscillator',
 		audioNode: 'oscillator.type',
 		serialize: true,
-		ui: true
+		ui: true,
+		optionsFor: (target, options) => target.type === 'FatOscillator'
+			? options.filter(option => CONSTANTS.FAT_WAVEFORMS.includes(option.value))
+			: options
 	},
 
 	noiseType: {
@@ -890,7 +908,8 @@ export const PARAMETER_REGISTRY = {
 		unit: '',
 		category: 'oscillator',
 		serialize: true,
-		ui: true
+		ui: true,
+		visibleWhen: (params) => params.waveform !== 'pwm'
 	},
 	partialCurve: {
 		label: 'Partial Curve',
@@ -903,6 +922,7 @@ export const PARAMETER_REGISTRY = {
 		category: 'oscillator',
 		serialize: true,
 		ui: true,
+		visibleWhen: (params) => params.waveform !== 'pwm',
 		allowNegativeMin: true,
 		formatDisplay: (val) => {
 			if (val < -0.1) return 'Inverse';

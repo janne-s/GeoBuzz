@@ -35,10 +35,23 @@ export function updateFrequencyModeIndicators(target) {
 	});
 }
 
+const isControlVisible = (def, target) => !def.visibleWhen || def.visibleWhen(target.params ?? {});
+
+function refreshConditionalControls(container, target) {
+	container?.querySelectorAll('.parameter-control[data-param-key]').forEach(control => {
+		const def = PARAMETER_REGISTRY[control.dataset.paramKey];
+		if (def) control.classList.toggle('hidden', !isControlVisible(def, target));
+	});
+}
+
 export function createParameterControl(def, paramKey, target, onUpdate, options = {}) {
 	const effectiveDef = getParameterMeta(paramKey) || def;
 
 	const group = createElement('div', 'parameter-control' + (options.small ? ' small' : ''));
+	if (effectiveDef.visibleWhen) {
+		group.dataset.paramKey = paramKey;
+		group.classList.toggle('hidden', !isControlVisible(effectiveDef, target));
+	}
 
 	const labelEl = createElement('label');
 	labelEl.textContent = options.label || effectiveDef.label;
@@ -51,7 +64,8 @@ export function createParameterControl(def, paramKey, target, onUpdate, options 
 	};
 
 	if (effectiveDef.type === 'select') {
-		const select = createSelect(effectiveDef.options, getValue(), (e) => {
+		const selectOptions = effectiveDef.optionsFor ? effectiveDef.optionsFor(target, effectiveDef.options) : effectiveDef.options;
+		const select = createSelect(selectOptions, getValue(), (e) => {
 			const value = e.target.value;
 			AppState.dispatch({
 				type: 'PARAMETER_CHANGED',
@@ -62,6 +76,7 @@ export function createParameterControl(def, paramKey, target, onUpdate, options 
 					options: options
 				}
 			});
+			refreshConditionalControls(group.parentElement, target);
 			if (onUpdate) onUpdate();
 		});
 		group.appendChild(select);

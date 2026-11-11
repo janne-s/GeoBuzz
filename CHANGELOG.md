@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-11-08
+
+### Added
+
+- PWM Rate control for the PWM waveform
+
+### Changed
+
+- Pulse Width and partial controls show only for the waveforms they affect
+- Fat Oscillator no longer offers the Pulse and PWM waveforms
+
+### Fixed
+
+- Pulse waveform lost its shape when Partial Count was above 1
+- Pulse Width was reset when switching to the Pulse waveform
+
 ## 2026-11-07
 
 ### Fixed
