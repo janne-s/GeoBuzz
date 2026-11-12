@@ -8,11 +8,15 @@
 - Silencer mode for silencing outside a path instead of inside
 - Silencer gate action that ends and restarts notes at the path's edge
 - Silencer fade width, attack and release
+- Volume curve can be inverted to make a sound loudest at its edge
 
 ### Changed
 
 - Filter frequency goes down to 20 Hz
 - Silencer fades from the path's edge instead of its center
+- Sound-relative distance, position and gate follow the referenced sound's shape
+- Envelope release is linear for all instruments, the Sampler included
+- Volume patches lower a sound from its own volume instead of overriding it
 
 ### Fixed
 
@@ -26,6 +30,7 @@
 - Server workspace saves turned empty settings into lists, losing later edits
 - Export failed on a sequencer grid sampler with empty sample slots
 - Exported player logged grain size warnings before playback started
+- Leaving an area in release mode shortened the release
 - Speed gate hold did not protect against stopping
 - Sequencer speed gate with hold never opened under GPS noise
 

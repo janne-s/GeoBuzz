@@ -935,6 +935,23 @@ export const UIBuilder = {
 		return wrapper;
 	},
 
+	curveInvertButton(target) {
+		const button = createElement('button', 'mod-invert-btn');
+		const render = () => {
+			const on = !!target.params.curveInvert;
+			button.textContent = on ? '\u2212' : '+';
+			button.title = on ? 'Inverted: loudest at the edge' : 'Normal: loudest at the centre';
+		};
+		render();
+		button.onclick = (e) => {
+			e.stopPropagation();
+			target.params.curveInvert = !target.params.curveInvert;
+			render();
+			AppState.dispatch({ type: 'AUDIO_UPDATE_REQUESTED' });
+		};
+		return button;
+	},
+
 	parameterSection(title, icon, params, target, options = {}) {
 		const isSectionActive = () => {
 			return params.some(paramKey => {
@@ -954,7 +971,11 @@ export const UIBuilder = {
 				params.forEach(paramKey => {
 					const def = PARAMETER_REGISTRY[paramKey];
 					if (def) {
-						container.appendChild(context.createParameterControl(def, paramKey, target, updateHeaderCallback, options));
+						const control = context.createParameterControl(def, paramKey, target, updateHeaderCallback, options);
+						if (paramKey === 'curveStrength' && target.params) {
+							control.appendChild(this.curveInvertButton(target));
+						}
+						container.appendChild(control);
 					}
 				});
 				return container;

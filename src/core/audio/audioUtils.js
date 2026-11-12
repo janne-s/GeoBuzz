@@ -61,10 +61,7 @@ export function calcAreaScalar(userPos, obj) {
 			maxD = context.Geometry.calculateMaxDistanceToPolygonBoundary(obj.vertices, iconPos);
 		}
 
-		const norm = d / Math.max(maxD, 1);
-		const curveVal = (1 - norm) ** 2;
-		const cs = obj.params.curveStrength !== undefined ? obj.params.curveStrength : 1;
-		volumeScalar = (1 - cs) + cs * curveVal;
+		volumeScalar = context.Geometry.volumeCurve(d / Math.max(maxD, 1), obj.params);
 	}
 
 	return volumeScalar;

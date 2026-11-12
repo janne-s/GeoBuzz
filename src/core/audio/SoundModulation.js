@@ -33,6 +33,65 @@ function pathAxisExtent(path) {
 	};
 }
 
+function toLocalMeters(point, origin) {
+	return {
+		x: (point.lng - origin.lng) * CONSTANTS.METERS_PER_LNG * Math.cos(origin.lat * Math.PI / 180),
+		y: (point.lat - origin.lat) * CONSTANTS.METERS_PER_LAT
+	};
+}
+
+function rayToEllipse(p, rx, ry, ux, uy) {
+	const px = p.x / rx, py = p.y / ry, dx = ux / rx, dy = uy / ry;
+	const a = dx * dx + dy * dy;
+	const b = px * dx + py * dy;
+	const c = px * px + py * py - 1;
+	const disc = b * b - a * c;
+	if (disc < 0) return null;
+	const t = (-b + Math.sqrt(disc)) / a;
+	return t > 0 ? t : null;
+}
+
+function rayToPolygon(vertices, origin, ux, uy) {
+	const pts = vertices.map(v => toLocalMeters(v, origin));
+	let nearest = null;
+	for (let i = 0; i < pts.length; i++) {
+		const a = pts[i];
+		const b = pts[(i + 1) % pts.length];
+		const ex = b.x - a.x, ey = b.y - a.y;
+		const denom = ux * ey - uy * ex;
+		if (Math.abs(denom) < 1e-9) continue;
+		const t = (a.x * ey - a.y * ex) / denom;
+		const s = (a.x * uy - a.y * ux) / denom;
+		if (t > 0 && s >= 0 && s <= 1 && (nearest === null || t < nearest)) nearest = t;
+	}
+	return nearest;
+}
+
+function edgeReach(sound, origin, ux, uy) {
+	if (sound.shapeType === 'polygon' && sound.vertices?.length >= 3) {
+		return rayToPolygon(sound.vertices, origin, ux, uy);
+	}
+	if (sound.shapeType === 'oval' && sound.ovalCenter) {
+		return rayToEllipse(toLocalMeters(origin, sound.ovalCenter), sound.radiusX, sound.radiusY, ux, uy);
+	}
+	if (sound.shapeType === 'circle') {
+		const centre = sound.circle ? sound.circle.getLatLng() : origin;
+		const radius = sound.circle ? sound.circle.getRadius() : sound.maxDistance;
+		if (!(radius > 0)) return null;
+		return rayToEllipse(toLocalMeters(origin, centre), radius, radius, ux, uy);
+	}
+	return null;
+}
+
+function reachToward(sound, origin, ux, uy, fallback) {
+	const reach = edgeReach(sound, origin, ux, uy);
+	return reach > 0 ? reach : fallback;
+}
+
+function volumeOffset(baseValue, modValue, amount) {
+	return -baseValue * amount * (1 - Math.max(0, Math.min(1, modValue)));
+}
+
 export function applyPathModulationPatches(patches, options) {
 	const { userPos, params, Geometry, resolvePath, addOffset } = options;
 	if (!patches || patches.length === 0 || !userPos) return;
@@ -79,6 +138,8 @@ export function applyPathModulationPatches(patches, options) {
 		let offset;
 		if (target === 'pitch') {
 			offset = (modValue - 0.5) * CONSTANTS.CENTS_PER_OCTAVE * depthPercent;
+		} else if (target === 'volume') {
+			offset = volumeOffset(baseValue, modValue, depthPercent);
 		} else {
 			const paramMin = def.min !== undefined ? def.min : 0;
 			const paramMax = def.max !== undefined ? def.max : 1;
@@ -110,20 +171,23 @@ export function applySoundModulationPatches(patches, options) {
 			const totalDist = distToThis + distToRef;
 			modValue = totalDist > 0 ? distToThis / totalDist : 0.5;
 		} else if (patch.output === 'distance') {
-			const dist = Geometry.calculateDistanceMeters(userPos, refPos);
-			const rawValue = 1 - Math.min(1, dist / maxDist);
+			const offset = toLocalMeters(userPos, refPos);
+			const dist = Math.hypot(offset.x, offset.y);
+			const reach = dist > 0 ? reachToward(refSound, refPos, offset.x / dist, offset.y / dist, maxDist) : maxDist;
+			const rawValue = 1 - Math.min(1, dist / reach);
 			modValue = getSmoothedModulationValue(rawValue, smoothingKey, `soundMod_${i}_distance`);
 		} else if (patch.output === 'x') {
-			const lngDiff = (userPos.lng - refPos.lng) * CONSTANTS.METERS_PER_LNG * Math.cos(refPos.lat * Math.PI / 180);
-			const rawValue = Math.max(-1, Math.min(1, lngDiff / maxDist));
+			const lngDiff = toLocalMeters(userPos, refPos).x;
+			const reach = reachToward(refSound, refPos, lngDiff < 0 ? -1 : 1, 0, maxDist);
+			const rawValue = Math.max(-1, Math.min(1, lngDiff / reach));
 			modValue = (getSmoothedModulationValue(rawValue, smoothingKey, `soundMod_${i}_x`) + 1) / 2;
 		} else if (patch.output === 'y') {
-			const latDiff = (userPos.lat - refPos.lat) * CONSTANTS.METERS_PER_LAT;
-			const rawValue = Math.max(-1, Math.min(1, latDiff / maxDist));
+			const latDiff = toLocalMeters(userPos, refPos).y;
+			const reach = reachToward(refSound, refPos, 0, latDiff < 0 ? -1 : 1, maxDist);
+			const rawValue = Math.max(-1, Math.min(1, latDiff / reach));
 			modValue = (getSmoothedModulationValue(rawValue, smoothingKey, `soundMod_${i}_y`) + 1) / 2;
 		} else if (patch.output === 'gate') {
-			const dist = Geometry.calculateDistanceMeters(userPos, refPos);
-			modValue = dist <= maxDist ? 1 : 0;
+			modValue = Geometry.isPointInShape(userPos, refSound) ? 1 : 0;
 		}
 
 		const polarity = patch.polarity !== undefined ? patch.polarity : 1;
@@ -141,6 +205,8 @@ export function applySoundModulationPatches(patches, options) {
 		let offset;
 		if (patch.target === 'pitch') {
 			offset = (modValue - 0.5) * CONSTANTS.CENTS_PER_OCTAVE * rangePercent;
+		} else if (patch.target === 'volume') {
+			offset = volumeOffset(baseValue, modValue, rangePercent);
 		} else {
 			const paramMin = def.min !== undefined ? def.min : 0;
 			const paramMax = def.max !== undefined ? def.max : 1;

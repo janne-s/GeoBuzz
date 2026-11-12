@@ -518,19 +518,29 @@ export function updateAudio(userPos, now, forcePositionWork = true) {
 				}
 			}
 
+			if (effectiveGain === 0 && s.params.releaseMode === 'release' && s.type !== "SoundFile") {
+				holdGainThroughRelease(s);
+				continue;
+			}
+			delete s._gainHoldUntil;
+
 			let gainRampTime = CONSTANTS.GAIN_RAMP_TIME;
-			if (effectiveGain === 0) {
-				if (s.params.releaseMode === 'release') {
-					gainRampTime = s.params.release || 0.5;
-				} else if (s.type === "SoundFile" && elementGain > 0 && s.params.fadeOut > 0) {
-					gainRampTime = Math.max(gainRampTime, s.params.fadeOut);
-				}
+			if (effectiveGain === 0 && s.type === "SoundFile" && elementGain > 0 && s.params.fadeOut > 0) {
+				gainRampTime = Math.max(gainRampTime, s.params.fadeOut);
 			}
 			s.gain.gain.rampTo(effectiveGain, gainRampTime);
 		}
 	}
 
 	LayerManager.commitActivityFrame();
+}
+
+function holdGainThroughRelease(s) {
+	if (s._gainHoldUntil !== undefined) return;
+	const now = Tone.now();
+	s._gainHoldUntil = now + (s.params.release || 0.5);
+	s.gain.gain.cancelAndHoldAtTime(now);
+	s.gain.gain.setValueAtTime(0, s._gainHoldUntil);
 }
 
 function hasPendingAudioWork() {

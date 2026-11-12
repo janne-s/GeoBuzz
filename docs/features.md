@@ -125,7 +125,7 @@ Parameters are organized by category. Which categories appear depends on the syn
 | **Attack** | Attack time |
 | **Decay** | Decay time |
 | **Sustain** | Sustain level |
-| **Release** | Release time |
+| **Release** | Release time. The fade is linear for every instrument, including the Sampler |
 
 #### Filter (Basic Synth, Fat Oscillator, AM Synth, FM Synth, NoiseSynth, SoundFile)
 
@@ -167,8 +167,9 @@ Parameters are organized by category. Which categories appear depends on the syn
 |-----------|-------------|
 | **Volume** | Output level |
 | **Pan** | Stereo position (left to right) |
-| **Curve Strength** | Volume falloff curve shape. 1.0 = linear fade from peak to edge; higher values concentrate volume near the peak and drop off more steeply toward edges |
-| **Release Mode** | Stop or Release (what happens on exit) |
+| **Curve Strength** | How much the volume follows its curve inside the area. 0 = flat volume everywhere inside; 1 = full curve, loudest at the peak and silent at the edge |
+| **Invert (+/−)** | Button next to Curve Strength. Flips the curve so the sound is quietest at the peak and loudest at the edge |
+| **Release Mode** | What happens on exit. Stop: the sound cuts out in 0.1 s. Release: the note fades over its full release time while the element's own volume holds |
 | **Polyphony** | Voice limit (synths that support it) |
 
 #### Audio File (SoundFile, Sampler)
@@ -451,6 +452,8 @@ Three-band equalizer.
 | **Depth** | Modulation amount |
 | **Invert** | Reverse polarity |
 
+A volume patch never raises a sound above its own Volume. Depth is how far the volume can fall: at 100 % it reaches silence when the path output is 0, at 30 % it falls to 70 % of the sound's own volume. Other parameters are pulled toward the value the output maps to across the parameter's range.
+
 #### Sound Relative
 
 | Parameter | Description |
@@ -460,6 +463,10 @@ Three-band equalizer.
 | **Target Parameter** | Parameter to modulate |
 | **Range** | Modulation depth |
 | **Polarity** | Direction and scaling |
+
+Distance is 1 at the reference sound's icon and 0 at its edge, measured toward the listener, so a polygon or oval reaches as far as its own shape. X and Y are scaled from the icon to the edge along each axis. Gate is 1 inside the reference sound's shape. A line sound has no edge in this sense and uses its maximum distance instead. Proximity needs the modulated sound's own icon, so it has no effect on a sequencer synth track.
+
+A volume patch works like a path volume patch: the sound's own Volume is the ceiling and Range is how far below it the volume can fall.
 
 #### Reflections (Spatial Delay)
 

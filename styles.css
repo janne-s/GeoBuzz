@@ -2421,6 +2421,14 @@ label.layer-item span {
 	cursor: pointer;
 }
 
+.parameter-control .mod-invert-btn {
+	width: 22px;
+	height: 22px;
+	padding: 0;
+	margin-left: var(--spacing-sm);
+	line-height: 1;
+}
+
 /* Patch modulation styles */
 .patch-item {
 	margin-bottom: var(--spacing-lg);

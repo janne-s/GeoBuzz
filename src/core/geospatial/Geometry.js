@@ -163,14 +163,23 @@ export const Geometry = {
 		return null;
 	},
 
+	volumeCurve(fraction, params) {
+		const f = Math.max(0, Math.min(1, fraction));
+		const shaped = (params?.curveInvert ? f : 1 - f) ** 2;
+		const strength = params?.curveStrength !== undefined ? params.curveStrength : 1;
+		return (1 - strength) + strength * shaped;
+	},
+
 	getRaycastVolume(userPos, obj) {
 		const iconPos = obj.marker.getLatLng();
 		const listenerDist = _map.distance(iconPos, userPos);
+		const gamma = obj.params.gamma || 1.0;
+		const shape = (fraction) => (obj.params.curveInvert ? fraction : 1.0 - fraction) ** gamma;
 
 		const minRadius = obj.params.minRadius || 0;
-		if (listenerDist <= minRadius) return 1.0;
+		if (listenerDist <= minRadius) return shape(0);
 
-		if (listenerDist < 0.1) return 1.0;
+		if (listenerDist < 0.1) return shape(0);
 
 		let nearestIntersectionDist = Infinity;
 
@@ -207,9 +216,8 @@ export const Geometry = {
 		const edgeMargin = obj.params.edgeMargin || 0;
 		const effectiveDistToEdge = Math.max(0.1, nearestIntersectionDist - minRadius - edgeMargin);
 		const fraction = Math.max(0, Math.min(1, (listenerDist - minRadius) / effectiveDistToEdge));
-		const gamma = obj.params.gamma || 1.0;
 
-		return (1.0 - fraction) ** gamma;
+		return shape(fraction);
 	},
 
 	getDistanceToLineBoundary(iconPos, userPos, linePoints, tolerance) {
@@ -1214,10 +1222,7 @@ export const Geometry = {
 				const d = this.getDistanceToLine(userPos, obj.linePoints[i], obj.linePoints[i + 1]);
 				if (d < minDist) minDist = d;
 			}
-			const norm = Math.min(minDist / Math.max(obj.lineTolerance, 1), 1);
-			const curveStrength = obj.params?.curveStrength !== undefined ? obj.params.curveStrength : 1;
-			const curveVal = (1 - norm) ** 2;
-			return (1 - curveStrength) * 1 + curveStrength * curveVal;
+			return this.volumeCurve(minDist / Math.max(obj.lineTolerance, 1), obj.params);
 		}
 
 		const line = isCenterline
@@ -1228,11 +1233,7 @@ export const Geometry = {
 
 		const distToLine = this.getDistanceToLine(userPos, line.start, line.end);
 		const maxDist = this.getRaycastMaxDistance(obj, line, userPos);
-		const norm = distToLine / Math.max(maxDist, 1);
-		const curveStrength = obj.params?.curveStrength !== undefined ? obj.params.curveStrength : 1;
-		const curveVal = (1 - Math.min(norm, 1)) ** 2;
-
-		return (1 - curveStrength) * 1 + curveStrength * curveVal;
+		return this.volumeCurve(distToLine / Math.max(maxDist, 1), obj.params);
 	},
 
 	updateDivisionLineVisual(obj, map) {

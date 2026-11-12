@@ -328,6 +328,7 @@ export const SYNTH_REGISTRY = {
 			const samplerConfig = {
 				attack: params.attack || 0.05,
 				release: params.release || 1,
+				curve: 'linear',
 				volume: CONSTANTS.DEFAULT_SYNTH_VOLUME_DB
 			};
 

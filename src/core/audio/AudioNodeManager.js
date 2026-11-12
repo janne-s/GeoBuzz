@@ -4,16 +4,6 @@ import { SYNTH_REGISTRY } from './SynthRegistry.js';
 import { getUserMovementSpeed } from './AudioEngine.js';
 import { isSpeedGateActive, getGridKeySpeedRange } from './SpeedGate.js';
 
-const RELEASE_CURVE = (() => {
-	const points = CONSTANTS.RELEASE_CURVE_POINTS;
-	const rate = Math.log(10) * (CONSTANTS.RELEASE_CURVE_FLOOR_DB / 20);
-	const floor = Math.exp(-rate);
-	return Array.from({ length: points }, (_, i) => {
-		const progress = i / (points - 1);
-		return (Math.exp(-rate * progress) - floor) / (1 - floor);
-	});
-})();
-
 export class AudioNodeManager {
 	static createPanner(type, params = {}, spatialMode = 'off', useSpatialPanning = true) {
 		if (spatialMode === 'hrtf' && useSpatialPanning) {
@@ -96,7 +86,7 @@ export class AudioNodeManager {
 			decayCurve: 'linear',
 			sustain: params.sustain ?? CONSTANTS.DEFAULT_SOUND.sustain,
 			release: params.release ?? CONSTANTS.DEFAULT_SOUND.release,
-			releaseCurve: RELEASE_CURVE
+			releaseCurve: 'linear'
 		};
 	}
 
@@ -412,7 +402,7 @@ export class PolyphonyManager {
 
 		if (!playbackSource) {
 			if (soundObj.envelopeGain) {
-				PolyphonyManager.exponentialRelease(soundObj.envelopeGain.gain, soundObj.params.release || 0.1);
+				PolyphonyManager.linearRelease(soundObj.envelopeGain.gain, soundObj.params.release || 0.1);
 			}
 			return;
 		}
@@ -423,18 +413,15 @@ export class PolyphonyManager {
 			this.triggerPolyphonic(soundObj.synth, playbackSource.values, false, soundObj);
 		}
 
-		if (soundObj.envelopeGain && !SYNTH_REGISTRY[soundObj.type]?.hasOwnEnvelope) {
-			PolyphonyManager.exponentialRelease(soundObj.envelopeGain.gain, soundObj.params.release || 0.1);
+		if (soundObj.envelopeGain && !SYNTH_REGISTRY[soundObj.type]?.hasOwnEnvelope && !(soundObj.synth instanceof Tone.Sampler)) {
+			PolyphonyManager.linearRelease(soundObj.envelopeGain.gain, soundObj.params.release || 0.1);
 		}
 	}
 
-	static exponentialRelease(gainParam, duration) {
+	static linearRelease(gainParam, duration) {
 		const now = Tone.now();
-		const currentValue = Math.max(0.001, gainParam.value);
 		gainParam.cancelAndHoldAtTime(now);
-		gainParam.setValueAtTime(currentValue, now);
-		gainParam.exponentialRampToValueAtTime(0.001, now + duration);
-		gainParam.setValueAtTime(0, now + duration);
+		gainParam.linearRampToValueAtTime(0, now + duration);
 	}
 
 	static generateChord(basePitch, polyphony) {

@@ -760,6 +760,14 @@ export const PARAMETER_REGISTRY = {
 		serialize: true,
 		ui: true
 	},
+	curveInvert: {
+		label: 'Invert Curve',
+		type: 'checkbox',
+		defaultValue: false,
+		category: 'common',
+		serialize: true,
+		ui: false
+	},
 	releaseMode: {
 		label: 'Release Mode',
 		type: 'select',
