@@ -8,7 +8,7 @@ import { toRadians } from '../core/utils/math.js';
 
 const ARRIVAL_RADIUS_M = 4;
 const SCALE_MIN = 0;
-const MAX_STEP_S = 0.5;
+const MAX_STEP_S = 2;
 const PLAIN_ACCURACY_M = 5;
 const DEFAULT_NOISE_M = 6;
 const DEFAULT_VARIABILITY = 0.35;

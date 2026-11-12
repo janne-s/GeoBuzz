@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-12
+
+### Fixed
+
+- Guided listening walked at half its set pace when GPS drift was on
+
 ## 2026-11-11
 
 ### Added
