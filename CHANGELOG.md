@@ -5,6 +5,7 @@
 ### Fixed
 
 - Guided listening walked at half its set pace when GPS drift was on
+- Granular sound files threw an error and left sounds playing when the page went to the background
 
 ## 2026-11-11
 

@@ -391,6 +391,11 @@ export class PolyphonyManager {
 		if (!soundObj || !soundObj.synth || !soundObj.params) return;
 		if (soundObj.synth.disposed) return;
 
+		if (soundObj.type === 'SoundFile') {
+			if (soundObj.synth.state === 'started') soundObj.synth.stop();
+			return;
+		}
+
 		soundObj._envelopeReleaseUntil = Tone.now() + (soundObj.params.release || 0.1);
 
 		if (soundObj.type === 'NoiseSynth') {
